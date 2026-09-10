@@ -3,46 +3,101 @@
 {% block content %}
   <section class="cursos-hero">
     <h1>Montagem do calendário acadêmico</h1>
-    <p>Defina o período, marque os feriados clicando na grade e salve cada etapa. O cálculo é feito no servidor.</p>
+    <p>
+      Preencha os campos abaixo, marque feriados e eventos e salve cada etapa. As
+      <strong>prévias</strong> ficam reunidas no fim da página e são calculadas no servidor.
+    </p>
   </section>
 
-  <div class="editor-layout">
-    <section class="panel editor-form">
-      <h2>Parâmetros</h2>
+  <div class="editor-steps">
+    <div class="editor-viewbar" role="group" aria-label="Exibir ou ocultar blocos">
+      <span class="editor-viewbar-label">Exibir:</span>
+      <button type="button" class="button mode-btn" data-toggle-block="inputs" aria-pressed="false">Ocultar preenchimento</button>
+      <button type="button" class="button mode-btn" data-toggle-block="previews" aria-pressed="false">Ocultar prévias</button>
+      <button type="button" class="button" data-toggle-block="tudo">Mostrar tudo</button>
+    </div>
+
+    <h2 class="editor-section-title" data-block="inputs">1. Preenchimento</h2>
+
+    <section class="panel editor-form" data-block="inputs">
+      <h2><span class="editor-step">1.1</span> Parâmetros do calendário</h2>
       <form id="editorForm" onsubmit="return false;">
         {% csrf_token %}
         <div class="field-row">
           <label class="field">Versão
             <input type="text" id="fVersao" placeholder="2026.1.etapa1" autocomplete="off">
+            <small class="field-hint">Identificador único da etapa, sem repetir (ex.: 2026.1.etapa1).</small>
           </label>
           <label class="field">Etapa
             <input type="number" id="fEtapa" min="1" step="1" value="1">
+            <small class="field-hint">Número sequencial da montagem (1, 2, 3…).</small>
           </label>
         </div>
         <div class="field-row">
           <label class="field">Título
             <input type="text" id="fTitulo" placeholder="Calendário acadêmico 2026.1" autocomplete="off">
+            <small class="field-hint">Título exibido no documento publicado.</small>
           </label>
           <label class="field">Período
             <input type="text" id="fPeriodo" placeholder="2026.1" autocomplete="off">
+            <small class="field-hint">Formato AAAA.S (ex.: 2026.1).</small>
+          </label>
+        </div>
+        <label class="field">Instituição
+          <input type="text" id="fInstituicao" autocomplete="off">
+          <small class="field-hint">Nome da instituição (ex.: IFPI – Campus Barras).</small>
+        </label>
+        <div class="field-row">
+          <label class="field">Curso
+            <input type="text" id="fCurso" placeholder="Técnico em Administração" autocomplete="off">
+            <small class="field-hint">Curso a que o calendário se refere.</small>
+          </label>
+          <label class="field">Modalidade
+            <select id="fModalidade">
+              {% for m in inicial.modalidades %}
+                <option value="{{ m.valor }}">{{ m.label }}</option>
+              {% endfor %}
+            </select>
+            <small class="field-hint">Modalidade de ensino do curso.</small>
+          </label>
+          <label class="field">Semestre
+            <input type="text" id="fSemestre" placeholder="2º Semestre" autocomplete="off">
+            <small class="field-hint">Texto do cabeçalho do documento (ex.: 2º Semestre).</small>
           </label>
         </div>
         <div class="field-row">
           <label class="field">Início do semestre (segunda-feira)
             <input type="date" id="fInicio">
+            <small class="field-hint">Deve ser uma segunda-feira; é a base de todo o cálculo.</small>
           </label>
+          <label class="field">Término do período letivo
+            <input type="date" id="fDataFim">
+            <small class="field-hint">Data-limite do período; usada no resumo e na validação.</small>
+          </label>
+          <label class="field">Dias letivos previstos
+            <input type="number" id="fPrevistos" min="0" step="1" value="0">
+            <small class="field-hint">Total exigido no semestre (ex.: 100); comparado com o calculado.</small>
+          </label>
+        </div>
+        <div class="field-row">
           <label class="field">Nº de semanas
             <input type="number" id="fSemanas" min="2" step="1">
+            <small class="field-hint">Duração total do semestre em semanas (padrão: 18).</small>
           </label>
           <label class="field">Semanas na 1ª parte
             <input type="number" id="fSemanas1" min="1" step="1">
+            <small class="field-hint">Quantas semanas ficam na 1ª parte; o restante vira reposição (padrão: 9).</small>
           </label>
         </div>
         <label class="field field-inline">
           <input type="checkbox" id="fFinal"> Marcar como versão final (publicável)
         </label>
+        <p class="field-hint field-hint-inline">
+          A versão final é a publicada como atual; apenas uma pode ser final.
+        </p>
         <label class="field">Observações
           <textarea id="fObs" rows="2" placeholder="Anotações desta etapa…"></textarea>
+          <small class="field-hint">Aparecem no documento publicado, na seção “Observações”.</small>
         </label>
       </form>
       <div class="editor-actions">
@@ -53,37 +108,153 @@
       <div id="editorMsg" class="editor-msg" role="status"></div>
     </section>
 
-    <section class="panel editor-side">
-      <h2>Etapas salvas</h2>
+    <section class="panel" data-block="inputs">
+      <h2><span class="editor-step">1.2</span> Feriados e pontos facultativos</h2>
+      <p class="editor-help">
+        <strong>Como utilizar:</strong> escolha uma data (segunda a sexta) e o tipo e clique
+        em <em>Adicionar</em>. Use <em>Feriados nacionais do período</em> para importar
+        automaticamente os feriados do ano. Você também pode clicar direto em um dia das
+        prévias para marcar/desmarcar. Feriados e pontos facultativos não contam como dias
+        letivos.
+      </p>
+      <div class="editor-holidays">
+        <label class="editor-holidays-field">Data
+          <input type="date" id="fFeriado">
+        </label>
+        <label class="editor-holidays-field">Tipo
+          <select id="fFeriadoTipo">
+            <option value="feriado">Feriado</option>
+            <option value="ponto_facultativo">Ponto facultativo</option>
+          </select>
+        </label>
+        <button id="btnAddFeriado" class="button" type="button">Adicionar</button>
+        <button id="btnNacionais" class="button" type="button">Feriados nacionais do período</button>
+      </div>
+      <ul id="holidayChips" class="chip-list"></ul>
+    </section>
+
+    <section class="panel" data-block="inputs">
+      <h2><span class="editor-step">1.3</span> Eventos</h2>
+      <p class="editor-help">
+        <strong>Como utilizar:</strong> informe o título e a data inicial (obrigatórios),
+        escolha o tipo e clique em <em>Adicionar evento</em>. Use a data final para
+        intervalos. Para <strong>sábados letivos/de reposição</strong>, escolha o tipo
+        correspondente e informe o dia da semana referenciado.
+      </p>
+      <div class="editor-events">
+        <div class="field-row">
+          <label class="field">Título
+            <input type="text" id="evTitulo" placeholder="Avaliações do 1º Bimestre" autocomplete="off">
+            <small class="field-hint">Nome que aparece no documento.</small>
+          </label>
+          <label class="field">Tipo
+            <select id="evTipo">
+              {% for t in inicial.tipos_evento %}
+                <option value="{{ t.valor }}">{{ t.label }}</option>
+              {% endfor %}
+            </select>
+            <small class="field-hint">Categoria usada na cor da legenda e no status do dia.</small>
+          </label>
+        </div>
+        <div class="field-row">
+          <label class="field">Data inicial
+            <input type="date" id="evInicio">
+            <small class="field-hint">Obrigatória; primeiro dia do evento.</small>
+          </label>
+          <label class="field">Data final (opcional)
+            <input type="date" id="evFim">
+            <small class="field-hint">Preencha apenas se o evento durar vários dias.</small>
+          </label>
+          <label class="field">Dia da semana referenciado
+            <select id="evReferencia">
+              <option value="">— não se aplica —</option>
+              {% for d in inicial.dias_semana %}
+                <option value="{{ d.valor }}">{{ d.label }}</option>
+              {% endfor %}
+            </select>
+            <small class="field-hint">Use em sábados letivos/reposição (ex.: referente à quarta-feira).</small>
+          </label>
+        </div>
+        <label class="field field-inline">
+          <input type="checkbox" id="evDestaque"> Destacar na grade mensal
+        </label>
+        <p class="field-hint field-hint-inline">
+          Destaca o dia com um contorno azul na prévia do documento.
+        </p>
+        <div class="editor-actions">
+          <button id="btnAddEvento" class="button button-primary" type="button">Adicionar evento</button>
+        </div>
+      </div>
+      <table class="doc-table" id="eventosTable">
+        <thead>
+          <tr>
+            <th>Início</th>
+            <th>Fim</th>
+            <th>Título</th>
+            <th>Tipo</th>
+            <th>Referência</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="eventosBody"></tbody>
+      </table>
+    </section>
+
+    <section class="panel editor-side" data-block="inputs">
+      <h2><span class="editor-step">1.4</span> Etapas salvas</h2>
+      <p class="editor-help">
+        <strong>Como utilizar:</strong> clique no nome de uma versão para carregá-la no
+        formulário (campos e prévias são atualizados). O botão <em>Excluir</em> remove a
+        versão do banco — a ação não pode ser desfeita.
+      </p>
       <ul class="editor-etapas">
         {% for e in etapas %}
           <li>
             <a href="?versao={{ e.slug }}">{{ e.versao }}</a>
             {% if e.final %}<span class="version-chip atual">final</span>{% endif %}
             <span class="muted">{{ e.data_inicio|date:"d/m/Y" }} • etapa {{ e.etapa }}</span>
+            <form class="inline-form" method="post" action="{{ base }}versoes/excluir/"
+                  onsubmit="return confirm('Excluir a versão {{ e.versao|escapejs }}? Esta ação não pode ser desfeita.');">
+              {% csrf_token %}
+              <input type="hidden" name="versao" value="{{ e.versao }}">
+              <input type="hidden" name="destino" value="editor">
+              <button type="submit" class="btn-excluir">Excluir</button>
+            </form>
           </li>
         {% empty %}
           <li class="muted">Nenhuma etapa salva ainda.</li>
         {% endfor %}
       </ul>
     </section>
+
+    <h2 class="editor-section-title" data-block="previews">2. Prévias</h2>
+
+    <section class="panel" data-block="previews">
+      <h2><span class="editor-step">2.1</span> Prévia do documento</h2>
+      <p class="editor-help">
+        <strong>Como utilizar:</strong> mostra o resultado final (grades mensais, dias
+        letivos por mês, eventos, sábados letivos e feriados) — o mesmo conteúdo que será
+        publicado. Passe o mouse sobre um dia para ver o status e os eventos e
+        <strong>clique em um dia útil</strong> para marcar/desmarcar feriado.
+      </p>
+      <div id="docPreview" class="doc-preview">Carregando…</div>
+    </section>
+
+    <section class="panel" data-block="previews">
+      <h2><span class="editor-step">2.2</span> Prévia da grade (reposição)</h2>
+      <div class="editor-help">
+        <strong>Como utilizar</strong>
+        <ul>
+          <li><strong>Clique em um dia</strong> para marcá-lo como feriado; ele fica <strong>riscado em vermelho</strong> (hachurado). Clique nele de novo para <strong>desmarcar</strong> e o dia volta a ser letivo.</li>
+          <li>As semanas mostram a paridade (<strong>x1</strong>/<strong>x2</strong>) e os dias remanejados para a reposição.</li>
+          <li>Dias com um traço na base <strong>têm eventos</strong> — passe o mouse para ver o detalhe.</li>
+          <li>Células vazias (cinza) indicam que não há aula naquele dia da semana.</li>
+          <li>A <strong>legenda de cores</strong> abaixo da grade resume cada situação.</li>
+        </ul>
+      </div>
+      <div id="calPreview" class="cal-preview">Carregando…</div>
+    </section>
   </div>
-
-  <section class="panel">
-    <h2>Feriados</h2>
-    <div class="editor-holidays">
-      <input type="date" id="fFeriado">
-      <button id="btnAddFeriado" class="button" type="button">Adicionar feriado</button>
-      <button id="btnNacionais" class="button" type="button">Feriados nacionais do período</button>
-    </div>
-    <ul id="holidayChips" class="chip-list"></ul>
-    <p class="muted">Clique em um dia da grade para marcar/desmarcar como feriado (apenas dias úteis).</p>
-  </section>
-
-  <section class="panel">
-    <h2>Prévia da grade</h2>
-    <div id="calPreview" class="cal-preview">Carregando…</div>
-  </section>
 
   {{ inicial|json_script:"inicial-data" }}
 {% endblock %}

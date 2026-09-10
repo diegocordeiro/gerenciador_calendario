@@ -1,5 +1,10 @@
 {% load filters %}
-{% if pdf_export %}{% include "calendario/_print_head.html" %}{% endif %}
+<section class="doc-section" id="grade-semanas">
+  <h2>Grade de semanas (reposição)</h2>
+  <p class="muted">
+    Distribuição dos dias letivos em semanas <strong>x1</strong>/<strong>x2</strong> com
+    o remanejamento das aulas perdidas por feriado para as semanas de reposição.
+  </p>
 <div class="cal-metrics">
   <div class="cal-metric">
     <span class="cal-metric-label">Semanas</span>
@@ -16,20 +21,33 @@
     <strong>{{ dados.dias_letivos }}</strong>
     <small>de {{ dados.dias_totais }} dias</small>
   </div>
-  <div class="cal-metric {% if dados.metricas.parity or dados.metricas.weekday or dados.metricas.part %}has-error{% endif %}">
+  <div class="cal-metric {% if dados.metricas.parity or dados.metricas.weekday or dados.metricas.part %}has-error{% endif %}"
+       title="Cada número conta aulas remanejadas que perderam a paridade (x1/x2), o dia da semana ou a parte do semestre. Menor é melhor.">
     <span class="cal-metric-label">Erros (paridade / dia / parte)</span>
     <strong>{{ dados.metricas.parity }} / {{ dados.metricas.weekday }} / {{ dados.metricas.part }}</strong>
-    <small>quanto menor, melhor</small>
+    <small>ideal: 0 / 0 / 0 — quanto menor, melhor</small>
   </div>
 </div>
 
-<div class="cal-toolbar">
-  {% if pdf_export %}
-  <button class="mode-btn pdf-btn" type="button"
-          data-print-pdf
-          data-print-title="Calendário acadêmico — {{ print_title|default:site_title }}"
-          title="Abre a impressão do navegador: escolha “Salvar como PDF”">Exportar PDF</button>
-  {% endif %}
+<div class="cal-help">
+  <strong>Como ler “Erros (paridade / dia / parte)”</strong>
+  <p>
+    Ao remanejar as aulas interrompidas por feriados, o sistema tenta recolocá-las na
+    <strong>mesma semana (paridade x1/x2)</strong>, no <strong>mesmo dia da semana</strong> e na
+    <strong>mesma parte do semestre</strong>. Cada número conta quantas aulas <em>não</em>
+    conseguiram manter essas condições — por isso <strong>quanto menor, melhor</strong> e
+    <code>0 / 0 / 0</code> é o ideal.
+  </p>
+  <ul>
+    <li><strong>Paridade (x1/x2):</strong> aulas que caíram em uma semana de paridade diferente da original.</li>
+    <li><strong>Dia:</strong> aulas que caíram em outro dia da semana (ex.: uma quarta no lugar de uma terça).</li>
+    <li><strong>Parte:</strong> aulas que mudaram da 1ª para a 2ª parte do semestre (ou o contrário).</li>
+  </ul>
+  <p>
+    Neste calendário: <strong>{{ dados.metricas.parity }}</strong> aula(s) em paridade diferente,
+    <strong>{{ dados.metricas.weekday }}</strong> em dia diferente e
+    <strong>{{ dados.metricas.part }}</strong> em outra parte.
+  </p>
 </div>
 
 <table class="cal-table">
@@ -76,3 +94,4 @@
   </ul>
 </div>
 {% endif %}
+</section>

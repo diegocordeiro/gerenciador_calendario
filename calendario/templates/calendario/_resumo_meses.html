@@ -1,0 +1,39 @@
+<section class="doc-section" id="resumo-meses">
+  <h2>Quantidade de dias letivos por mês</h2>
+  <table class="doc-table doc-table-resumo">
+    <thead>
+      <tr>
+        <th scope="col">Mês</th>
+        <th scope="col">Dias letivos</th>
+        <th scope="col">Declarado</th>
+        <th scope="col">Sábados</th>
+        <th scope="col">Feriados/Pontos</th>
+        <th scope="col">Diferença</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in agenda.resumo %}
+      <tr>
+        <th scope="row">{{ r.label }}</th>
+        <td>{{ r.letivos }}</td>
+        <td>{% if r.tem_declarado %}{{ r.declarado }}{% else %}—{% endif %}</td>
+        <td>{{ r.sabados }}</td>
+        <td>{{ r.feriados }}</td>
+        <td class="{% if r.diferenca %}doc-dif{% endif %}">
+          {% if r.tem_declarado %}{{ r.diferenca }}{% else %}—{% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="muted">Sem meses no período informado.</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <th scope="row">Total</th>
+        <td>{{ agenda.total_letivos }}</td>
+        <td>{% if agenda.validacao.previsto %}{{ agenda.validacao.previsto }}{% else %}—{% endif %}</td>
+        <td colspan="3"></td>
+      </tr>
+    </tfoot>
+  </table>
+</section>

@@ -1,0 +1,43 @@
+<section class="doc-cabecalho">
+  <p class="doc-instituicao">{{ cal.instituicao|default:"IFPI — Campus Barras" }}</p>
+  <h1 class="doc-titulo">{{ cal.titulo|default:"Calendário Acadêmico" }}</h1>
+  {% if cal.curso or cal.modalidade %}
+  <p class="doc-curso">
+    {{ cal.curso }}{% if cal.curso and cal.modalidade %} — {% endif %}{{ cal.get_modalidade_display }}
+  </p>
+  {% endif %}
+  <dl class="doc-meta">
+    <div>
+      <dt>INÍCIO</dt>
+      <dd>{{ cal.data_inicio|date:"d/m/Y" }}</dd>
+    </div>
+    <div>
+      <dt>TÉRMINO</dt>
+      <dd>{% if cal.data_fim %}{{ cal.data_fim|date:"d/m/Y" }}{% else %}—{% endif %}</dd>
+    </div>
+    <div>
+      <dt>DIAS LETIVOS</dt>
+      <dd>
+        {{ agenda.total_letivos }}{% if agenda.validacao.previsto %} / {{ agenda.validacao.previsto }}{% endif %}
+      </dd>
+    </div>
+    {% if cal.semestre %}
+    <div>
+      <dt>SEMESTRE</dt>
+      <dd>{{ cal.semestre }}</dd>
+    </div>
+    {% endif %}
+    {% if cal.periodo %}
+    <div>
+      <dt>PERÍODO</dt>
+      <dd>{{ cal.periodo }}</dd>
+    </div>
+    {% endif %}
+  </dl>
+  {% if not agenda.validacao.ok %}
+  <div class="cal-alert">
+    <strong>Conferência dos dias letivos</strong>
+    <ul>{% for a in agenda.validacao.avisos %}<li>{{ a }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+</section>

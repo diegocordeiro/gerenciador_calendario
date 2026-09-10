@@ -3,9 +3,16 @@
 {% block content %}
   <h1>Versões do calendário acadêmico</h1>
   <p>Confira cada etapa da produção do calendário e a versão final publicada.</p>
+  {% comment %}
+    A exclusão é um POST de formulário (funciona até sem JavaScript). No site
+    estático não há API nem banco, então estes controles não são publicados.
+  {% endcomment %}
   <table class="versions-table">
     <thead>
-      <tr><th>Versão</th><th>Período</th><th>Etapa</th><th>Início</th><th>Status</th></tr>
+      <tr>
+        <th>Versão</th><th>Período</th><th>Etapa</th><th>Início</th><th>Status</th>
+        {% if not static_build %}<th>Ações</th>{% endif %}
+      </tr>
     </thead>
     <tbody>
       {% if atual %}
@@ -15,6 +22,17 @@
         <td>{{ atual.etapa }}</td>
         <td>{{ atual.data_inicio|date:"d/m/Y" }}</td>
         <td><span class="version-chip atual">final</span></td>
+        {% if not static_build %}
+        <td class="actions-cell">
+          <form class="inline-form" method="post" action="{{ base }}versoes/excluir/"
+                onsubmit="return confirm('Excluir a versão {{ atual.versao|escapejs }}? Esta ação não pode ser desfeita.');">
+            {% csrf_token %}
+            <input type="hidden" name="versao" value="{{ atual.versao }}">
+            <input type="hidden" name="destino" value="versoes">
+            <button type="submit" class="btn-excluir">Excluir</button>
+          </form>
+        </td>
+        {% endif %}
       </tr>
       {% endif %}
       {% for v in history %}
@@ -24,10 +42,21 @@
           <td>{{ v.etapa }}</td>
           <td>{{ v.data_inicio|date:"d/m/Y" }}</td>
           <td><span class="version-chip historica">etapa</span></td>
+          {% if not static_build %}
+          <td class="actions-cell">
+            <form class="inline-form" method="post" action="{{ base }}versoes/excluir/"
+                  onsubmit="return confirm('Excluir a versão {{ v.versao|escapejs }}? Esta ação não pode ser desfeita.');">
+              {% csrf_token %}
+              <input type="hidden" name="versao" value="{{ v.versao }}">
+              <input type="hidden" name="destino" value="versoes">
+              <button type="submit" class="btn-excluir">Excluir</button>
+            </form>
+          </td>
+          {% endif %}
         </tr>
       {% endfor %}
       {% if not atual and not history %}
-        <tr><td colspan="5">Nenhuma versão cadastrada.</td></tr>
+        <tr><td colspan="{% if static_build %}5{% else %}6{% endif %}">Nenhuma versão cadastrada.</td></tr>
       {% endif %}
     </tbody>
   </table>

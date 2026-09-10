@@ -1,18 +1,12 @@
 {% extends "calendario/base.html" %}
 {% block title %}{{ cal.titulo|default:cal.versao }} — {{ site_title }}{% endblock %}
 {% block content %}
+  {% if pdf_export %}{% include "calendario/_print_head.html" %}{% endif %}
   <nav class="breadcrumb">
     <a href="{{ root_base }}versoes/">Versões</a> / <span>{{ cal.versao }}</span>
   </nav>
 
-  <section class="cursos-hero">
-    <h1>{{ cal.titulo|default:"Calendário acadêmico" }}</h1>
-    <p>
-      Versão <strong>{{ cal.versao }}</strong>{% if cal.periodo %} • {{ cal.periodo }}{% endif %} •
-      Início em {{ cal.data_inicio|date:"d/m/Y" }} • {{ cal.total_semanas }} semanas
-      ({{ cal.semanas_primeira_parte }} na 1ª parte)
-    </p>
-  </section>
+  {% include "calendario/_cabecalho_doc.html" %}
 
   {% if dados.erros %}
   <div class="cal-alert">
@@ -21,7 +15,22 @@
   </div>
   {% endif %}
 
-  {% include "calendario/_matrix.html" %}
+  <div class="doc-toolbar">
+    {% if pdf_export %}
+    <button class="mode-btn pdf-btn" type="button"
+            data-print-pdf
+            data-print-title="Calendário acadêmico — {{ print_title|default:site_title }}"
+            title="Abre a impressão do navegador: escolha “Salvar como PDF”">Exportar PDF</button>
+    {% endif %}
+  </div>
+
+  {% include "calendario/_mensal.html" %}
+  {% include "calendario/_resumo_meses.html" %}
+  {% include "calendario/_tabela_eventos.html" %}
+  {% include "calendario/_tabela_feriados.html" %}
+  {% include "calendario/_legenda.html" %}
+
+  {% include "calendario/_grade_semanas.html" %}
 
   {% if cal.observacoes %}
   <section class="panel">
@@ -30,3 +39,4 @@
   </section>
   {% endif %}
 {% endblock %}
+

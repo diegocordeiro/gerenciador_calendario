@@ -176,13 +176,19 @@ def _rotulo(col: dict, ridx: int, cidx: int):
     return texto, texto
 
 
+#: Cores de fundo da grade (paridade das semanas). Mantidas também nos swatches
+#: da legenda em ``static/css/main.css`` — ao mudar aqui, ajuste lá também.
+COR_PARIDADE_1 = "#cfe8f7"  # semana x1 (azul)
+COR_PARIDADE_2 = "#ffe6cc"  # semana x2 (pêssego)
+
+
 def _cor_fundo(col: dict) -> str:
     """Port de ``getBckColor``: cor de fundo da célula."""
     if col["free"]:
         return "white"
     if col["parity"]:
-        return "#edfaff"
-    return "#fff4f4"
+        return COR_PARIDADE_1
+    return COR_PARIDADE_2
 
 
 def _erro(prop: str, C, matriz) -> int:

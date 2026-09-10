@@ -45,6 +45,11 @@
   {% endblock %}
 
   <main class="site-main container">
+    {% if messages %}
+    <ul class="messages">
+      {% for m in messages %}<li class="message message-{{ m.tags }}">{{ m }}</li>{% endfor %}
+    </ul>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 

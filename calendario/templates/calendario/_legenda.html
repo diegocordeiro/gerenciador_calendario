@@ -1,0 +1,13 @@
+<section class="doc-section" id="legenda">
+  <h2>Legenda</h2>
+  <ul class="doc-legenda">
+    {% for l in agenda.legenda %}
+    <li>
+      <span class="doc-dia-swatch doc-dia-{{ l.status }}" aria-hidden="true"></span>
+      {{ l.label }}
+    </li>
+    {% empty %}
+    <li class="muted">Sem informações para exibir.</li>
+    {% endfor %}
+  </ul>
+</section>

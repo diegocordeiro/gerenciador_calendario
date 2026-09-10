@@ -1,0 +1,23 @@
+<section class="doc-section" id="feriados">
+  <h2>Feriados e pontos facultativos</h2>
+  <table class="doc-table doc-table-feriados">
+    <thead>
+      <tr>
+        <th scope="col">Data</th>
+        <th scope="col">Descrição</th>
+        <th scope="col">Tipo</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in agenda.feriados %}
+      <tr>
+        <td>{{ f.label }}</td>
+        <td>{{ f.descricao|default:"—" }}</td>
+        <td><span class="doc-evento doc-evento-{{ f.tipo }}">{{ f.tipo_label }}</span></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="3" class="muted">Nenhum feriado cadastrado.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>

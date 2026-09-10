@@ -1,0 +1,44 @@
+<section class="doc-section" id="eventos">
+  <h2>Eventos</h2>
+  <table class="doc-table doc-table-eventos">
+    <thead>
+      <tr>
+        <th scope="col">Mês</th>
+        <th scope="col">Dia</th>
+        <th scope="col">Eventos</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for g in agenda.eventos_por_mes %}
+        {% for it in g.itens %}
+        <tr>
+          {% if forloop.first %}
+            <th scope="rowgroup" rowspan="{{ g.itens|length }}" class="doc-mes-cel">{{ g.label }}</th>
+          {% endif %}
+          <td class="doc-dia-cel">{{ it.dia }}</td>
+          <td>
+            <span class="doc-evento doc-evento-{{ it.tipo }}">{{ it.titulo }}</span>
+            {% if it.referencia %}<em class="muted">({{ it.referencia }})</em>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      {% empty %}
+        <tr><td colspan="3" class="muted">Nenhum evento cadastrado.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% if agenda.sabados_letivos %}
+<section class="doc-section" id="sabados-letivos">
+  <h2>Sábados letivos</h2>
+  <ul class="doc-sabados">
+    {% for s in agenda.sabados_letivos %}
+    <li>
+      <strong>{{ s.label }}</strong> — {{ s.titulo }}
+      {% if s.referencia %}<em class="muted">({{ s.referencia }})</em>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}

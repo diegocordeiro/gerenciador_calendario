@@ -107,6 +107,7 @@ class StaticSite:
                 prefix=prefix,
                 cal=cal,
                 dados=dados,
+                agenda=cal.agenda(),
                 active="calendario",
                 **print_ctx(titulo, cal.periodo or None),
             ),

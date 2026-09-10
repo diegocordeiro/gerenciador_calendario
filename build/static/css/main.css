@@ -8,6 +8,7 @@
   --primary-soft: #e4f1f5;
   --card-bg: #ffffff;
   --accent: #f0f4f8;
+  --danger: #b91c1c;
 }
 
 [data-theme="dark"] {
@@ -20,6 +21,7 @@
   --primary-soft: #1d3240;
   --card-bg: #202332;
   --accent: #262b3d;
+  --danger: #f87171;
 }
 
 * {
@@ -199,6 +201,62 @@ a:hover {
   background: var(--primary);
   color: #fff;
   border-color: var(--primary);
+}
+
+.btn-excluir {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--danger);
+  border-radius: 999px;
+  padding: .25rem .75rem;
+  font-size: .78rem;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.btn-excluir:hover {
+  border-color: var(--danger);
+}
+
+.btn-excluir:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.versions-table .actions-cell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.inline-form {
+  display: inline;
+  margin: 0;
+}
+
+.messages {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: grid;
+  gap: .5rem;
+}
+
+.message {
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: 10px;
+  padding: .55rem .9rem;
+  background: var(--surface);
+  font-size: .9rem;
+}
+
+.message-success {
+  border-color: #15803d;
+}
+
+.message-error {
+  border-color: var(--danger);
 }
 
 .features {
@@ -1709,7 +1767,20 @@ blockquote {
 }
 
 .cal-cell.cal-free {
-  background: #ffffff !important;
+  background: repeating-linear-gradient(
+    45deg,
+    #ffe6e6,
+    #ffe6e6 4px,
+    #ffd0d0 4px,
+    #ffd0d0 8px
+  ) !important;
+  color: #b91c1c;
+}
+
+.cal-date-free {
+  color: #b91c1c;
+  font-weight: 700;
+  text-decoration: line-through;
 }
 
 .cal-cell.cal-part1 .cal-date {
@@ -1754,9 +1825,32 @@ blockquote {
   display: inline-block;
 }
 
-.swatch-parity1 { background: #edfaff; }
-.swatch-parity2 { background: #fff4f4; }
-.swatch-free { background: #ffffff; }
+.swatch-parity1 { background: #cfe8f7; }
+.swatch-parity2 { background: #ffe6cc; }
+.swatch-free {
+  background: repeating-linear-gradient(
+    45deg,
+    #ffe6e6,
+    #ffe6e6 3px,
+    #ffd0d0 3px,
+    #ffd0d0 6px
+  );
+}
+
+.swatch-evento {
+  background: #ffffff;
+  box-shadow: inset 0 -3px 0 0 var(--primary);
+}
+
+.swatch-part1 {
+  width: 26px;
+  background: #ffffff;
+  color: var(--text);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+}
 
 .cal-holidays ul {
   list-style: none;
@@ -1905,6 +1999,536 @@ blockquote {
   overflow-x: auto;
 }
 
+/* ===== Editor — etapas de preenchimento e ajuda ===== */
+.editor-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.editor-section-title {
+  margin: .4rem 0 0;
+  font-size: 1.2rem;
+  color: var(--text);
+}
+
+.editor-step {
+  display: inline-block;
+  min-width: 2.2rem;
+  margin-right: .35rem;
+  padding: .05rem .4rem;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: .8rem;
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.editor-help,
+.cal-help {
+  margin: 0 0 .9rem;
+  padding: .6rem .8rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: 8px;
+  background: var(--accent);
+  font-size: .82rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.editor-help strong,
+.cal-help strong {
+  color: var(--text);
+}
+
+.editor-help ul,
+.cal-help ul {
+  margin: .4rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.editor-help li,
+.cal-help li {
+  margin-bottom: .2rem;
+}
+
+.editor-help p,
+.cal-help p {
+  margin: .35rem 0 0;
+}
+
+.editor-help code,
+.cal-help code {
+  font-weight: 600;
+}
+
+.cal-metric[data-tip] {
+  cursor: help;
+}
+
+.field-hint {
+  display: block;
+  font-size: .72rem;
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.field-hint-inline {
+  margin: -.4rem 0 .7rem;
+}
+
+.editor-holidays {
+  align-items: flex-end;
+}
+
+.editor-holidays-field {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.editor-holidays-field select {
+  padding: .45rem .6rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 400;
+}
+
+/* Tooltip das prévias (dias com evento) */
+.editor-tooltip {
+  position: fixed;
+  z-index: 80;
+  max-width: 260px;
+  padding: .45rem .6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--text);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .18);
+  font-size: .78rem;
+  line-height: 1.4;
+  pointer-events: none;
+  display: none;
+}
+
+.editor-tooltip.is-visible {
+  display: block;
+}
+
+/* Barra para ocultar/exibir os blocos (preenchimento e prévias) */
+.editor-viewbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+  margin-bottom: .25rem;
+}
+
+.editor-viewbar-label {
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.editor-viewbar .button {
+  margin-top: 0;
+}
+
+.editor-viewbar .mode-btn[aria-pressed="true"] {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+[data-block][hidden] {
+  display: none !important;
+}
+
+
+/* ===== Documento do calendário (layout oficial) ===== */
+.doc-cabecalho {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  background: var(--card-bg);
+  text-align: center;
+}
+
+.doc-instituicao {
+  margin: 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.doc-titulo {
+  margin: 0.35rem 0 0.2rem;
+  font-size: 1.5rem;
+}
+
+.doc-curso {
+  margin: 0 0 0.75rem;
+  font-weight: 600;
+  color: var(--primary);
+  text-transform: uppercase;
+  font-size: 0.95rem;
+}
+
+.doc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  justify-content: center;
+  margin: 0;
+}
+
+.doc-meta > div {
+  min-width: 120px;
+}
+
+.doc-meta dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.doc-meta dd {
+  margin: 0.1rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.doc-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.doc-section {
+  margin: 1.5rem 0;
+}
+
+.doc-section h2 {
+  margin-bottom: 0.6rem;
+}
+
+.doc-meses {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.doc-mes {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.6rem;
+  background: var(--card-bg);
+}
+
+.doc-mes-titulo {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.doc-mes-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.doc-mes-grid th {
+  padding: 0.15rem 0;
+  color: var(--muted);
+  font-weight: 600;
+  text-align: center;
+}
+
+.doc-dia {
+  text-align: center;
+  padding: 0.15rem 0;
+  border: 1px solid var(--border);
+}
+
+.doc-dia-num {
+  font-weight: 600;
+}
+
+.doc-dia-vazio {
+  border: none;
+}
+
+.doc-mes-resumo {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* Status de cada dia (cores com transparência funcionam nos temas claro/escuro) */
+.doc-dia-letivo {
+  background: rgba(34, 139, 84, 0.16);
+}
+
+.doc-dia-letivo_sabado {
+  background: rgba(37, 99, 235, 0.22);
+  font-style: italic;
+}
+
+.doc-dia-feriado {
+  background: rgba(220, 38, 38, 0.25);
+}
+
+.doc-dia-ponto_facultativo {
+  background: rgba(245, 158, 11, 0.28);
+}
+
+.doc-dia-recesso {
+  background: rgba(124, 58, 237, 0.2);
+}
+
+.doc-dia-ferias {
+  background: rgba(13, 148, 136, 0.22);
+}
+
+.doc-dia-jornada {
+  background: rgba(79, 70, 229, 0.22);
+}
+
+.doc-dia-avaliacao_final {
+  background: rgba(159, 18, 57, 0.28);
+}
+
+.doc-dia-conselho {
+  background: rgba(120, 53, 15, 0.22);
+}
+
+.doc-dia-nao_letivo {
+  color: var(--muted);
+}
+
+.doc-dia-fora {
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 3px,
+    rgba(128, 128, 128, 0.18) 3px,
+    rgba(128, 128, 128, 0.18) 6px
+  );
+  color: var(--muted);
+}
+
+.doc-dia-destaque {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.doc-dia-com-evento {
+  box-shadow: inset 0 -3px 0 0 var(--primary);
+  cursor: help;
+}
+
+/* Marcador de evento na grade x1/x2 (prévia do editor) */
+.cal-cell.cal-has-evento {
+  box-shadow: inset 0 -4px 0 0 var(--primary);
+}
+
+.cal-cell.cal-has-evento .cal-date::after {
+  content: " •";
+  color: var(--primary);
+  font-weight: 700;
+}
+
+/* Prévia do documento dentro do editor */
+.doc-preview .doc-meses {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  margin-bottom: 0.75rem;
+}
+
+.doc-preview h3 {
+  margin: 1rem 0 0.5rem;
+  font-size: 1rem;
+}
+
+.doc-preview .doc-table {
+  font-size: 0.8rem;
+}
+
+/* Tabelas do documento */
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--card-bg);
+  font-size: 0.85rem;
+}
+
+.doc-table th,
+.doc-table td {
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.doc-table thead th {
+  background: var(--accent);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.doc-table tfoot th,
+.doc-table tfoot td {
+  font-weight: 700;
+  background: var(--accent);
+}
+
+.doc-table-resumo td,
+.doc-table-resumo tfoot td {
+  text-align: center;
+}
+
+.doc-table-resumo thead th {
+  text-align: center;
+}
+
+.doc-mes-cel {
+  white-space: nowrap;
+  background: var(--accent);
+}
+
+.doc-dia-cel {
+  white-space: nowrap;
+  text-align: center;
+  font-weight: 600;
+}
+
+.doc-dif {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.doc-evento {
+  display: inline-block;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.doc-evento-sabado_letivo,
+.doc-evento-sabado_reposicao {
+  background: rgba(37, 99, 235, 0.18);
+}
+
+.doc-evento-feriado {
+  background: rgba(220, 38, 38, 0.2);
+}
+
+.doc-evento-ponto_facultativo {
+  background: rgba(245, 158, 11, 0.22);
+}
+
+.doc-evento-avaliacao,
+.doc-evento-avaliacao_final {
+  background: rgba(159, 18, 57, 0.18);
+}
+
+.doc-evento-recuperacao {
+  background: rgba(234, 88, 12, 0.18);
+}
+
+.doc-evento-recesso,
+.doc-evento-ferias_coletivas {
+  background: rgba(124, 58, 237, 0.18);
+}
+
+.doc-evento-jornada_pedagogica {
+  background: rgba(79, 70, 229, 0.18);
+}
+
+.doc-evento-conselho_classe {
+  background: rgba(120, 53, 15, 0.18);
+}
+
+.doc-evento-matricula {
+  background: rgba(13, 148, 136, 0.18);
+}
+
+/* Legenda */
+.doc-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.doc-legenda li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.doc-dia-swatch {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  display: inline-block;
+}
+
+.doc-sabados {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.doc-sabados li {
+  padding: 0.2rem 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+/* Editor — painel de eventos */
+.editor-events {
+  margin-bottom: 0.75rem;
+}
+
+.editor-events .field-row .field {
+  min-width: 160px;
+}
+
+#eventosTable {
+  font-size: 0.8rem;
+}
+
+#eventosTable td {
+  vertical-align: middle;
+}
+
+.chip-removable small {
+  color: var(--muted);
+}
+
+
+
+
 /* ===== Impressão (Exportar PDF) ===== */
 .print-head {
   display: none;
@@ -1917,6 +2541,7 @@ blockquote {
   .version-banner,
   .cal-toolbar,
   .editor-layout,
+  .editor-tooltip,
   .editor-msg,
   .breadcrumb,
   .theme-btn {
@@ -1960,6 +2585,52 @@ blockquote {
   @page {
     size: A4 landscape;
     margin: 10mm;
+  }
+}
+
+/* ===== Impressão do documento do calendário ===== */
+@media print {
+  .doc-toolbar,
+  .doc-section .mode-btn {
+    display: none !important;
+  }
+
+  .doc-cabecalho {
+    border: 1.5pt solid #000;
+    break-inside: avoid;
+  }
+
+  .doc-meses {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6mm;
+  }
+
+  .doc-mes {
+    break-inside: avoid;
+    border: 0.8pt solid #000;
+    background: #fff;
+  }
+
+  .doc-dia,
+  .doc-dia-swatch {
+    border: 0.5pt solid #666;
+  }
+
+  .doc-dia-vazio {
+    border: none;
+  }
+
+  .doc-table th,
+  .doc-table td {
+    border: 0.6pt solid #000;
+  }
+
+  .doc-section {
+    break-inside: auto;
+  }
+
+  .doc-section h2 {
+    break-after: avoid;
   }
 }
 

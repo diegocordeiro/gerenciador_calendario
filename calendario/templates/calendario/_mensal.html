@@ -1,0 +1,39 @@
+<section class="doc-section" id="calendario-mensal">
+  <h2>Calendário mensal</h2>
+  <div class="doc-meses">
+    {% for m in agenda.meses %}
+    <div class="doc-mes">
+      <h3 class="doc-mes-titulo">MÊS: {{ m.label }}</h3>
+      <table class="doc-mes-grid">
+        <thead>
+          <tr>
+            {% for d in agenda.dias_cabecalho %}<th scope="col">{{ d }}</th>{% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for semana in m.semanas %}
+          <tr>
+            {% for c in semana %}
+              {% if c.vazio %}
+                <td class="doc-dia doc-dia-vazio"></td>
+              {% else %}
+                <td class="doc-dia doc-dia-{{ c.status }}{% if c.destaque %} doc-dia-destaque{% endif %}{% if c.eventos %} doc-dia-com-evento{% endif %}"
+                    title="{{ c.status_label }}{% if c.eventos %} — {{ c.eventos|join:'; ' }}{% endif %}">
+                  <span class="doc-dia-num">{{ c.dia }}</span>
+                </td>
+              {% endif %}
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="doc-mes-resumo">
+        Dias letivos: <strong>{{ m.letivos }}</strong>
+        {% if m.sabados %} • Sábados letivos: {{ m.sabados }}{% endif %}
+      </p>
+    </div>
+    {% empty %}
+    <p class="muted">Informe o período para gerar o calendário mensal.</p>
+    {% endfor %}
+  </div>
+</section>

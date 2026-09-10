@@ -25,7 +25,7 @@ BASE_URL   ?= /
 # Base usada no build publicado (project pages: /nome-do-repo/).
 PAGES_BASE ?= /calendario_academico/
 
-.PHONY: ajuda configurar banco importar semear exemplo gerar site ver rodar publicar testar limpar
+.PHONY: ajuda configurar banco importar semear exemplo oficial gerar site ver rodar publicar testar limpar
 .PHONY: help setup migrate data render build serve dev test clean
 
 ajuda: ## mostra todos os comandos disponíveis
@@ -50,6 +50,9 @@ semear: banco ## adiciona os feriados nacionais aos calendários existentes
 
 exemplo: banco ## cria calendários de exemplo (para demonstração/prévia)
 	$(MANAGE) seed_exemplo
+
+oficial: banco ## cria o calendário oficial 2026.2 (Administração Integrado PROEJA)
+	$(MANAGE) seed_calendario_2026_2
 
 gerar: ## gera o site em build/ para prévia local (BASE_URL, padrão /)
 	$(MANAGE) render_static_site --base-url $(BASE_URL)
