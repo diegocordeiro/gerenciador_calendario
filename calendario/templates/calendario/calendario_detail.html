@@ -1,0 +1,32 @@
+{% extends "calendario/base.html" %}
+{% block title %}{{ cal.titulo|default:cal.versao }} — {{ site_title }}{% endblock %}
+{% block content %}
+  <nav class="breadcrumb">
+    <a href="{{ root_base }}versoes/">Versões</a> / <span>{{ cal.versao }}</span>
+  </nav>
+
+  <section class="cursos-hero">
+    <h1>{{ cal.titulo|default:"Calendário acadêmico" }}</h1>
+    <p>
+      Versão <strong>{{ cal.versao }}</strong>{% if cal.periodo %} • {{ cal.periodo }}{% endif %} •
+      Início em {{ cal.data_inicio|date:"d/m/Y" }} • {{ cal.total_semanas }} semanas
+      ({{ cal.semanas_primeira_parte }} na 1ª parte)
+    </p>
+  </section>
+
+  {% if dados.erros %}
+  <div class="cal-alert">
+    <strong>Ajustes necessários:</strong>
+    <ul>{% for e in dados.erros %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  {% include "calendario/_matrix.html" %}
+
+  {% if cal.observacoes %}
+  <section class="panel">
+    <h2>Observações</h2>
+    <p>{{ cal.observacoes|linebreaksbr }}</p>
+  </section>
+  {% endif %}
+{% endblock %}

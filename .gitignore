@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.py[cod]
+db.sqlite3
+staticfiles/
+# Editor
+.DS_Store
+# OBS: build/ NÃO é ignorado de propósito — o HTML versionado por etapa e a
+# versão final são commitados e publicados no GitHub Pages pelo workflow.

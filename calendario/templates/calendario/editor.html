@@ -1,0 +1,94 @@
+{% extends "calendario/base.html" %}
+{% block title %}Editor — {{ site_title }}{% endblock %}
+{% block content %}
+  <section class="cursos-hero">
+    <h1>Montagem do calendário acadêmico</h1>
+    <p>Defina o período, marque os feriados clicando na grade e salve cada etapa. O cálculo é feito no servidor.</p>
+  </section>
+
+  <div class="editor-layout">
+    <section class="panel editor-form">
+      <h2>Parâmetros</h2>
+      <form id="editorForm" onsubmit="return false;">
+        {% csrf_token %}
+        <div class="field-row">
+          <label class="field">Versão
+            <input type="text" id="fVersao" placeholder="2026.1.etapa1" autocomplete="off">
+          </label>
+          <label class="field">Etapa
+            <input type="number" id="fEtapa" min="1" step="1" value="1">
+          </label>
+        </div>
+        <div class="field-row">
+          <label class="field">Título
+            <input type="text" id="fTitulo" placeholder="Calendário acadêmico 2026.1" autocomplete="off">
+          </label>
+          <label class="field">Período
+            <input type="text" id="fPeriodo" placeholder="2026.1" autocomplete="off">
+          </label>
+        </div>
+        <div class="field-row">
+          <label class="field">Início do semestre (segunda-feira)
+            <input type="date" id="fInicio">
+          </label>
+          <label class="field">Nº de semanas
+            <input type="number" id="fSemanas" min="2" step="1">
+          </label>
+          <label class="field">Semanas na 1ª parte
+            <input type="number" id="fSemanas1" min="1" step="1">
+          </label>
+        </div>
+        <label class="field field-inline">
+          <input type="checkbox" id="fFinal"> Marcar como versão final (publicável)
+        </label>
+        <label class="field">Observações
+          <textarea id="fObs" rows="2" placeholder="Anotações desta etapa…"></textarea>
+        </label>
+      </form>
+      <div class="editor-actions">
+        <button id="btnSalvar" class="button button-primary" type="button">Salvar etapa</button>
+        <button id="btnFinal" class="button" type="button">Salvar como final</button>
+        <button id="btnNovo" class="button" type="button">Nova versão</button>
+      </div>
+      <div id="editorMsg" class="editor-msg" role="status"></div>
+    </section>
+
+    <section class="panel editor-side">
+      <h2>Etapas salvas</h2>
+      <ul class="editor-etapas">
+        {% for e in etapas %}
+          <li>
+            <a href="?versao={{ e.slug }}">{{ e.versao }}</a>
+            {% if e.final %}<span class="version-chip atual">final</span>{% endif %}
+            <span class="muted">{{ e.data_inicio|date:"d/m/Y" }} • etapa {{ e.etapa }}</span>
+          </li>
+        {% empty %}
+          <li class="muted">Nenhuma etapa salva ainda.</li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>Feriados</h2>
+    <div class="editor-holidays">
+      <input type="date" id="fFeriado">
+      <button id="btnAddFeriado" class="button" type="button">Adicionar feriado</button>
+      <button id="btnNacionais" class="button" type="button">Feriados nacionais do período</button>
+    </div>
+    <ul id="holidayChips" class="chip-list"></ul>
+    <p class="muted">Clique em um dia da grade para marcar/desmarcar como feriado (apenas dias úteis).</p>
+  </section>
+
+  <section class="panel">
+    <h2>Prévia da grade</h2>
+    <div id="calPreview" class="cal-preview">Carregando…</div>
+  </section>
+
+  {{ inicial|json_script:"inicial-data" }}
+{% endblock %}
+
+{% block scripts %}
+<script>window.CAL_BASE = "{{ base }}";</script>
+<script src="{{ static_url }}js/editor.js"></script>
+{% endblock %}

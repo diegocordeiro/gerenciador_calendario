@@ -1,0 +1,83 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calendário Acadêmico do IFPI - Campus Barras</title>
+  <link rel="icon" href="/calendario_academico/static/img/favicon.gif">
+  <link rel="stylesheet" href="/calendario_academico/static/css/main.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="/calendario_academico/">
+        <img class="logo-light" src="/calendario_academico/static/img/logo.svg" alt="IFPI - Campus Barras">
+        <img class="logo-dark" src="/calendario_academico/static/img/logoDark.svg" alt="IFPI - Campus Barras">
+      </a>
+      <nav class="nav">
+        <a href="/calendario_academico/" class="active">Início</a>
+        <a href="/calendario_academico/calendario/" class="">Calendário</a>
+        <a href="/calendario_academico/versoes/" class="">Versões</a>
+        
+        <button id="themeToggle" class="theme-btn" type="button">Tema</button>
+      </nav>
+    </div>
+  </header>
+
+  
+  
+  
+
+  <main class="site-main container">
+    
+  <section class="home-hero">
+    <div class="home-hero-text">
+      <h1>Calendário Acadêmico do IFPI - Campus Barras</h1>
+      <p>Monte, versione e publique o calendário acadêmico do Campus Barras.</p>
+      
+      <form class="home-version" id="homeVersionForm" action="" method="get">
+        <label class="home-version-label" for="homeVersion">Selecionar versão</label>
+        <div class="home-version-controls">
+          <select id="homeVersion" class="home-version-select" name="versao">
+            <option value="/calendario_academico/calendario/" selected>Final — 2026.1.final</option>
+            
+              <option value="/calendario_academico/versoes/2026.1.etapa2/">2026.1.etapa2 (2026.1) — etapa 2</option>
+            
+              <option value="/calendario_academico/versoes/2026.1.etapa1/">2026.1.etapa1 (2026.1) — etapa 1</option>
+            
+          </select>
+          <button class="button button-primary" type="submit">Ver calendário</button>
+        </div>
+      </form>
+      
+    </div>
+  </section>
+
+  <section class="features">
+    <div class="feature-card">
+      <h2>Calendário atual</h2>
+      <p>Versão final: 2026.1.final.</p>
+      <a class="button" href="/calendario_academico/calendario/">Ver calendário</a>
+    </div>
+    <div class="feature-card">
+      <h2>Versões e etapas</h2>
+      <p>Histórico versionado de cada etapa da produção.</p>
+      <a class="button" href="/calendario_academico/versoes/">Ver versões</a>
+    </div>
+    
+  </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>Calendário Acadêmico do IFPI - Campus Barras</p>
+      <p>Desenvolvido por: <a href="https://professordiegocordeiro.com.br">Professor Diego Cordeiro de Oliveira</a></p>
+    </div>
+  </footer>
+
+  <script src="/calendario_academico/static/js/main.js"></script>
+  
+</body>
+</html>

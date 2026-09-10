@@ -1,0 +1,78 @@
+{% load filters %}
+{% if pdf_export %}{% include "calendario/_print_head.html" %}{% endif %}
+<div class="cal-metrics">
+  <div class="cal-metric">
+    <span class="cal-metric-label">Semanas</span>
+    <strong>{{ dados.w }}</strong>
+    <small>{{ dados.parametros.total_semanas }} + {{ dados.semanas_extras }} reposição</small>
+  </div>
+  <div class="cal-metric">
+    <span class="cal-metric-label">Feriados na faixa</span>
+    <strong>{{ dados.f }}</strong>
+    <small>dias úteis</small>
+  </div>
+  <div class="cal-metric">
+    <span class="cal-metric-label">Dias letivos</span>
+    <strong>{{ dados.dias_letivos }}</strong>
+    <small>de {{ dados.dias_totais }} dias</small>
+  </div>
+  <div class="cal-metric {% if dados.metricas.parity or dados.metricas.weekday or dados.metricas.part %}has-error{% endif %}">
+    <span class="cal-metric-label">Erros (paridade / dia / parte)</span>
+    <strong>{{ dados.metricas.parity }} / {{ dados.metricas.weekday }} / {{ dados.metricas.part }}</strong>
+    <small>quanto menor, melhor</small>
+  </div>
+</div>
+
+<div class="cal-toolbar">
+  {% if pdf_export %}
+  <button class="mode-btn pdf-btn" type="button"
+          data-print-pdf
+          data-print-title="Calendário acadêmico — {{ print_title|default:site_title }}"
+          title="Abre a impressão do navegador: escolha “Salvar como PDF”">Exportar PDF</button>
+  {% endif %}
+</div>
+
+<table class="cal-table">
+  <thead>
+    <tr>
+      <th class="cal-corner">Semana</th>
+      {% for dia in dados.weekdays %}
+        <th class="cal-day">{{ dia }}</th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for linha in dados.linhas %}
+      <tr>
+        <th class="cal-week">{{ linha.week_label }}<span class="cal-parity">/{{ linha.parity_label }}</span></th>
+        {% for cell in linha.columns %}
+          {% if cell %}
+            <td class="cal-cell{% if cell.free %} cal-free{% endif %}{% if cell.part == 1 %} cal-part1{% endif %}"
+                style="background: {{ cell.color }};"
+                data-date="{{ cell.date }}">
+              <span class="cal-date">{{ cell.label_html|safe }}</span>
+            </td>
+          {% else %}
+            <td class="cal-cell cal-empty"></td>
+          {% endif %}
+        {% endfor %}
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="cal-legend">
+  <span class="cal-legend-item"><span class="cal-swatch swatch-parity1"></span> Semana x1</span>
+  <span class="cal-legend-item"><span class="cal-swatch swatch-parity2"></span> Semana x2</span>
+  <span class="cal-legend-item"><span class="cal-swatch swatch-free"></span> Feriado (sem aula)</span>
+  <span class="cal-legend-item"><span class="moved-day">(dia)</span> Aula remanejada</span>
+</div>
+
+{% if dados.feriados_calendario %}
+<div class="cal-holidays">
+  <strong>Feriados considerados</strong>
+  <ul>
+    {% for f in dados.feriados_calendario %}<li class="chip">{{ f }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}

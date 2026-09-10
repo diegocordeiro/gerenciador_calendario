@@ -1,0 +1,34 @@
+{% extends "calendario/base.html" %}
+{% block title %}Versões — {{ site_title }}{% endblock %}
+{% block content %}
+  <h1>Versões do calendário acadêmico</h1>
+  <p>Confira cada etapa da produção do calendário e a versão final publicada.</p>
+  <table class="versions-table">
+    <thead>
+      <tr><th>Versão</th><th>Período</th><th>Etapa</th><th>Início</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% if atual %}
+      <tr>
+        <td><a href="{{ base }}calendario/">{{ atual.versao }}</a></td>
+        <td>{{ atual.periodo|default:"—" }}</td>
+        <td>{{ atual.etapa }}</td>
+        <td>{{ atual.data_inicio|date:"d/m/Y" }}</td>
+        <td><span class="version-chip atual">final</span></td>
+      </tr>
+      {% endif %}
+      {% for v in history %}
+        <tr>
+          <td><a href="{{ base }}versoes/{{ v.slug }}/">{{ v.versao }}</a></td>
+          <td>{{ v.periodo|default:"—" }}</td>
+          <td>{{ v.etapa }}</td>
+          <td>{{ v.data_inicio|date:"d/m/Y" }}</td>
+          <td><span class="version-chip historica">etapa</span></td>
+        </tr>
+      {% endfor %}
+      {% if not atual and not history %}
+        <tr><td colspan="5">Nenhuma versão cadastrada.</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "calendario/base.html" %}
+{% block title %}{{ site_title }}{% endblock %}
+{% block content %}
+  <section class="home-hero">
+    <div class="home-hero-text">
+      <h1>{{ site_title }}</h1>
+      <p>Monte, versione e publique o calendário acadêmico do Campus Barras.</p>
+      {% if atual %}
+      <form class="home-version" id="homeVersionForm" action="" method="get">
+        <label class="home-version-label" for="homeVersion">Selecionar versão</label>
+        <div class="home-version-controls">
+          <select id="homeVersion" class="home-version-select" name="versao">
+            <option value="{{ base }}calendario/" selected>Final — {{ atual.versao }}</option>
+            {% for v in history %}
+              <option value="{{ base }}versoes/{{ v.slug }}/">{{ v.versao }}{% if v.periodo %} ({{ v.periodo }}){% endif %} — etapa {{ v.etapa }}</option>
+            {% endfor %}
+          </select>
+          <button class="button button-primary" type="submit">Ver calendário</button>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="features">
+    <div class="feature-card">
+      <h2>Calendário atual</h2>
+      <p>{% if atual %}Versão final: {{ atual.versao }}.{% else %}Nenhuma versão cadastrada ainda.{% endif %}</p>
+      <a class="button" href="{{ base }}calendario/">Ver calendário</a>
+    </div>
+    <div class="feature-card">
+      <h2>Versões e etapas</h2>
+      <p>Histórico versionado de cada etapa da produção.</p>
+      <a class="button" href="{{ base }}versoes/">Ver versões</a>
+    </div>
+    {% if not static_build %}
+    <div class="feature-card">
+      <h2>Montar calendário</h2>
+      <p>Interface para definir semanas, feriados e salvar a versão no banco.</p>
+      <a class="button" href="{{ base }}editor/">Abrir editor</a>
+    </div>
+    {% endif %}
+  </section>
+{% endblock %}

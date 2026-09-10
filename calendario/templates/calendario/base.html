@@ -1,0 +1,61 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ site_title }}{% endblock %}</title>
+  <link rel="icon" href="{{ static_url }}img/favicon.gif">
+  <link rel="stylesheet" href="{{ static_url }}css/main.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="{{ root_base }}">
+        <img class="logo-light" src="{{ static_url }}img/logo.svg" alt="IFPI - Campus Barras">
+        <img class="logo-dark" src="{{ static_url }}img/logoDark.svg" alt="IFPI - Campus Barras">
+      </a>
+      <nav class="nav">
+        <a href="{{ root_base }}" class="{% if active == 'inicio' %}active{% endif %}">Início</a>
+        <a href="{{ root_base }}calendario/" class="{% if active == 'calendario' %}active{% endif %}">Calendário</a>
+        <a href="{{ root_base }}versoes/" class="{% if active == 'versoes' %}active{% endif %}">Versões</a>
+        {% if not static_build %}
+        <a href="{{ root_base }}editor/" class="{% if active == 'editor' %}active{% endif %}">Editor</a>
+        {% endif %}
+        <button id="themeToggle" class="theme-btn" type="button">Tema</button>
+      </nav>
+    </div>
+  </header>
+
+  {% block version_banner %}
+  {% if cal %}
+  <div class="version-banner">
+    <div class="container version-banner-inner">
+      <span class="version-label">Exibindo a versão</span>
+      <strong class="version-value">{{ cal.versao }}</strong>
+      {% if cal.final %}
+        <span class="version-chip atual">final</span>
+      {% else %}
+        <span class="version-chip historica">etapa {{ cal.etapa }}</span>
+      {% endif %}
+      {% if cal.periodo %}<span class="version-periodo">{{ cal.periodo }}</span>{% endif %}
+    </div>
+  </div>
+  {% endif %}
+  {% endblock %}
+
+  <main class="site-main container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>{{ site_title }}</p>
+      <p>Desenvolvido por: <a href="https://professordiegocordeiro.com.br">Professor Diego Cordeiro de Oliveira</a></p>
+    </div>
+  </footer>
+
+  <script src="{{ static_url }}js/main.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

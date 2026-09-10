@@ -1,0 +1,43 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+# O HTML versionado (por etapa + versão final) já vem commitado na pasta build/,
+# gerada localmente por `python manage.py render_static_site` (veja o Makefile).
+# Este workflow apenas publica a pasta no GitHub Pages.
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Publicar artefato (build/ commitado)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,8 @@
+<div class="print-head">
+  <div class="print-head-brand">{{ print_title|default:site_title }}</div>
+  {% if print_meta %}<div class="print-head-meta">{{ print_meta }}</div>{% endif %}
+  <div class="print-head-meta">
+    {% if cal %}Versão {{ cal.versao }}{% if cal.periodo %} • {{ cal.periodo }}{% endif %}{% endif %}
+    <span id="printDate"></span>
+  </div>
+</div>
