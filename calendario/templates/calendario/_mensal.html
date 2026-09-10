@@ -1,5 +1,11 @@
+{% load filters %}
+
 <section class="doc-section" id="calendario-mensal">
   <h2>Calendário mensal</h2>
+  <p class="muted">
+    Passe o mouse (ou toque) sobre um dia para ver a <strong>data</strong>, o
+    <strong>status</strong> e os <strong>eventos</strong> daquele dia.
+  </p>
   <div class="doc-meses">
     {% for m in agenda.meses %}
     <div class="doc-mes">
@@ -17,10 +23,13 @@
               {% if c.vazio %}
                 <td class="doc-dia doc-dia-vazio"></td>
               {% else %}
+                {% with eventos=c.eventos|join:"; " %}
                 <td class="doc-dia doc-dia-{{ c.status }}{% if c.destaque %} doc-dia-destaque{% endif %}{% if c.eventos %} doc-dia-com-evento{% endif %}"
-                    title="{{ c.status_label }}{% if c.eventos %} — {{ c.eventos|join:'; ' }}{% endif %}">
+                    data-tip="{{ c.date|data_br }} — {{ c.status_label }}{% if eventos %} — {{ eventos }}{% endif %}"
+                    aria-label="{{ c.date|data_br }} — {{ c.status_label }}{% if eventos %} — {{ eventos }}{% endif %}">
                   <span class="doc-dia-num">{{ c.dia }}</span>
                 </td>
+                {% endwith %}
               {% endif %}
             {% endfor %}
           </tr>

@@ -59,9 +59,10 @@ calendario_academico/
 
 ## Documento oficial (estrutura do PDF)
 
-Além da grade x1/x2, o sistema monta a página no **formato do calendário oficial
-publicado pelo campus** (`CALENDÁRIO ACADÊMICO 2026.2 — Técnico em Administração
-Integrado PROEJA`), com:
+A página publicada (`/calendario/`) traz o **documento no formato do calendário
+oficial do campus** (`CALENDÁRIO ACADÊMICO 2026.2 — Técnico em Administração
+Integrado PROEJA`) — a **grade x1/x2 de reposição fica restrita à prévia do
+editor** —, com:
 
 - **Cabeçalho** com instituição, curso, modalidade, semestre, início, término e o
   total de dias letivos (calculado × previsto);
@@ -77,7 +78,10 @@ Integrado PROEJA`), com:
   temáticas e eventos institucionais;
 - **Sábados letivos** com o **dia da semana referenciado** (ex.: “referente à
   quarta-feira”);
-- **Feriados e pontos facultativos** e a **legenda** das categorias.
+- **Feriados e pontos facultativos** e a **legenda** das categorias;
+- **Tooltip nos dias** da grade mensal: ao passar o mouse — ou focar pelo
+  teclado — aparecem a **data**, o **status** e os **eventos** do dia, sem
+  depender do `title` nativo do navegador.
 
 ### Regra de dia letivo
 
@@ -104,13 +108,20 @@ divergência é exibida na página como conferência).
 
 ## Recursos
 
-- **Documento oficial** (vide acima): grade mensal, eventos, sábados letivos,
-  dias letivos por mês, feriados/pontos facultativos e legenda;
+- **Documento oficial** (vide acima): grades mensais com **tooltip nos dias**,
+  dias letivos por mês, eventos, sábados letivos, feriados/pontos facultativos e
+  legenda — é o que a página publicada exibe;
 - **Grade do semestre** com semanas (`x1`/`x2`), dias úteis, feriados e
-  **reposição** (redistribuição) das aulas perdidas — com cores por paridade;
+  **reposição** (redistribuição) das aulas perdidas — **restrita à prévia do
+  editor** (não é publicada no documento), com cores por paridade e a **legenda
+  de cores** (x1/x2, feriado sem aula, sábado letivo, 1ª parte, dia com evento e
+  aula remanejada);
 - **Métricas** de erro (paridade / dia da semana / parte do semestre) e validação
-  em tempo real, com explicação na página de como lê-las (quanto menor, melhor —
-  `0 / 0 / 0` é o ideal);
+  em tempo real, com explicação na **prévia do editor** de como lê-las (quanto
+  menor, melhor — `0 / 0 / 0` é o ideal);
+- **Coluna “Sáb” na grade** (prévia do editor) com os **sábados letivos/de
+  reposição** (e o dia da semana referenciado) — no documento publicado eles
+  aparecem na lista **Sábados letivos**;
 - **Feriados nacionais brasileiros** calculados por ano (inclui móveis: Carnaval,
   Sexta-feira Santa e Corpus Christi), feriados/pontos facultativos
   institucionais e manuais;
@@ -120,9 +131,11 @@ divergência é exibida na página como conferência).
   **versão final publicável**;
 - **Interface no mesmo padrão visual** do painel de horários (tema claro/escuro,
   cabeçalho, banner de versão, cards);
-- **Editor organizado em etapas** — todo o preenchimento (parâmetros, feriados e
-  eventos) vem primeiro, com **texto de ajuda em cada campo**, e as prévias ficam
-  no fim; ao passar o mouse sobre um dia, um tooltip mostra data, status e eventos;
+- **Editor organizado em etapas** — começa por **Etapas salvas** (carregar uma versão
+  existente) e segue com parâmetros, feriados e eventos, com **texto de ajuda em cada
+  campo**; os **eventos podem ser editados** na própria tabela (Editar/Excluir) e as
+  **prévias** ficam no fim. Ao passar o mouse sobre um dia, um tooltip mostra data,
+  status e eventos;
 - **Navegação no editor** — botões para **ocultar o preenchimento** ou as
   **prévias** (a escolha é lembrada no navegador) e **legenda de cores** na prévia
   da grade (paridade x1/x2, feriado sem aula, 1ª parte, dia com evento e aula

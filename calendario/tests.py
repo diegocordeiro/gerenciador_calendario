@@ -67,6 +67,13 @@ class AlgoritmoTests(TestCase):
         self.assertIn("#cfe8f7", cores)
         self.assertIn("#ffe6cc", cores)
 
+    def test_build_calendario_sabado_por_semana(self):
+        # Cada semana da grade traz o sábado correspondente (segunda + 5 dias).
+        d = build_calendario("2026-09-14", 18, 9, [])
+        self.assertEqual(d["linhas"][0]["sabado"], "2026-09-19")
+        self.assertEqual(d["linhas"][0]["sabado_label"], "19.09")
+        self.assertEqual(d["linhas"][1]["sabado"], "2026-09-26")
+
     def test_date_to_cell(self):
         matriz = calendario_matriz(dt.date(2026, 9, 14), 15, 8, 0)
         self.assertIs(matriz[0][0], date_to_cell(dt.date(2026, 9, 14), dt.date(2026, 9, 14), matriz))
@@ -259,7 +266,7 @@ class ViewsTests(TestCase):
 
     def test_calendario_atual(self):
         resp = self.client.get(reverse("calendario_atual"))
-        self.assertContains(resp, "cal-table")
+        self.assertContains(resp, "doc-mes-grid")
         self.assertContains(resp, "data-print-pdf")
 
     def test_versao_por_slug(self):
@@ -375,6 +382,7 @@ class BuildTests(TestCase):
         self.assertTrue((self.out / "versoes" / "index.html").exists())
         self.assertTrue((self.out / "static" / "css" / "main.css").exists())
         self.assertTrue((self.out / "static" / "js" / "editor.js").exists())
+        self.assertTrue((self.out / "static" / "js" / "documento.js").exists())
 
     def test_build_versionado_por_etapa(self):
         for cal in (self.final, self.etapa):
@@ -414,6 +422,11 @@ class BuildTests(TestCase):
         self.assertIn("doc-table-resumo", html)
         self.assertIn("doc-legenda", html)
         self.assertIn("Quantidade de dias letivos por mês", html)
+        # Os dias têm tooltip próprio (data/status/eventos) também no build.
+        self.assertIn('data-tip="', html)
+        self.assertIn("static/js/documento.js", html)
+        # A grade x1/x2 (reposição) não é publicada.
+        self.assertNotIn("Grade de semanas", html)
 
 
 class AgendaTests(TestCase):
@@ -484,6 +497,8 @@ class AgendaTests(TestCase):
         self.assertTrue(
             {"letivo", "letivo_sabado", "feriado", "ponto_facultativo"} <= status
         )
+        # Eventos indexados por data (usados nos tooltips dos dias).
+        self.assertEqual(ag["eventos_dia"]["2026-09-19"], ["Sábado letivo"])
 
     def test_sem_data_inicio(self):
         ag = build_agenda(None, None, [], [])
@@ -507,11 +522,33 @@ class Seed20262Tests(TestCase):
         agenda = cal.agenda()
         self.assertEqual(agenda["total_letivos"], 100)
         self.assertEqual(len(agenda["sabados_letivos"]), 11)
+        # O total do documento = seg–sex + sábados letivos.
+        self.assertEqual(agenda["sabados_total"], 11)
+        self.assertEqual(agenda["letivos_seg_sex"], 89)
+        self.assertEqual(
+            agenda["letivos_seg_sex"] + agenda["sabados_total"], agenda["total_letivos"]
+        )
         # O período vai de agosto/2026 (matrículas) a fevereiro/2027.
         labels = [m["label"] for m in agenda["meses"]]
         self.assertEqual(labels[0], "AGO/2026")
         self.assertEqual(labels[-1], "FEV/2027")
         self.assertEqual(agenda["resumo"][0]["letivos"], 0)
+
+    def test_ferias_coletivas_sem_colisao(self):
+        # Dias de férias coletivas não devem ser "roubados" por feriados.
+        call_command("seed_calendario_2026_2", verbosity=0)
+        cal = Calendario.objects.get(versao="2026.2.final")
+        ag = cal.agenda()
+        dias = {
+            c["date"]: c["status"]
+            for m in ag["meses"]
+            for s in m["semanas"]
+            for c in s
+            if not c.get("vazio")
+        }
+        self.assertEqual(dias["2027-02-13"], "ferias")
+        # Colisão legítima e documentada: Natal (feriado) dentro do recesso.
+        self.assertEqual(dias["2026-12-25"], "feriado")
 
     def test_seed_idempotente(self):
         call_command("seed_calendario_2026_2", verbosity=0)
@@ -662,6 +699,36 @@ class DocumentoViewTests(TestCase):
         ):
             self.assertContains(resp, trecho)
 
+    def test_calendario_atual_tem_tooltip_nos_dias(self):
+        # Os dias das grades levam "data-tip" (tooltip próprio, igual ao da prévia
+        # do editor) com data, status e eventos — sem o "title" nativo.
+        resp = self.client.get(reverse("calendario_atual"))
+        self.assertContains(resp, 'data-tip="')
+        self.assertContains(resp, "js/documento.js")
+        self.assertNotContains(resp, 'title="Dia letivo"')
+
+    def test_documento_js_tem_tooltip(self):
+        js = (
+            Path(__file__).resolve().parent.parent / "static" / "js" / "documento.js"
+        ).read_text(encoding="utf-8")
+        self.assertIn("doc-tooltip", js)
+        self.assertIn("data-tip", js)
+        self.assertIn("mostrarTooltip", js)
+
+    def test_sem_grade_de_semanas(self):
+        # A grade x1/x2 (reposição) não é publicada no documento — fica só na
+        # prévia do editor. A legenda do calendário mensal continua na página.
+        resp = self.client.get(reverse("calendario_atual"))
+        for trecho in (
+            "Grade de semanas (reposição)",
+            "cal-table",
+            "Erros (paridade",
+            "cal-sabado-letivo",
+            "Feriados considerados",
+        ):
+            self.assertNotContains(resp, trecho)
+        self.assertContains(resp, "doc-legenda")
+
     def test_editor_tem_painel_de_eventos(self):
         resp = self.client.get(reverse("editor"))
         self.assertContains(resp, 'id="eventosBody"')
@@ -693,7 +760,8 @@ class DocumentoViewTests(TestCase):
         self.assertIn("editor-tooltip", js)
         self.assertIn("data-tip", js)
         self.assertIn("mostrarTooltip", js)
-        self.assertNotIn('title="', js)
+        # As células das prévias usam data-tip (tooltip próprio), não o "title" nativo.
+        self.assertIn('" data-tip="', js)
 
     def test_editor_tem_textos_de_ajuda(self):
         resp = self.client.get(reverse("editor"))
@@ -750,11 +818,57 @@ class DocumentoViewTests(TestCase):
         self.assertIn("clique para marcar como feriado", js)
         self.assertIn("Feriado — clique para remover", js)
 
-    def test_documento_explica_metricas(self):
+    def test_editor_js_conta_sabados_na_grade(self):
+        js = (
+            Path(__file__).resolve().parent.parent / "static" / "js" / "editor.js"
+        ).read_text(encoding="utf-8")
+        self.assertIn("sabados_total", js)
+        self.assertIn("Dias letivos (seg–sex)", js)
+        self.assertIn("Sábados letivos", js)
+        self.assertIn("Total de dias letivos", js)
+
+    def test_documento_lista_sabados_letivos(self):
+        # Sem a grade x1/x2, os sábados letivos continuam no documento (lista própria).
         resp = self.client.get(reverse("calendario_atual"))
-        self.assertContains(resp, "Como ler")
-        self.assertContains(resp, "ideal: 0 / 0 / 0")
-        self.assertContains(resp, "Paridade (x1/x2)")
+        self.assertContains(resp, "Sábados letivos")
+        # 19/09/2026 é um dos sábados letivos do 2026.2.
+        self.assertContains(resp, "19/09")
+        self.assertContains(resp, "referente à quarta-feira")
+
+    def test_editor_js_coluna_sabado(self):
+        js = (
+            Path(__file__).resolve().parent.parent / "static" / "js" / "editor.js"
+        ).read_text(encoding="utf-8")
+        self.assertIn(">Sáb</th>", js)
+        self.assertIn("cal-sabado", js)
+        self.assertIn("sabados_letivos", js)
+
+    def test_editor_tem_edicao_de_eventos(self):
+        resp = self.client.get(reverse("editor"))
+        self.assertContains(resp, 'id="btnCancelarEvento"')
+        self.assertContains(resp, "<th>Ações</th>")
+        js = (
+            Path(__file__).resolve().parent.parent / "static" / "js" / "editor.js"
+        ).read_text(encoding="utf-8")
+        self.assertIn("editarEvento", js)
+        self.assertIn("salvarEvento", js)
+        self.assertIn("btnCancelarEvento", js)
+
+    def test_editor_etapas_salvas_primeiro(self):
+        html = self.client.get(reverse("editor")).content.decode("utf-8")
+        self.assertIn("1.1</span> Etapas salvas", html)
+        self.assertLess(html.index("Etapas salvas"), html.index("Parâmetros do calendário"))
+
+    def test_css_ferias_coletivas_em_vermelho(self):
+        css = (
+            Path(__file__).resolve().parent.parent / "static" / "css" / "main.css"
+        ).read_text(encoding="utf-8")
+        bloco = css[css.index(".doc-dia-ferias {") :]
+        bloco = bloco[: bloco.index("}")]
+        self.assertIn("185, 28, 28", bloco)
+        # O chip de férias coletivas não fica mais agrupado com o recesso.
+        self.assertNotIn(".doc-evento-recesso,\n.doc-evento-ferias_coletivas", css)
+        self.assertIn(".doc-evento-ferias_coletivas {", css)
 
 
 class PreviewAgendaTests(TestCase):

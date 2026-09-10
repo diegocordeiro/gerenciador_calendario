@@ -3,23 +3,37 @@
   <h2>Grade de semanas (reposição)</h2>
   <p class="muted">
     Distribuição dos dias letivos em semanas <strong>x1</strong>/<strong>x2</strong> com
-    o remanejamento das aulas perdidas por feriado para as semanas de reposição.
+    o remanejamento das aulas perdidas por feriado para as semanas de reposição. Além de
+    segunda a sexta, a coluna <strong>Sáb</strong> marca os <strong>sábados letivos/de
+    reposição</strong>; o <strong>total de dias letivos</strong> considera esses sábados,
+    por isso confere com o documento. Passe o mouse sobre um dia para ver a
+    <strong>data</strong>, o <strong>status</strong> e os <strong>eventos</strong>.
   </p>
 <div class="cal-metrics">
   <div class="cal-metric">
     <span class="cal-metric-label">Semanas</span>
     <strong>{{ dados.w }}</strong>
-    <small>{{ dados.parametros.total_semanas }} + {{ dados.semanas_extras }} reposição</small>
+    <small>{{ dados.parametros.total_semanas }} + {{ dados.semanas_extras }} reposição · {{ dados.dias_totais }} dias</small>
   </div>
   <div class="cal-metric">
     <span class="cal-metric-label">Feriados na faixa</span>
     <strong>{{ dados.f }}</strong>
     <small>dias úteis</small>
   </div>
-  <div class="cal-metric">
-    <span class="cal-metric-label">Dias letivos</span>
-    <strong>{{ dados.dias_letivos }}</strong>
-    <small>de {{ dados.dias_totais }} dias</small>
+  <div class="cal-metric" title="Dias letivos de segunda a sexta no período, sem contar os sábados letivos.">
+    <span class="cal-metric-label">Dias letivos (seg–sex)</span>
+    <strong>{{ agenda.letivos_seg_sex }}</strong>
+    <small>sem sábados</small>
+  </div>
+  <div class="cal-metric" title="Sábados usados como dia letivo/de reposição; cada um referencia um dia da semana.">
+    <span class="cal-metric-label">Sábados letivos</span>
+    <strong>{{ agenda.sabados_total }}</strong>
+    <small>referentes a dias úteis</small>
+  </div>
+  <div class="cal-metric" title="Total do documento oficial: {{ agenda.letivos_seg_sex }} dias (seg–sex) + {{ agenda.sabados_total }} sábados letivos.">
+    <span class="cal-metric-label">Total de dias letivos</span>
+    <strong>{{ agenda.total_letivos }}</strong>
+    <small>seg–sex + sábados · igual ao documento</small>
   </div>
   <div class="cal-metric {% if dados.metricas.parity or dados.metricas.weekday or dados.metricas.part %}has-error{% endif %}"
        title="Cada número conta aulas remanejadas que perderam a paridade (x1/x2), o dia da semana ou a parte do semestre. Menor é melhor.">
@@ -57,6 +71,7 @@
       {% for dia in dados.weekdays %}
         <th class="cal-day">{{ dia }}</th>
       {% endfor %}
+      <th class="cal-day">Sáb</th>
     </tr>
   </thead>
   <tbody>
@@ -65,15 +80,26 @@
         <th class="cal-week">{{ linha.week_label }}<span class="cal-parity">/{{ linha.parity_label }}</span></th>
         {% for cell in linha.columns %}
           {% if cell %}
+            {% with eventos=agenda.eventos_dia|get_item:cell.date %}
             <td class="cal-cell{% if cell.free %} cal-free{% endif %}{% if cell.part == 1 %} cal-part1{% endif %}"
                 style="background: {{ cell.color }};"
-                data-date="{{ cell.date }}">
+                data-date="{{ cell.date }}"
+                data-tip="{{ cell.date|data_br }}{% if cell.free %} — Feriado (sem aula){% else %} — Dia letivo{% endif %}{% if cell.part == 1 %} · 1ª parte{% endif %}{% if eventos %} — {{ eventos|join:'; ' }}{% endif %}"
+                aria-label="{{ cell.date|data_br }}{% if cell.free %} — Feriado (sem aula){% else %} — Dia letivo{% endif %}{% if cell.part == 1 %} · 1ª parte{% endif %}{% if eventos %} — {{ eventos|join:'; ' }}{% endif %}">
               <span class="cal-date">{{ cell.label_html|safe }}</span>
             </td>
+            {% endwith %}
           {% else %}
             <td class="cal-cell cal-empty"></td>
           {% endif %}
         {% endfor %}
+        {% with sab=agenda.sabados_letivos|item_por_data:linha.sabado %}
+          <td class="cal-cell cal-sabado{% if sab %} cal-sabado-letivo{% endif %}"
+              data-tip="{{ linha.sabado|data_br }}{% if sab %} — {{ sab.titulo }}{% if sab.referencia %} ({{ sab.referencia }}){% endif %}{% else %} — Sábado sem aula{% endif %}"
+              aria-label="{{ linha.sabado|data_br }}{% if sab %} — {{ sab.titulo }}{% if sab.referencia %} ({{ sab.referencia }}){% endif %}{% else %} — Sábado sem aula{% endif %}">
+            <span class="cal-date">{% if sab %}{{ sab.label }}{% else %}<span class="cal-date-vazio">{{ linha.sabado_label }}</span>{% endif %}</span>
+          </td>
+        {% endwith %}
       </tr>
     {% endfor %}
   </tbody>
@@ -83,6 +109,9 @@
   <span class="cal-legend-item"><span class="cal-swatch swatch-parity1"></span> Semana x1</span>
   <span class="cal-legend-item"><span class="cal-swatch swatch-parity2"></span> Semana x2</span>
   <span class="cal-legend-item"><span class="cal-swatch swatch-free"></span> Feriado (sem aula)</span>
+  <span class="cal-legend-item"><span class="cal-swatch swatch-sabado"></span> Sábado letivo/reposição</span>
+  <span class="cal-legend-item"><span class="cal-swatch swatch-part1">01</span> 1ª parte (data em negrito)</span>
+  <span class="cal-legend-item"><span class="cal-swatch swatch-evento"></span> Dia com evento</span>
   <span class="cal-legend-item"><span class="moved-day">(dia)</span> Aula remanejada</span>
 </div>
 

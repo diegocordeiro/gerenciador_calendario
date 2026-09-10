@@ -280,6 +280,9 @@ def build_calendario(data_inicio, total_semanas_valor, semanas_primeira_parte, f
                     "week": celula["week"],
                 }
             )
+        # Sábado da semana (a grade vai de segunda a sexta, então a semana i
+        # começa em ``data_inicio + 7*i`` e o sábado cai 5 dias depois).
+        sabado = data_inicio + dt.timedelta(days=7 * ridx + 5)
         linhas.append(
             {
                 "week": ridx,
@@ -289,6 +292,8 @@ def build_calendario(data_inicio, total_semanas_valor, semanas_primeira_parte, f
                 "cells": celulas_out,
                 "columns": celulas_out + [None] * (5 - len(celulas_out)),
                 "days": len(linha),
+                "sabado": sabado.isoformat(),
+                "sabado_label": f"{sabado.day:02d}.{sabado.month:02d}",
             }
         )
 

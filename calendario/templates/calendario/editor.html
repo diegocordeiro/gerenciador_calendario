@@ -19,8 +19,35 @@
 
     <h2 class="editor-section-title" data-block="inputs">1. Preenchimento</h2>
 
+    <section class="panel editor-side" data-block="inputs">
+      <h2><span class="editor-step">1.1</span> Etapas salvas</h2>
+      <p class="editor-help">
+        <strong>Como utilizar:</strong> comece por aqui — clique no nome de uma versão para
+        carregá-la no formulário (campos e prévias são atualizados) e continue editando. O
+        botão <em>Excluir</em> remove a versão do banco — a ação não pode ser desfeita.
+      </p>
+      <ul class="editor-etapas">
+        {% for e in etapas %}
+          <li>
+            <a href="?versao={{ e.slug }}">{{ e.versao }}</a>
+            {% if e.final %}<span class="version-chip atual">final</span>{% endif %}
+            <span class="muted">{{ e.data_inicio|date:"d/m/Y" }} • etapa {{ e.etapa }}</span>
+            <form class="inline-form" method="post" action="{{ base }}versoes/excluir/"
+                  onsubmit="return confirm('Excluir a versão {{ e.versao|escapejs }}? Esta ação não pode ser desfeita.');">
+              {% csrf_token %}
+              <input type="hidden" name="versao" value="{{ e.versao }}">
+              <input type="hidden" name="destino" value="editor">
+              <button type="submit" class="btn-excluir">Excluir</button>
+            </form>
+          </li>
+        {% empty %}
+          <li class="muted">Nenhuma etapa salva ainda — preencha os parâmetros e salve a primeira.</li>
+        {% endfor %}
+      </ul>
+    </section>
+
     <section class="panel editor-form" data-block="inputs">
-      <h2><span class="editor-step">1.1</span> Parâmetros do calendário</h2>
+      <h2><span class="editor-step">1.2</span> Parâmetros do calendário</h2>
       <form id="editorForm" onsubmit="return false;">
         {% csrf_token %}
         <div class="field-row">
@@ -109,7 +136,7 @@
     </section>
 
     <section class="panel" data-block="inputs">
-      <h2><span class="editor-step">1.2</span> Feriados e pontos facultativos</h2>
+      <h2><span class="editor-step">1.3</span> Feriados e pontos facultativos</h2>
       <p class="editor-help">
         <strong>Como utilizar:</strong> escolha uma data (segunda a sexta) e o tipo e clique
         em <em>Adicionar</em>. Use <em>Feriados nacionais do período</em> para importar
@@ -134,12 +161,14 @@
     </section>
 
     <section class="panel" data-block="inputs">
-      <h2><span class="editor-step">1.3</span> Eventos</h2>
+      <h2><span class="editor-step">1.4</span> Eventos</h2>
       <p class="editor-help">
         <strong>Como utilizar:</strong> informe o título e a data inicial (obrigatórios),
         escolha o tipo e clique em <em>Adicionar evento</em>. Use a data final para
         intervalos. Para <strong>sábados letivos/de reposição</strong>, escolha o tipo
-        correspondente e informe o dia da semana referenciado.
+        correspondente e informe o dia da semana referenciado. Na tabela, use
+        <em>Editar</em> para carregar um evento no formulário e <em>Excluir</em> para
+        removê-lo.
       </p>
       <div class="editor-events">
         <div class="field-row">
@@ -183,6 +212,7 @@
         </p>
         <div class="editor-actions">
           <button id="btnAddEvento" class="button button-primary" type="button">Adicionar evento</button>
+          <button id="btnCancelarEvento" class="button" type="button" hidden>Cancelar edição</button>
         </div>
       </div>
       <table class="doc-table" id="eventosTable">
@@ -193,38 +223,11 @@
             <th>Título</th>
             <th>Tipo</th>
             <th>Referência</th>
-            <th></th>
+            <th>Ações</th>
           </tr>
         </thead>
         <tbody id="eventosBody"></tbody>
       </table>
-    </section>
-
-    <section class="panel editor-side" data-block="inputs">
-      <h2><span class="editor-step">1.4</span> Etapas salvas</h2>
-      <p class="editor-help">
-        <strong>Como utilizar:</strong> clique no nome de uma versão para carregá-la no
-        formulário (campos e prévias são atualizados). O botão <em>Excluir</em> remove a
-        versão do banco — a ação não pode ser desfeita.
-      </p>
-      <ul class="editor-etapas">
-        {% for e in etapas %}
-          <li>
-            <a href="?versao={{ e.slug }}">{{ e.versao }}</a>
-            {% if e.final %}<span class="version-chip atual">final</span>{% endif %}
-            <span class="muted">{{ e.data_inicio|date:"d/m/Y" }} • etapa {{ e.etapa }}</span>
-            <form class="inline-form" method="post" action="{{ base }}versoes/excluir/"
-                  onsubmit="return confirm('Excluir a versão {{ e.versao|escapejs }}? Esta ação não pode ser desfeita.');">
-              {% csrf_token %}
-              <input type="hidden" name="versao" value="{{ e.versao }}">
-              <input type="hidden" name="destino" value="editor">
-              <button type="submit" class="btn-excluir">Excluir</button>
-            </form>
-          </li>
-        {% empty %}
-          <li class="muted">Nenhuma etapa salva ainda.</li>
-        {% endfor %}
-      </ul>
     </section>
 
     <h2 class="editor-section-title" data-block="previews">2. Prévias</h2>
@@ -249,6 +252,8 @@
           <li>As semanas mostram a paridade (<strong>x1</strong>/<strong>x2</strong>) e os dias remanejados para a reposição.</li>
           <li>Dias com um traço na base <strong>têm eventos</strong> — passe o mouse para ver o detalhe.</li>
           <li>Células vazias (cinza) indicam que não há aula naquele dia da semana.</li>
+          <li>A coluna <strong>Sáb</strong> mostra o sábado de cada semana: os <strong>sábados letivos/de reposição</strong> aparecem destacados (com o dia da semana referenciado no tooltip) e os demais em cinza.</li>
+          <li>O <strong>total de dias letivos</strong> considera os sábados letivos, por isso confere com o documento.</li>
           <li>A <strong>legenda de cores</strong> abaixo da grade resume cada situação.</li>
         </ul>
       </div>

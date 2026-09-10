@@ -42,7 +42,8 @@
         descricao: e.descricao || "",
         destaque: !!e.destaque
       };
-    })
+    }),
+    eventoEditandoIdx: null
   };
 
   var TIPOS_EVENTO = {};
@@ -256,18 +257,24 @@
   function renderEventos() {
     var tbody = $("eventosBody");
     if (!tbody) return;
+    if (state.eventoEditandoIdx !== null && !state.eventos[state.eventoEditandoIdx]) {
+      state.eventoEditandoIdx = null;
+    }
     var ordenados = state.eventos.slice().sort(function (a, b) {
       return a.data_inicio < b.data_inicio ? -1 : 1;
     });
     tbody.innerHTML = ordenados
       .map(function (e) {
         var i = state.eventos.indexOf(e);
+        var editando = i === state.eventoEditandoIdx;
         var ref =
           e.dia_semana_referencia === null || e.dia_semana_referencia === undefined
             ? ""
             : DIAS_SEMANA[e.dia_semana_referencia] || "";
         return (
-          "<tr>" +
+          "<tr" +
+          (editando ? ' class="row-editando"' : "") +
+          ">" +
           "<td>" +
           esc(e.data_inicio.split("-").reverse().join("/")) +
           "</td>" +
@@ -283,23 +290,81 @@
           "<td>" +
           esc(ref) +
           "</td>" +
-          '<td><button type="button" class="chip-remove" data-idx="' +
+          '<td class="evento-acoes">' +
+          '<button type="button" class="btn-editar" data-edit="' +
           i +
-          '" aria-label="Remover">&times;</button></td>' +
+          '" title="Editar evento" aria-label="Editar evento">&#9998;</button>' +
+          '<button type="button" class="chip-remove" data-idx="' +
+          i +
+          '" aria-label="Remover">&times;</button>' +
+          "</td>" +
           "</tr>"
         );
       })
       .join("");
+    Array.prototype.forEach.call(tbody.querySelectorAll(".btn-editar"), function (btn) {
+      btn.addEventListener("click", function () {
+        editarEvento(parseInt(btn.getAttribute("data-edit"), 10));
+      });
+    });
     Array.prototype.forEach.call(tbody.querySelectorAll(".chip-remove"), function (btn) {
       btn.addEventListener("click", function () {
-        state.eventos.splice(parseInt(btn.getAttribute("data-idx"), 10), 1);
+        var idx = parseInt(btn.getAttribute("data-idx"), 10);
+        state.eventos.splice(idx, 1);
+        if (state.eventoEditandoIdx === idx) state.eventoEditandoIdx = null;
+        else if (state.eventoEditandoIdx !== null && state.eventoEditandoIdx > idx) {
+          state.eventoEditandoIdx -= 1;
+        }
+        atualizarBotaoEvento();
         renderEventos();
         agendarPreview();
       });
     });
   }
 
-  function addEvento() {
+  function limparFormEvento() {
+    $("evTitulo").value = "";
+    $("evInicio").value = "";
+    $("evFim").value = "";
+    $("evReferencia").value = "";
+    $("evDestaque").checked = false;
+  }
+
+  function atualizarBotaoEvento() {
+    var btn = $("btnAddEvento");
+    var cancelar = $("btnCancelarEvento");
+    var editando = state.eventoEditandoIdx !== null;
+    if (btn) btn.textContent = editando ? "Salvar alterações" : "Adicionar evento";
+    if (cancelar) cancelar.hidden = !editando;
+  }
+
+  function editarEvento(idx) {
+    var e = state.eventos[idx];
+    if (!e) return;
+    $("evTitulo").value = e.titulo || "";
+    $("evTipo").value = e.tipo || "evento";
+    $("evInicio").value = e.data_inicio || "";
+    $("evFim").value = e.data_fim || "";
+    $("evReferencia").value =
+      e.dia_semana_referencia === null || e.dia_semana_referencia === undefined
+        ? ""
+        : String(e.dia_semana_referencia);
+    $("evDestaque").checked = !!e.destaque;
+    state.eventoEditandoIdx = idx;
+    atualizarBotaoEvento();
+    renderEventos();
+    msg("Editando o evento selecionado — ajuste os campos e clique em “Salvar alterações”.", "ok");
+    $("evTitulo").focus();
+  }
+
+  function cancelarEdicaoEvento() {
+    state.eventoEditandoIdx = null;
+    limparFormEvento();
+    atualizarBotaoEvento();
+    renderEventos();
+  }
+
+  function salvarEvento() {
     var titulo = $("evTitulo").value.trim();
     var inicio = $("evInicio").value;
     if (!titulo || !inicio) {
@@ -307,20 +372,27 @@
       return;
     }
     var ref = $("evReferencia").value;
-    state.eventos.push({
+    var idx = state.eventoEditandoIdx;
+    var anterior = idx !== null ? state.eventos[idx] : null;
+    var evento = {
       titulo: titulo,
       tipo: $("evTipo").value,
       data_inicio: inicio,
       data_fim: $("evFim").value || "",
       dia_semana_referencia: ref === "" ? null : parseInt(ref, 10),
-      descricao: "",
+      descricao: anterior ? anterior.descricao || "" : "",
       destaque: $("evDestaque").checked
-    });
-    $("evTitulo").value = "";
-    $("evInicio").value = "";
-    $("evFim").value = "";
-    $("evReferencia").value = "";
-    $("evDestaque").checked = false;
+    };
+    if (idx !== null) {
+      state.eventos[idx] = evento;
+      state.eventoEditandoIdx = null;
+      msg("Evento atualizado.", "ok");
+    } else {
+      state.eventos.push(evento);
+      msg("Evento adicionado.", "ok");
+    }
+    limparFormEvento();
+    atualizarBotaoEvento();
     renderEventos();
     preview();
   }
@@ -553,6 +625,7 @@
       '<span class="cal-legend-item"><span class="cal-swatch swatch-parity1"></span> Semana x1</span>' +
       '<span class="cal-legend-item"><span class="cal-swatch swatch-parity2"></span> Semana x2</span>' +
       '<span class="cal-legend-item"><span class="cal-swatch swatch-free"></span> Feriado (sem aula)</span>' +
+      '<span class="cal-legend-item"><span class="cal-swatch swatch-sabado"></span> Sábado letivo/reposição</span>' +
       '<span class="cal-legend-item"><span class="cal-swatch swatch-part1">01</span> 1ª parte (data em negrito)</span>' +
       '<span class="cal-legend-item"><span class="cal-swatch swatch-evento"></span> Dia com evento</span>' +
       '<span class="cal-legend-item"><span class="moved-day">(dia)</span> Aula remanejada</span>' +
@@ -562,11 +635,41 @@
 
   function renderPreview(d) {
     var html = "";
+    var ag = d.agenda || {};
+    var sabados = ag.sabados_total;
+    if (typeof sabados !== "number") sabados = (ag.sabados_letivos || []).length;
+    var totalDoc = ag.total_letivos || 0;
+    var segSex =
+      typeof ag.letivos_seg_sex === "number"
+        ? ag.letivos_seg_sex
+        : Math.max(totalDoc - sabados, 0);
     html +=
       '<div class="cal-metrics">' +
-      metric("Semanas", d.w, (d.parametros ? d.parametros.total_semanas : "") + " + " + d.semanas_extras + " reposição") +
+      metric(
+        "Semanas",
+        d.w,
+        (d.parametros ? d.parametros.total_semanas : "") + " + " + d.semanas_extras + " reposição",
+        "Grade x1/x2 (seg–sex) com " + d.dias_totais + " dias no total."
+      ) +
       metric("Feriados na faixa", d.f, "dias úteis") +
-      metric("Dias letivos", d.dias_letivos, "de " + d.dias_totais + " dias") +
+      metric(
+        "Dias letivos (seg–sex)",
+        segSex,
+        "sem sábados",
+        "Dias letivos de segunda a sexta no período, sem contar os sábados letivos."
+      ) +
+      metric(
+        "Sábados letivos",
+        sabados,
+        "referentes a dias úteis",
+        "Sábados usados como dia letivo/de reposição; cada um referencia um dia da semana."
+      ) +
+      metric(
+        "Total de dias letivos",
+        totalDoc,
+        "seg–sex + sábados · igual ao documento",
+        "Total do documento oficial: " + segSex + " dias (seg–sex) + " + sabados + " sábados letivos."
+      ) +
       metric(
         "Erros (paridade / dia / parte)",
         d.metricas.parity + " / " + d.metricas.weekday + " / " + d.metricas.part,
@@ -587,10 +690,17 @@
     }
 
     var evPorData = eventosPorData(d.agenda);
+    // Sábado de cada semana (eventos de sábado letivo/reposição), casado por data.
+    var sabPorData = {};
+    ((d.agenda && d.agenda.sabados_letivos) || []).forEach(function (s) {
+      sabPorData[s.date] = s;
+    });
+
     html += '<table class="cal-table"><thead><tr><th class="cal-corner">Semana</th>';
     (d.weekdays || []).forEach(function (dia) {
       html += '<th class="cal-day">' + esc(dia) + "</th>";
     });
+    html += '<th class="cal-day">Sáb</th>';
     html += "</tr></thead><tbody>";
     (d.linhas || []).forEach(function (linha) {
       html +=
@@ -639,6 +749,24 @@
           conteudo +
           "</span></td>";
       });
+      var sab = sabPorData[linha.sabado];
+      var sabDica = sab
+        ? sab.titulo + (sab.referencia ? " — " + sab.referencia : "")
+        : "Sábado sem aula";
+      html +=
+        '<td class="cal-cell cal-sabado' +
+        (sab ? " cal-sabado-letivo" : "") +
+        '" data-tip="' +
+        esc(sabDica) +
+        '" aria-label="' +
+        esc(sabDica) +
+        '"><span class="cal-date">' +
+        (sab
+          ? esc(sab.label)
+          : '<span class="cal-date-vazio">' +
+            esc(linha.sabado_label || "") +
+            "</span>") +
+        "</span></td>";
       html += "</tr>";
     });
     html += "</tbody></table>";
@@ -729,7 +857,10 @@
     inicial = {};
     state.feriados = [];
     state.eventos = [];
+    state.eventoEditandoIdx = null;
     fill();
+    limparFormEvento();
+    atualizarBotaoEvento();
     renderChips();
     renderEventos();
     preview();
@@ -825,7 +956,8 @@
     renderChips();
     preview();
   });
-  $("btnAddEvento").addEventListener("click", addEvento);
+  $("btnAddEvento").addEventListener("click", salvarEvento);
+  $("btnCancelarEvento").addEventListener("click", cancelarEdicaoEvento);
   $("btnNacionais").addEventListener("click", carregarNacionais);
   $("btnSalvar").addEventListener("click", function () {
     salvar(false);

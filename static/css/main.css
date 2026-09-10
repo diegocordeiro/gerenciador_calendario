@@ -1783,6 +1783,27 @@ blockquote {
   text-decoration: line-through;
 }
 
+/* Coluna de sábado (letivo/reposição) na grade x1/x2 */
+.cal-cell.cal-sabado {
+  background: #f3f4f6 !important;
+  min-width: 62px;
+  cursor: default;
+}
+
+.cal-cell.cal-sabado-letivo {
+  background: #e4dcff !important;
+  font-style: italic;
+}
+
+.cal-cell.cal-sabado-letivo .cal-date {
+  font-weight: 700;
+}
+
+.cal-date-vazio {
+  color: var(--muted);
+  font-weight: 400;
+}
+
 .cal-cell.cal-part1 .cal-date {
   font-weight: 700;
 }
@@ -1841,6 +1862,8 @@ blockquote {
   background: #ffffff;
   box-shadow: inset 0 -3px 0 0 var(--primary);
 }
+
+.swatch-sabado { background: #e4dcff; }
 
 .swatch-part1 {
   width: 26px;
@@ -2105,8 +2128,9 @@ blockquote {
   font-weight: 400;
 }
 
-/* Tooltip das prévias (dias com evento) */
-.editor-tooltip {
+/* Tooltip dos dias (prévia do editor e documento publicado) */
+.editor-tooltip,
+.doc-tooltip {
   position: fixed;
   z-index: 80;
   max-width: 260px;
@@ -2122,7 +2146,8 @@ blockquote {
   display: none;
 }
 
-.editor-tooltip.is-visible {
+.editor-tooltip.is-visible,
+.doc-tooltip.is-visible {
   display: block;
 }
 
@@ -2302,7 +2327,7 @@ blockquote {
 }
 
 .doc-dia-ferias {
-  background: rgba(13, 148, 136, 0.22);
+  background: rgba(185, 28, 28, 0.30);
 }
 
 .doc-dia-jornada {
@@ -2339,6 +2364,12 @@ blockquote {
 
 .doc-dia-com-evento {
   box-shadow: inset 0 -3px 0 0 var(--primary);
+  cursor: help;
+}
+
+/* Células com tooltip (data-tip) convidam ao hover em qualquer tema */
+.doc-dia[data-tip],
+.cal-cell[data-tip] {
   cursor: help;
 }
 
@@ -2451,9 +2482,12 @@ blockquote {
   background: rgba(234, 88, 12, 0.18);
 }
 
-.doc-evento-recesso,
-.doc-evento-ferias_coletivas {
+.doc-evento-recesso {
   background: rgba(124, 58, 237, 0.18);
+}
+
+.doc-evento-ferias_coletivas {
+  background: rgba(185, 28, 28, 0.20);
 }
 
 .doc-evento-jornada_pedagogica {
@@ -2522,6 +2556,30 @@ blockquote {
   vertical-align: middle;
 }
 
+#eventosTable tr.row-editando {
+  background: var(--primary-soft);
+}
+
+.evento-acoes {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+.btn-editar {
+  border: none;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  font-size: .95rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.btn-editar:hover {
+  color: var(--text);
+}
+
 .chip-removable small {
   color: var(--muted);
 }
@@ -2541,6 +2599,7 @@ blockquote {
   .version-banner,
   .cal-toolbar,
   .editor-layout,
+  .doc-tooltip,
   .editor-tooltip,
   .editor-msg,
   .breadcrumb,

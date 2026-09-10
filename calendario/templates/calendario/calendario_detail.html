@@ -30,13 +30,15 @@
   {% include "calendario/_tabela_feriados.html" %}
   {% include "calendario/_legenda.html" %}
 
-  {% include "calendario/_grade_semanas.html" %}
-
   {% if cal.observacoes %}
   <section class="panel">
     <h2>Observações</h2>
     <p>{{ cal.observacoes|linebreaksbr }}</p>
   </section>
   {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ static_url }}js/documento.js"></script>
 {% endblock %}
 

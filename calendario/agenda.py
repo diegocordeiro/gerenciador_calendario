@@ -237,8 +237,11 @@ def _vazio() -> dict:
         "meses": [],
         "resumo": [],
         "total_letivos": 0,
+        "letivos_seg_sex": 0,
+        "sabados_total": 0,
         "sabados_letivos": [],
         "eventos_por_mes": [],
+        "eventos_dia": {},
         "feriados": [],
         "legenda": [],
         "dias_cabecalho": DIAS_CABECALHO,
@@ -346,6 +349,11 @@ def build_agenda(
             }
         )
 
+    # Total de sábados efetivamente letivos dentro do período (contagem por mês)
+    # e o total de dias letivos de segunda a sexta (sem os sábados).
+    sabados_total = sum(r["sabados"] for r in resumo)
+    letivos_seg_sex = total - sabados_total
+
     # Tabela de eventos agrupada por mês (MÊS · DIA · EVENTO).
     eventos_por_mes = []
     for m in meses:
@@ -391,6 +399,13 @@ def build_agenda(
         for d, info in sorted(feriados_map.items())
     ]
 
+    # Eventos por data (ISO → títulos), usado nos tooltips dos dias das grades.
+    eventos_dia = {
+        d.isoformat(): [e["titulo"] for e in evs]
+        for d, evs in eventos_por_dia.items()
+        if evs
+    }
+
     # Legenda: apenas os status efetivamente usados nas grades.
     usados = {}
     for m in meses:
@@ -421,8 +436,11 @@ def build_agenda(
         "meses": meses,
         "resumo": resumo,
         "total_letivos": total,
+        "letivos_seg_sex": letivos_seg_sex,
+        "sabados_total": sabados_total,
         "sabados_letivos": sabados,
         "eventos_por_mes": eventos_por_mes,
+        "eventos_dia": eventos_dia,
         "feriados": feriados_lista,
         "legenda": legenda,
         "dias_cabecalho": DIAS_CABECALHO,
