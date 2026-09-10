@@ -859,16 +859,19 @@ class DocumentoViewTests(TestCase):
         self.assertIn("1.1</span> Etapas salvas", html)
         self.assertLess(html.index("Etapas salvas"), html.index("Parâmetros do calendário"))
 
-    def test_css_ferias_coletivas_em_vermelho(self):
+    def test_css_ferias_coletivas_em_azul_escuro(self):
         css = (
             Path(__file__).resolve().parent.parent / "static" / "css" / "main.css"
         ).read_text(encoding="utf-8")
         bloco = css[css.index(".doc-dia-ferias {") :]
         bloco = bloco[: bloco.index("}")]
-        self.assertIn("185, 28, 28", bloco)
+        self.assertIn("30, 58, 138", bloco)
+        # O chip da tabela de eventos acompanha a cor da legenda/grade.
+        chip = css[css.index(".doc-evento-ferias_coletivas {") :]
+        chip = chip[: chip.index("}")]
+        self.assertIn("30, 58, 138", chip)
         # O chip de férias coletivas não fica mais agrupado com o recesso.
         self.assertNotIn(".doc-evento-recesso,\n.doc-evento-ferias_coletivas", css)
-        self.assertIn(".doc-evento-ferias_coletivas {", css)
 
 
 class PreviewAgendaTests(TestCase):
