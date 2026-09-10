@@ -82,8 +82,9 @@ make configurar        # cria .venv e instala as dependências
 make banco             # migrate
 make exemplo           # (opcional) cria calendários de exemplo 2026.1
 make rodar             # runserver → monte em http://127.0.0.1:8000/editor/
-make publicar          # gera build/ para o Pages e commita a pasta
+make gerar             # gera build/ com BASE_URL=/ (prévia local)
 make ver               # prévia local do build/ em http://127.0.0.1:8000
+make publicar          # gera build/ com PAGES_BASE e commita a pasta
 ```
 
 Ou, manualmente:

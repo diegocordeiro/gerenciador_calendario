@@ -57,7 +57,7 @@ gerar: ## gera o site em build/ para prévia local (BASE_URL, padrão /)
 site: banco gerar ## monta o site do zero (banco + gerar) e abre a prévia
 	@echo "OK: build/ pronto. Rode 'make ver' para conferir."
 
-ver: ## sobe o servidor local em http://127.0.0.1:PORT
+ver: ## sobe o servidor local em http://127.0.0.1:PORT (use após 'make gerar')
 	$(PYTHON) -m http.server -d build $(PORT)
 
 rodar: banco ## sobe o servidor de desenvolvimento (use /editor/ para montar)
