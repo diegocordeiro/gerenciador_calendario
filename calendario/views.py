@@ -23,19 +23,9 @@ from .scheduling import build_calendario
 from .static_site import print_ctx
 
 
-def _atual():
-    return (
-        Calendario.objects.filter(final=True).order_by("-data_inicio", "-etapa").first()
-        or Calendario.objects.filter(atual=True).order_by("-data_inicio", "-etapa").first()
-        or Calendario.objects.order_by("-data_inicio", "-etapa").first()
-    )
-
-
-def _history(excluir_id=None):
-    qs = Calendario.objects.all()
-    if excluir_id:
-        qs = qs.exclude(id=excluir_id)
-    itens = list(qs)
+def _versoes():
+    """Todas as versões cadastradas, da mais recente para a mais antiga."""
+    itens = list(Calendario.objects.all())
     itens.sort(key=lambda c: (c.data_inicio, c.etapa), reverse=True)
     return itens
 
@@ -48,44 +38,29 @@ def _por_slug(slug):
 
 
 def home(request):
-    atual = _atual()
     return render(
         request,
         "calendario/home.html",
-        {"atual": atual, "history": _history(atual.id if atual else None)},
+        {"versoes": _versoes(), "active": "inicio"},
     )
 
 
 def versoes(request):
-    atual = _atual()
+    """A lista de versões vive na raiz do calendário; aqui só redirecionamos."""
+    return redirect("indice")
+
+
+def indice(request):
+    """Índice do calendário: lista todas as versões cadastradas."""
     return render(
         request,
-        "calendario/versoes.html",
+        "calendario/indice.html",
         {
-            "atual": atual,
-            "history": _history(atual.id if atual else None),
+            "versoes": _versoes(),
             "modalidades": [
                 {"valor": v, "label": lbl} for v, lbl in Calendario.MODALIDADE_CHOICES
             ],
-            "active": "versoes",
-        },
-    )
-
-
-def calendario_atual(request):
-    cal = _atual()
-    if cal is None:
-        raise Http404("Nenhum calendário cadastrado.")
-    titulo = cal.titulo or f"Calendário acadêmico — {cal.versao}"
-    return render(
-        request,
-        "calendario/calendario_detail.html",
-        {
-            "cal": cal,
-            "dados": cal.build(),
-            "agenda": cal.agenda(),
             "active": "calendario",
-            **print_ctx(titulo, cal.periodo or None),
         },
     )
 
@@ -132,8 +107,6 @@ def editor(request):
         "dias_letivos_previstos": cal.dias_letivos_previstos if cal else 0,
         "dias_letivos_por_mes": cal.dias_letivos_por_mes if cal else [],
         "etapa": cal.etapa if cal else 1,
-        "status": cal.status if cal else "etapa",
-        "final": cal.final if cal else False,
         "observacoes": cal.observacoes if cal else "",
         "feriados": (
             [
@@ -410,19 +383,6 @@ def api_salvar(request):
         ]
     )
 
-
-    # Versão final/atual é exclusiva.
-    if dados.get("final"):
-        Calendario.objects.exclude(pk=cal.pk).update(final=False, atual=False)
-        cal.final = True
-        cal.atual = True
-        cal.status = "final"
-    else:
-        cal.final = False
-        cal.atual = False
-        cal.status = (dados.get("status") or "etapa").strip() or "etapa"
-    cal.save()
-
     resultado["agenda"] = cal.agenda()
     return JsonResponse(
         {
@@ -430,7 +390,6 @@ def api_salvar(request):
             "criado": criado,
             "versao": cal.versao,
             "slug": cal.slug,
-            "final": cal.final,
             "eventos": _eventos_para_json(cal),
             "dados": resultado,
         }
@@ -527,8 +486,9 @@ def api_clonar(request):
     )
 
 
-# Destinos válidos após excluir (evita redirecionamento aberto).
-_EXCLUIR_DESTINOS = {"versoes": "versoes", "editor": "editor"}
+# Destinos válidos após excluir (evita redirecionamento aberto). A lista vive na
+# raiz do calendário (``indice``); ``versoes`` é mantido por compatibilidade.
+_EXCLUIR_DESTINOS = {"versoes": "indice", "calendario": "indice", "editor": "editor"}
 
 
 @require_POST
@@ -539,7 +499,7 @@ def excluir_versao(request):
     próprio corpo da requisição e a página é recarregada pelo navegador.
     """
     versao = (request.POST.get("versao") or "").strip()
-    destino = _EXCLUIR_DESTINOS.get(request.POST.get("destino"), "versoes")
+    destino = _EXCLUIR_DESTINOS.get(request.POST.get("destino"), "indice")
 
     cal = Calendario.objects.filter(versao=versao).first()
     if cal is None:
@@ -551,7 +511,7 @@ def excluir_versao(request):
 
 
 # Destinos válidos após clonar (evita redirecionamento aberto).
-_CLONAR_DESTINOS = {"editor": "editor", "versoes": "versoes"}
+_CLONAR_DESTINOS = {"editor": "editor", "versoes": "indice", "calendario": "indice"}
 
 
 @require_POST
@@ -559,9 +519,8 @@ def clonar_versao(request):
     """Clona uma versão via formulário HTML e abre o editor da cópia.
 
     Funciona sem JavaScript (form POST + redirect PRG): o token CSRF vai no corpo
-    e o navegador recarrega a página. A nova versão nasce como *etapa* (não é
-    final) e herda feriados e eventos da origem, pronta para virar o calendário de
-    outra modalidade/curso.
+    e o navegador recarrega a página. A nova versão herda feriados e eventos da
+    origem e fica pronta para virar o calendário de outra modalidade/curso.
     """
     versao = (request.POST.get("versao") or "").strip()
     nova = (request.POST.get("nova_versao") or "").strip()
@@ -570,13 +529,13 @@ def clonar_versao(request):
     origem = Calendario.objects.filter(versao=versao).first()
     if origem is None:
         messages.error(request, f'Versão "{versao}" não encontrada.')
-        return redirect("versoes")
+        return redirect("indice")
 
     try:
         novo = origem.clonar(nova, **_overrides_clone(request.POST.dict()))
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
-        return redirect("versoes")
+        return redirect("indice")
 
     messages.success(
         request,

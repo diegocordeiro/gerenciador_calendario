@@ -18,7 +18,6 @@
       <nav class="nav">
         <a href="{{ root_base }}" class="{% if active == 'inicio' %}active{% endif %}">Início</a>
         <a href="{{ root_base }}calendario/" class="{% if active == 'calendario' %}active{% endif %}">Calendário</a>
-        <a href="{{ root_base }}versoes/" class="{% if active == 'versoes' %}active{% endif %}">Versões</a>
         {% if not static_build %}
         <a href="{{ root_base }}editor/" class="{% if active == 'editor' %}active{% endif %}">Editor</a>
         {% endif %}
@@ -33,11 +32,7 @@
     <div class="container version-banner-inner">
       <span class="version-label">Exibindo a versão</span>
       <strong class="version-value">{{ cal.versao }}</strong>
-      {% if cal.final %}
-        <span class="version-chip atual">final</span>
-      {% else %}
-        <span class="version-chip historica">etapa {{ cal.etapa }}</span>
-      {% endif %}
+      <span class="version-chip historica">etapa {{ cal.etapa }}</span>
       {% if cal.periodo %}<span class="version-periodo">{{ cal.periodo }}</span>{% endif %}
     </div>
   </div>

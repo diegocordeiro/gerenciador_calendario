@@ -1,4 +1,4 @@
-"""Cria calendários de exemplo (etapas + versão final) para demonstração.
+"""Cria calendários de exemplo (etapas + versão publicada) para demonstração.
 
 Uso:
   python manage.py seed_exemplo
@@ -36,7 +36,7 @@ ETAPAS = [
 
 
 class Command(BaseCommand):
-    help = "Cria um calendário de exemplo (2026.1) com etapas e versão final."
+    help = "Cria um calendário de exemplo (2026.1) com etapas e versão publicada."
 
     def handle(self, *args, **opts):
         if Calendario.objects.exists():
@@ -60,7 +60,6 @@ class Command(BaseCommand):
                     **comuns,
                     "titulo": f"Calendário acadêmico 2026.1 — etapa {etapa}",
                     "etapa": etapa,
-                    "status": "etapa",
                     "observacoes": f"Etapa {etapa} da montagem do calendário 2026.1.",
                 },
             )
@@ -69,21 +68,18 @@ class Command(BaseCommand):
                     calendario=cal, data=iso, defaults={"origem": "manual"}
                 )
 
-        final, _ = Calendario.objects.update_or_create(
+        publicada, _ = Calendario.objects.update_or_create(
             versao="2026.1.final",
             defaults={
                 **comuns,
-                "titulo": "Calendário acadêmico 2026.1 — versão final",
+                "titulo": "Calendário acadêmico 2026.1 — versão publicada",
                 "etapa": 3,
-                "status": "final",
-                "final": True,
-                "atual": True,
-                "observacoes": "Versão final publicada no GitHub Pages.",
+                "observacoes": "Versão publicada no GitHub Pages.",
             },
         )
         for item in feriados_nacionais(2026):
             Feriado.objects.get_or_create(
-                calendario=final,
+                calendario=publicada,
                 data=item["data"],
                 defaults={"descricao": item["descricao"], "origem": "nacional"},
             )
@@ -91,6 +87,6 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 "seed_exemplo: calendários 2026.1.etapa1, 2026.1.etapa2 e "
-                "2026.1.final (final) criados."
+                "2026.1.final criados."
             )
         )

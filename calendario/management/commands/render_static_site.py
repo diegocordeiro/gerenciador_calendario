@@ -4,7 +4,7 @@ Uso:
   python manage.py render_static_site
   python manage.py render_static_site --output build --base-url /repo/
 
-O build/ contém a versão atual em ``calendario/`` e **cada etapa versionada** em
+O build/ contém o índice (lista de versões) em ``calendario/`` e **cada versão** em
 ``versoes/<slug>/``; é a pasta publicada pelo workflow do GitHub Pages.
 """
 from __future__ import annotations
@@ -67,26 +67,21 @@ class Command(BaseCommand):
             )
             return
 
-        atual = (
-            Calendario.objects.filter(final=True).order_by("-data_inicio", "-etapa").first()
-            or Calendario.objects.filter(atual=True).order_by("-data_inicio", "-etapa").first()
-            or Calendario.objects.order_by("-data_inicio", "-etapa").first()
-        )
-        history = list(Calendario.objects.exclude(id=atual.id))
-        history.sort(key=lambda c: (c.data_inicio, c.etapa), reverse=True)
+        versoes = list(Calendario.objects.all())
+        versoes.sort(key=lambda c: (c.data_inicio, c.etapa), reverse=True)
 
         site.copy_assets()
-        site.render_home(atual, history)
-        site.render_versoes(atual, history)
-        site.render_calendario(atual, prefix="")
+        site.render_home(versoes)
+        site.render_indice(versoes)
+        site.render_redirect_versoes()
 
-        # Todas as etapas versionadas ficam sob /versoes/<slug>/.
-        for cal in [atual, *history]:
+        # Todas as versões são publicadas sob /versoes/<slug>/.
+        for cal in versoes:
             site.render_calendario(cal, prefix=f"versoes/{cal.slug}/")
 
         self.stdout.write(
             self.style.SUCCESS(
                 f"Site estático gerado em: {build_root} "
-                f"({Calendario.objects.count()} versão(ões) publicada(s))."
+                f"({len(versoes)} versão(ões) publicada(s))."
             )
         )

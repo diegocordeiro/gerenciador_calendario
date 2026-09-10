@@ -113,9 +113,6 @@ class Command(BaseCommand):
                 "dias_letivos_previstos": DIAS_LETIVOS_PREVISTOS,
                 "dias_letivos_por_mes": DIAS_LETIVOS_POR_MES,
                 "etapa": 1,
-                "status": "final",
-                "final": True,
-                "atual": True,
                 "observacoes": (
                     "Calendário oficial 2026.2 do curso Técnico em Administração "
                     "Integrado PROEJA (Campus Barras). Os totais por mês declarados no "
@@ -125,9 +122,6 @@ class Command(BaseCommand):
                 ),
             },
         )
-
-        # Versão final/atual é exclusiva.
-        Calendario.objects.exclude(pk=cal.pk).update(final=False, atual=False)
 
         # Feriados e pontos facultativos.
         cal.feriados.all().delete()

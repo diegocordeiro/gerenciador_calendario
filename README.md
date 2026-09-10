@@ -24,7 +24,8 @@ Editor (/editor/) → banco (db.sqlite3) → render_static_site → build/ → G
 2. **Banco é a fonte da verdade** — cada etapa salva vira um registro
    (`Calendario` + `Feriado`) no `db.sqlite3` (local, fora do git).
 3. **Build estático** — `render_static_site` gera `build/` com um HTML **por
-   etapa** (`versoes/<slug>/`) e a **versão final** (`calendario/`).
+   versão** (`versoes/<slug>/`) e o **índice** (`calendario/`): **todas as versões**
+   cadastradas são publicadas.
 4. **Publicação** — a pasta `build/` é **commitada** e o workflow do GitHub
    Actions apenas a publica no **GitHub Pages**.
 
@@ -42,15 +43,15 @@ calendario_academico/
 │   ├── agenda.py                # Documento oficial: grade mensal, eventos, dias letivos
 │   ├── models.py                # Calendario (versão/etapa) + Feriado + Evento
 │   ├── static_site.py           # Gerador do site estático (build/)
-│   ├── views.py                 # Home, /editor/, /versoes/, API (/api/…)
+│   ├── views.py                 # Home, /calendario/ (índice), /editor/, API (/api/…)
 │   ├── admin.py                 # Admin editável (o banco é a fonte da verdade)
 │   ├── data/feriados.py         # Feriados nacionais (BR) por ano
 │   ├── management/commands/     # seed_feriados, seed_exemplo, seed_calendario_2026_2, render_static_site
-│   ├── templates/calendario/    # base, home, editor, versões, detalhe + parciais do documento
+│   ├── templates/calendario/    # base, home, editor, índice, detalhe + parciais do documento
 │   └── tests.py
 ├── config/                      # Settings/urls do projeto Django
 ├── static/                      # CSS/JS/imagens (mesmo visual dos horários)
-├── build/                       # HTML VERSIONADO por etapa + versão final (publicado)
+├── build/                       # HTML VERSIONADO por versão + índice (publicado)
 ├── .github/workflows/deploy.yml # Publica build/ no GitHub Pages
 ├── Makefile
 ├── manage.py
@@ -59,10 +60,10 @@ calendario_academico/
 
 ## Documento oficial (estrutura do PDF)
 
-A página publicada (`/calendario/`) traz o **documento no formato do calendário
-oficial do campus** (`CALENDÁRIO ACADÊMICO 2026.2 — Técnico em Administração
-Integrado PROEJA`) — a **grade x1/x2 de reposição fica restrita à prévia do
-editor** —, com:
+A raiz `/calendario/` é o **índice** (lista todas as versões). Cada versão tem sua
+página em `/versoes/<slug>/` com o **documento no formato do calendário oficial do
+campus** (`CALENDÁRIO ACADÊMICO 2026.2 — Técnico em Administração Integrado
+PROEJA`) — a **grade x1/x2 de reposição fica restrita à prévia do editor** —, com:
 
 - **Cabeçalho** com instituição, curso, modalidade, semestre, início, término e o
   total de dias letivos (calculado × previsto);
@@ -127,8 +128,8 @@ divergência é exibida na página como conferência).
   institucionais e manuais;
 - **Eventos acadêmicos** com intervalo de datas, tipo (categoria da legenda) e
   dia da semana referenciado (sábados letivos/de reposição);
-- **Versionamento de cada etapa** (`2026.1.etapa1`, `2026.1.etapa2`, …) e uma
-  **versão final publicável**;
+- **Versionamento de cada etapa** (`2026.1.etapa1`, `2026.1.etapa2`, …) — **todas as
+  versões** cadastradas são publicadas no build;
 - **Interface no mesmo padrão visual** do painel de horários (tema claro/escuro,
   cabeçalho, banner de versão, cards);
 - **Editor organizado em etapas** — começa por **Etapas salvas** (carregar uma versão
@@ -174,7 +175,7 @@ python manage.py runserver
 | Comando                    | Descrição                                              | Argumentos                          |
 | -------------------------- | ------------------------------------------------------ | ----------------------------------- |
 | `seed_feriados`            | Adiciona feriados **nacionais** aos calendários        | `--versao`, `--ano`                 |
-| `seed_exemplo`             | Cria calendários de exemplo (etapas + final)           | —                                   |
+| `seed_exemplo`             | Cria calendários de exemplo (etapas + publicada)   | —                                   |
 | `seed_calendario_2026_2`   | Recria o **calendário oficial 2026.2** do documento    | —                                   |
 | `render_static_site`       | Gera o site estático em `build/`                       | `--output`, `--base-url`            |
 
@@ -185,28 +186,28 @@ python manage.py seed_feriados                 # todos os calendários existente
 python manage.py seed_feriados --versao 2026.1.final
 ```
 
-## Versionamento de etapas e versão final
+## Versionamento
 
-- Cada salvamento no editor grava/atualiza uma **etapa** (`Calendario.etapa`,
-  `status`). Salvar com **“Marcar como versão final”** deixa aquela versão como
-  **final/atual** (exclusiva) — é a página publicada em `calendario/`.
-- O `build/` guarda **todas as etapas** em `versoes/<slug>/`, então a evolução da
-  produção fica versionada no git e navegável em `/versoes/`.
-- **Excluir versões** — em `/versoes/` (coluna *Ações*) e na lista **Etapas salvas**
-  do `/editor/` há o botão **Excluir** para cada versão, com confirmação. É um **POST
-  de formulário** para `/versoes/excluir/` (funciona sem JavaScript) que remove a
-  versão do banco — e os feriados dela, em cascata — e volta para a listagem com uma
+- Cada salvamento no editor grava/atualiza uma **versão** (`Calendario.etapa`). **Não
+  existe “versão final”**: todas as versões cadastradas são equivalentes e **todas vão
+  para o build**.
+- A raiz **`/calendario/` é o índice** — lista todas as versões. Cada versão tem sua
+  página em **`/versoes/<slug>/`** com o documento completo. O path legado
+  **`/versoes/` redireciona** para o índice (`/calendario/`).
+- **Excluir versões** — no índice `/calendario/` (coluna *Ações*) e na lista **Etapas
+  salvas** do `/editor/` há o botão **Excluir** para cada versão, com confirmação. É um
+  **POST de formulário** para `/versoes/excluir/` (funciona sem JavaScript) que remove a
+  versão do banco — e os feriados dela, em cascata — e volta para o índice com uma
   mensagem de retorno. A ação é **permanente** e **não** aparece no site estático (o
   Pages não tem banco). A API `POST /api/excluir/` segue disponível para integrações.
-- **Clonar versões** — o painel **“Clonar uma versão”** em `/versoes/` usa uma versão
+- **Clonar versões** — o painel **“Clonar uma versão”** no índice usa uma versão
   existente como **base** para elaborar o calendário de **outra modalidade/curso**
   (ex.: partir do Integrado PROEJA e adaptar para o Subsequente). O clone copia o
-  cabeçalho, o período, as metas de dias letivos, os **feriados** e os **eventos**, e a
-  cópia nasce como **etapa** (não é final). Informe o **nome da nova versão** e, se
-  quiser, troque a **modalidade** e o **curso**; o botão *Clonar e editar* abre a nova
-  versão no editor. É um **POST de formulário** para `/versoes/clonar/` (funciona sem
-  JavaScript) e **não** aparece no site estático. A API `POST /api/clonar/` segue
-  disponível para integrações.
+  cabeçalho, o período, as metas de dias letivos, os **feriados** e os **eventos**.
+  Informe o **nome da nova versão** e, se quiser, troque a **modalidade** e o **curso**;
+  o botão *Clonar e editar* abre a nova versão no editor. É um **POST de formulário**
+  para `/versoes/clonar/` (funciona sem JavaScript) e **não** aparece no site estático.
+  A API `POST /api/clonar/` segue disponível para integrações.
 
 ## Publicação (GitHub Pages)
 
@@ -225,11 +226,9 @@ python manage.py seed_feriados --versao 2026.1.final
 > Como o `build/` é commitado com caminhos absolutos, se o nome do repositório
 > mudar rode `make publicar PAGES_BASE=/novo-nome/` para regerar com a base certa.
 >
-> Após **excluir** uma versão, rode `make gerar` (ou `make publicar`) para o `build/`
-> deixar de conter o HTML da versão removida — o gerador recria a pasta do zero.
->
-> Após **clonar** uma versão, a cópia é uma *etapa* — rode `make gerar` só quando ela
-> virar final (ou para publicá-la em `versoes/<slug>/`).
+> Após **excluir** ou **clonar** uma versão, rode `make gerar` (ou `make publicar`)
+> para o `build/` refletir a lista atual — o gerador recria a pasta do zero e publica
+> **todas** as versões em `versoes/<slug>/`.
 
 ## Testes
 
@@ -240,9 +239,9 @@ python manage.py test
 A suíte cobre o **algoritmo** (semana/feriados/remanejamento/validação), a
 **agenda do documento** (status por dia, dias letivos por mês, sábados letivos e
 validação de 100 dias), os **feriados nacionais** (Páscoa e feriados móveis), a
-**API** (preview/salvar/eventos/clonar), a **clonagem de versão** (cópia de
-parâmetros, feriados e eventos; nome único; não herda *final*), o **seed 2026.2**,
-as **views** e o **build estático versionado**.
+**API** (preview/salvar/eventos/clonar/excluir), a **clonagem de versão** (cópia de
+parâmetros, feriados e eventos; nome único), o **índice/redirect** de versões, o
+**seed 2026.2**, as **views** e o **build estático versionado**.
 
 ## Observações
 

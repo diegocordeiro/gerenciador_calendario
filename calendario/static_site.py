@@ -2,7 +2,7 @@
 
 Usa o engine de templates do Django (sem HTTP) e links prefixados por
 ``SITE_BASE_URL``. Cada versão/etapa vira um HTML versionado em
-``build/versoes/<slug>/`` e a versão atual em ``build/calendario/``.
+``build/versoes/<slug>/`` e o índice (lista de versões) em ``build/calendario/``.
 """
 from __future__ import annotations
 
@@ -77,23 +77,27 @@ class StaticSite:
         (self.build_root / ".nojekyll").write_text("", encoding="utf-8")
 
     # ---------- páginas ----------
-    def render_home(self, atual, history):
+    def render_home(self, versoes):
         self._write(
             "index.html",
             "calendario/home.html",
-            self._ctx(
-                atual=atual,
-                history=history,
-                etapas_total=len(history) + (1 if atual else 0),
-                active="inicio",
-            ),
+            self._ctx(versoes=versoes, active="inicio"),
         )
 
-    def render_versoes(self, atual, history):
+    def render_indice(self, versoes):
+        """Índice do calendário em ``calendario/`` — lista todas as versões."""
+        self._write(
+            "calendario/index.html",
+            "calendario/indice.html",
+            self._ctx(versoes=versoes, active="calendario"),
+        )
+
+    def render_redirect_versoes(self):
+        """``versoes/index.html`` redireciona para o índice (o Pages não faz 301)."""
         self._write(
             "versoes/index.html",
-            "calendario/versoes.html",
-            self._ctx(atual=atual, history=history, active="versoes"),
+            "calendario/redirect.html",
+            self._ctx(destino="../calendario/"),
         )
 
     def render_calendario(self, cal, prefix=""):

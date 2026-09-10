@@ -151,7 +151,6 @@ def _payload(**extra):
         "total_semanas": 18,
         "semanas_primeira_parte": 9,
         "etapa": 1,
-        "final": False,
         "observacoes": "",
         "feriados": [
             {"data": "2026-10-12", "descricao": "N. S. Aparecida", "origem": "nacional"}
@@ -174,21 +173,17 @@ class ApiTests(TestCase):
         self.assertTrue(dados["valido"])
         self.assertEqual(dados["w"], 19)
 
-    def test_salvar_e_promover_a_final(self):
-        resposta = self.post("api_salvar", _payload(final=True))
+    def test_salvar_versao(self):
+        resposta = self.post("api_salvar", _payload())
         self.assertEqual(resposta.status_code, 200)
         self.assertTrue(resposta.json()["ok"])
         cal = Calendario.objects.get(versao="2026.1.etapa1")
-        self.assertTrue(cal.final)
-        self.assertTrue(cal.atual)
-        self.assertEqual(cal.status, "final")
         self.assertEqual(cal.feriados.count(), 1)
+        self.assertEqual(cal.etapa, 1)
 
-        # Uma nova versão final rebaixa a anterior.
-        self.post("api_salvar", _payload(versao="2026.1.etapa2", etapa=2, final=True))
-        cal.refresh_from_db()
-        self.assertFalse(cal.final)
-        self.assertTrue(Calendario.objects.get(versao="2026.1.etapa2").final)
+        # Salvar uma segunda versão não altera a primeira.
+        self.post("api_salvar", _payload(versao="2026.1.etapa2", etapa=2))
+        self.assertEqual(Calendario.objects.count(), 2)
 
     def test_salvar_remove_feriado_retirado(self):
         self.post("api_salvar", _payload())
@@ -236,9 +231,6 @@ class ViewsTests(TestCase):
             total_semanas=18,
             semanas_primeira_parte=9,
             etapa=1,
-            final=True,
-            atual=True,
-            status="final",
         )
         Feriado.objects.create(
             calendario=cls.cal, data=dt.date(2026, 10, 12), descricao="Padroeira"
@@ -254,8 +246,8 @@ class ViewsTests(TestCase):
         self.assertContains(resp, "Montagem do calendário")
         self.assertContains(resp, "window.CAL_BASE")
 
-    def test_versoes_mostra_opcao_excluir(self):
-        resp = self.client.get(reverse("versoes"))
+    def test_indice_mostra_opcao_excluir(self):
+        resp = self.client.get(reverse("indice"))
         self.assertContains(resp, "btn-excluir")
         self.assertContains(resp, "versoes/excluir/")
         self.assertContains(resp, "csrfmiddlewaretoken")
@@ -265,8 +257,18 @@ class ViewsTests(TestCase):
         self.assertContains(resp, "btn-excluir")
         self.assertContains(resp, 'name="destino" value="editor"')
 
-    def test_calendario_atual(self):
-        resp = self.client.get(reverse("calendario_atual"))
+    def test_indice_lista_versoes(self):
+        resp = self.client.get(reverse("indice"))
+        self.assertContains(resp, "Calendário acadêmico")
+        self.assertContains(resp, self.cal.versao)
+
+    def test_versoes_redireciona_para_indice(self):
+        self.assertRedirects(self.client.get(reverse("versoes")), reverse("indice"))
+
+    def test_documento_versionado(self):
+        resp = self.client.get(
+            reverse("calendario_versionado", kwargs={"slug": self.cal.slug})
+        )
         self.assertContains(resp, "doc-mes-grid")
         self.assertContains(resp, "data-print-pdf")
 
@@ -296,9 +298,9 @@ class ExcluirVersaoFormTests(TestCase):
 
     def test_excluir_via_formulario(self):
         resp = self.client.post(
-            reverse("excluir_versao"), {"versao": self.cal.versao, "destino": "versoes"}
+            reverse("excluir_versao"), {"versao": self.cal.versao, "destino": "calendario"}
         )
-        self.assertRedirects(resp, reverse("versoes"))
+        self.assertRedirects(resp, reverse("indice"))
         self.assertFalse(Calendario.objects.filter(versao=self.cal.versao).exists())
         # A exclusão é em cascata: os feriados da versão também saem.
         self.assertEqual(Feriado.objects.count(), 0)
@@ -311,12 +313,12 @@ class ExcluirVersaoFormTests(TestCase):
         )
         self.assertContains(resp, "não encontrada")
 
-    def test_destino_invalido_cai_para_versoes(self):
+    def test_destino_invalido_cai_para_o_indice(self):
         resp = self.client.post(
             reverse("excluir_versao"),
             {"versao": self.cal.versao, "destino": "https://exemplo.com/"},
         )
-        self.assertRedirects(resp, reverse("versoes"))
+        self.assertRedirects(resp, reverse("indice"))
 
     def test_get_nao_permitido(self):
         self.assertEqual(self.client.get(reverse("excluir_versao")).status_code, 405)
@@ -330,13 +332,13 @@ class ExcluirVersaoFormTests(TestCase):
         )
 
         # Com o token que o próprio formulário renderiza, funciona.
-        pagina = cliente.get(reverse("versoes")).content.decode()
+        pagina = cliente.get(reverse("indice")).content.decode()
         token = re.search(r'name="csrfmiddlewaretoken" value="([^"]+)"', pagina).group(1)
         resp = cliente.post(
             reverse("excluir_versao"),
             {
                 "versao": self.cal.versao,
-                "destino": "versoes",
+                "destino": "calendario",
                 "csrfmiddlewaretoken": token,
             },
         )
@@ -355,9 +357,6 @@ class BuildTests(TestCase):
             total_semanas=18,
             semanas_primeira_parte=9,
             etapa=3,
-            final=True,
-            atual=True,
-            status="final",
         )
         Feriado.objects.create(
             calendario=cls.final, data=dt.date(2026, 10, 12), descricao="Padroeira"
@@ -395,28 +394,32 @@ class BuildTests(TestCase):
         self.assertIn("/repo/static/css/main.css", html)
 
     def test_impressao_e_sem_editor_no_build(self):
-        html = self._html("calendario", "index.html")
+        html = self._html("versoes", self.final.slug, "index.html")
         self.assertIn("data-print-pdf", html)
         self.assertIn("print-head", html)
         self.assertIn("Exportar PDF", html)
         # O editor não é publicado no site estático.
         self.assertNotIn('href="/repo/editor/"', html)
 
-    def test_historico_lista_etapas(self):
-        html = self._html("versoes", "index.html")
+    def test_indice_lista_versoes(self):
+        html = self._html("calendario", "index.html")
         self.assertIn("2026.1.final", html)
         self.assertIn("2026.1.etapa1", html)
 
+    def test_versoes_redireciona_no_build(self):
+        html = self._html("versoes", "index.html")
+        self.assertIn("url=../calendario/", html)
+
     def test_build_sem_opcao_excluir(self):
         # O site estático não expõe a ação de excluir (não há API/banco no Pages).
-        html = self._html("versoes", "index.html")
+        html = self._html("calendario", "index.html")
         self.assertNotIn("btn-excluir", html)
         self.assertNotIn("csrfmiddlewaretoken", html)
         self.assertNotIn(">Ações<", html)
 
     def test_documento_no_build(self):
         # A página publicada traz o documento oficial (grades mensais, eventos, legenda).
-        html = self._html("calendario", "index.html")
+        html = self._html("versoes", self.final.slug, "index.html")
         self.assertIn("Calendário mensal", html)
         self.assertIn("doc-mes", html)
         self.assertIn("doc-table-eventos", html)
@@ -513,8 +516,6 @@ class Seed20262Tests(TestCase):
     def test_seed_cria_calendario_com_100_dias(self):
         call_command("seed_calendario_2026_2", verbosity=0)
         cal = Calendario.objects.get(versao="2026.2.final")
-        self.assertTrue(cal.final)
-        self.assertTrue(cal.atual)
         self.assertEqual(cal.curso, "Cursos Técnico em Administração")
         self.assertEqual(cal.dias_letivos_previstos, 100)
         self.assertEqual(cal.feriados.count(), 12)
@@ -684,8 +685,14 @@ class DocumentoViewTests(TestCase):
     def setUpTestData(cls):
         call_command("seed_calendario_2026_2", verbosity=0)
 
-    def test_calendario_atual_renderiza_documento(self):
-        resp = self.client.get(reverse("calendario_atual"))
+    def _doc(self):
+        cal = Calendario.objects.get(versao="2026.2.final")
+        return self.client.get(
+            reverse("calendario_versionado", kwargs={"slug": cal.slug})
+        )
+
+    def test_documento_renderiza_documento(self):
+        resp = self._doc()
         self.assertEqual(resp.status_code, 200)
         for trecho in (
             "CALENDÁRIO ACADÊMICO 2026.2",
@@ -700,10 +707,10 @@ class DocumentoViewTests(TestCase):
         ):
             self.assertContains(resp, trecho)
 
-    def test_calendario_atual_tem_tooltip_nos_dias(self):
+    def test_documento_tem_tooltip_nos_dias(self):
         # Os dias das grades levam "data-tip" (tooltip próprio, igual ao da prévia
         # do editor) com data, status e eventos — sem o "title" nativo.
-        resp = self.client.get(reverse("calendario_atual"))
+        resp = self._doc()
         self.assertContains(resp, 'data-tip="')
         self.assertContains(resp, "js/documento.js")
         self.assertNotContains(resp, 'title="Dia letivo"')
@@ -719,7 +726,7 @@ class DocumentoViewTests(TestCase):
     def test_sem_grade_de_semanas(self):
         # A grade x1/x2 (reposição) não é publicada no documento — fica só na
         # prévia do editor. A legenda do calendário mensal continua na página.
-        resp = self.client.get(reverse("calendario_atual"))
+        resp = self._doc()
         for trecho in (
             "Grade de semanas (reposição)",
             "cal-table",
@@ -830,7 +837,7 @@ class DocumentoViewTests(TestCase):
 
     def test_documento_lista_sabados_letivos(self):
         # Sem a grade x1/x2, os sábados letivos continuam no documento (lista própria).
-        resp = self.client.get(reverse("calendario_atual"))
+        resp = self._doc()
         self.assertContains(resp, "Sábados letivos")
         # 19/09/2026 é um dos sábados letivos do 2026.2.
         self.assertContains(resp, "19/09")
@@ -941,9 +948,6 @@ class ClonarVersaoTests(TestCase):
             dias_letivos_previstos=100,
             dias_letivos_por_mes=[{"mes": "SET/2026", "letivos": 13}],
             etapa=1,
-            status="final",
-            final=True,
-            atual=True,
             observacoes="Base do integrado.",
         )
 
@@ -993,15 +997,13 @@ class ClonarVersaoTests(TestCase):
         self.assertEqual(self.cal.feriados.count(), 1)
         self.assertEqual(self.cal.eventos.count(), 2)
 
-    def test_clonar_nao_herda_final(self):
+    def test_clonar_cria_versao_independente(self):
         novo = self.cal.clonar("2026.2.copia")
-        self.assertFalse(novo.final)
-        self.assertFalse(novo.atual)
-        self.assertEqual(novo.status, "etapa")
-        # A origem continua final/atual.
+        self.assertEqual(novo.versao, "2026.2.copia")
+        self.assertEqual(Calendario.objects.count(), 2)
+        # A origem permanece intacta.
         self.cal.refresh_from_db()
-        self.assertTrue(self.cal.final)
-        self.assertTrue(self.cal.atual)
+        self.assertEqual(self.cal.versao, "2026.2.integrado")
 
     def test_clonar_nome_repetido_falha(self):
         with self.assertRaises(ValidationError):
@@ -1111,8 +1113,8 @@ class ClonarVersaoTests(TestCase):
         self.assertFalse(resp.json()["ok"])
 
     # ---- página ----
-    def test_versoes_tem_painel_de_clone(self):
-        resp = self.client.get(reverse("versoes"))
+    def test_indice_tem_painel_de_clone(self):
+        resp = self.client.get(reverse("indice"))
         self.assertContains(resp, "versoes/clonar/")
         self.assertContains(resp, "Clonar uma versão")
         self.assertContains(resp, 'name="nova_versao"')

@@ -1,63 +1,45 @@
 {% extends "calendario/base.html" %}
-{% block title %}Versões — {{ site_title }}{% endblock %}
+{% block title %}Calendário acadêmico — versões — {{ site_title }}{% endblock %}
 {% block content %}
-  <h1>Versões do calendário acadêmico</h1>
-  <p>Confira cada etapa da produção do calendário e a versão final publicada.</p>
+  <h1>Calendário acadêmico</h1>
+  <p>
+    Todas as versões cadastradas são publicadas com o documento completo. Escolha
+    uma abaixo para abrir.
+  </p>
   {% comment %}
-    A exclusão é um POST de formulário (funciona até sem JavaScript). No site
+    As ações são POST de formulário (funcionam até sem JavaScript). No site
     estático não há API nem banco, então estes controles não são publicados.
   {% endcomment %}
   <table class="versions-table">
     <thead>
       <tr>
-        <th>Versão</th><th>Período</th><th>Etapa</th><th>Início</th><th>Status</th>
+        <th>Versão</th><th>Período</th><th>Curso</th><th>Início</th><th>Etapa</th>
         {% if not static_build %}<th>Ações</th>{% endif %}
       </tr>
     </thead>
     <tbody>
-      {% if atual %}
-      <tr>
-        <td><a href="{{ base }}calendario/">{{ atual.versao }}</a></td>
-        <td>{{ atual.periodo|default:"—" }}</td>
-        <td>{{ atual.etapa }}</td>
-        <td>{{ atual.data_inicio|date:"d/m/Y" }}</td>
-        <td><span class="version-chip atual">final</span></td>
-        {% if not static_build %}
-        <td class="actions-cell">
-          <form class="inline-form" method="post" action="{{ base }}versoes/excluir/"
-                onsubmit="return confirm('Excluir a versão {{ atual.versao|escapejs }}? Esta ação não pode ser desfeita.');">
-            {% csrf_token %}
-            <input type="hidden" name="versao" value="{{ atual.versao }}">
-            <input type="hidden" name="destino" value="versoes">
-            <button type="submit" class="btn-excluir">Excluir</button>
-          </form>
-        </td>
-        {% endif %}
-      </tr>
-      {% endif %}
-      {% for v in history %}
+      {% for v in versoes %}
         <tr>
           <td><a href="{{ base }}versoes/{{ v.slug }}/">{{ v.versao }}</a></td>
           <td>{{ v.periodo|default:"—" }}</td>
-          <td>{{ v.etapa }}</td>
+          <td>{{ v.curso|default:"—" }}</td>
           <td>{{ v.data_inicio|date:"d/m/Y" }}</td>
-          <td><span class="version-chip historica">etapa</span></td>
+          <td>{{ v.etapa }}</td>
           {% if not static_build %}
           <td class="actions-cell">
             <form class="inline-form" method="post" action="{{ base }}versoes/excluir/"
                   onsubmit="return confirm('Excluir a versão {{ v.versao|escapejs }}? Esta ação não pode ser desfeita.');">
               {% csrf_token %}
               <input type="hidden" name="versao" value="{{ v.versao }}">
-              <input type="hidden" name="destino" value="versoes">
+              <input type="hidden" name="destino" value="calendario">
               <button type="submit" class="btn-excluir">Excluir</button>
             </form>
           </td>
           {% endif %}
         </tr>
-      {% endfor %}
-      {% if not atual and not history %}
+      {% empty %}
         <tr><td colspan="{% if static_build %}5{% else %}6{% endif %}">Nenhuma versão cadastrada.</td></tr>
-      {% endif %}
+      {% endfor %}
     </tbody>
   </table>
 
@@ -68,8 +50,8 @@
       <strong>Como utilizar:</strong> use uma versão como <strong>base</strong> para
       elaborar o calendário de <strong>outra modalidade/curso</strong> (ex.: começar do
       calendário do Integrado PROEJA e adaptar para o Subsequente). O clone copia o
-      cabeçalho, o período, os feriados e os eventos; a nova versão nasce como
-      <em>etapa</em> (não é final) e abre no editor para você ajustar e salvar.
+      cabeçalho, o período, os feriados e os eventos; a nova versão nasce pronta para
+      editar e é publicada como as demais.
     </p>
     <form class="clone-form" method="post" action="{{ base }}versoes/clonar/">
       {% csrf_token %}
@@ -77,18 +59,15 @@
       <div class="field-row">
         <label class="field">Versão base
           <select name="versao" required>
-            {% if atual %}
-              <option value="{{ atual.versao }}">{{ atual.versao }}{% if atual.final %} — final{% endif %}</option>
-            {% endif %}
-            {% for v in history %}
-              <option value="{{ v.versao }}">{{ v.versao }} (etapa {{ v.etapa }})</option>
+            {% for v in versoes %}
+              <option value="{{ v.versao }}">{{ v.versao }}{% if v.periodo %} ({{ v.periodo }}){% endif %}</option>
             {% endfor %}
           </select>
           <small class="field-hint">Versão que servirá de base para a cópia.</small>
         </label>
         <label class="field">Nova versão
           <input type="text" name="nova_versao" placeholder="ex.: 2026.2.subsequente" autocomplete="off" required>
-          <small class="field-hint">Identificador único da nova etapa (não pode repetir).</small>
+          <small class="field-hint">Identificador único da nova versão (não pode repetir).</small>
         </label>
       </div>
       <div class="field-row">

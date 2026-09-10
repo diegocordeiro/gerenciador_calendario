@@ -20,12 +20,6 @@ from .slug import versao_slug
 class Calendario(models.Model):
     """Uma versão/etapa do calendário acadêmico."""
 
-    STATUS_CHOICES = [
-        ("rascunho", "Rascunho"),
-        ("etapa", "Etapa"),
-        ("final", "Final"),
-    ]
-
     MODALIDADE_CHOICES = [
         ("integrado", "Integrado"),
         ("integrado_proeja", "Integrado PROEJA"),
@@ -76,9 +70,6 @@ class Calendario(models.Model):
 
     # ---- Versionamento ----
     etapa = models.PositiveIntegerField("Etapa", default=1)
-    status = models.CharField("Status", max_length=20, choices=STATUS_CHOICES, default="etapa")
-    final = models.BooleanField("Versão final", default=False)
-    atual = models.BooleanField("Versão atual", default=False)
     observacoes = models.TextField("Observações", blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
@@ -140,9 +131,8 @@ class Calendario(models.Model):
         """Duplica esta versão em uma **nova etapa** (base para outra modalidade).
 
         Copia o cabeçalho, o período, as metas de dias letivos, os feriados e os
-        eventos da origem. A cópia **nunca** nasce final/atual (``status="etapa"``):
-        serve de ponto de partida para montar o calendário de outra
-        modalidade/curso, que depois é ajustado e salvo como versão final.
+        eventos da origem. Serve de ponto de partida para montar o calendário de
+        outra modalidade/curso, que depois é ajustado e salvo como uma nova versão.
 
         ``titulo``, ``curso``, ``modalidade``, ``semestre``, ``periodo`` e
         ``observacoes`` sobrescrevem os valores da origem quando informados
@@ -173,9 +163,6 @@ class Calendario(models.Model):
             dias_letivos_previstos=self.dias_letivos_previstos,
             dias_letivos_por_mes=list(self.dias_letivos_por_mes or []),
             etapa=max(1, int(etapa or 1)),
-            status="etapa",
-            final=False,
-            atual=False,
             observacoes=self.observacoes if observacoes is None else observacoes,
         )
         Feriado.objects.bulk_create(

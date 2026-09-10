@@ -168,7 +168,6 @@
     $("fSemanas").value = inicial.total_semanas || 18;
     $("fSemanas1").value = inicial.semanas_primeira_parte || 9;
     $("fEtapa").value = inicial.etapa || 1;
-    $("fFinal").checked = !!inicial.final;
     $("fObs").value = inicial.observacoes || "";
   }
 
@@ -188,7 +187,6 @@
       total_semanas: parseInt($("fSemanas").value || "0", 10),
       semanas_primeira_parte: parseInt($("fSemanas1").value || "0", 10),
       etapa: parseInt($("fEtapa").value || "1", 10),
-      final: $("fFinal").checked,
       observacoes: $("fObs").value,
       feriados: state.feriados,
       eventos: state.eventos
@@ -834,15 +832,11 @@
   }
 
   // ---- Salvar / nova versão ---------------------------------------------
-  function salvar(marcarFinal) {
-    if (marcarFinal) $("fFinal").checked = true;
+  function salvar() {
     postJSON(BASE + "api/salvar/", payload())
       .then(function (res) {
         if (res && res.ok) {
-          msg(
-            "Versão " + res.versao + " salva" + (res.final ? " como final/publicável" : "") + ".",
-            "ok"
-          );
+          msg("Versão " + res.versao + " salva.", "ok");
           if (res.dados) renderPreview(res.dados);
         } else {
           msg(((res && res.erros) || ["Erro ao salvar."]).join(" "), "erro");
@@ -959,12 +953,7 @@
   $("btnAddEvento").addEventListener("click", salvarEvento);
   $("btnCancelarEvento").addEventListener("click", cancelarEdicaoEvento);
   $("btnNacionais").addEventListener("click", carregarNacionais);
-  $("btnSalvar").addEventListener("click", function () {
-    salvar(false);
-  });
-  $("btnFinal").addEventListener("click", function () {
-    salvar(true);
-  });
+  $("btnSalvar").addEventListener("click", salvar);
   $("btnNovo").addEventListener("click", novaVersao);
 
   if ($("fInicio").value) preview();

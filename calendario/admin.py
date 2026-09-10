@@ -42,11 +42,8 @@ class CalendarioAdmin(admin.ModelAdmin):
         "total_semanas",
         "semanas_primeira_parte",
         "etapa",
-        "status",
-        "final",
-        "atual",
     )
-    list_filter = ("status", "final", "atual", "periodo", "modalidade")
+    list_filter = ("periodo", "modalidade")
     search_fields = ("versao", "titulo", "curso", "observacoes")
     inlines = [EventoInline, FeriadoInline]
     fieldsets = (
@@ -58,9 +55,6 @@ class CalendarioAdmin(admin.ModelAdmin):
                     "titulo",
                     "periodo",
                     "etapa",
-                    "status",
-                    "final",
-                    "atual",
                 )
             },
         ),

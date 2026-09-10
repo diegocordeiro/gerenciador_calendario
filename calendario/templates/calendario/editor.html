@@ -30,7 +30,6 @@
         {% for e in etapas %}
           <li>
             <a href="?versao={{ e.slug }}">{{ e.versao }}</a>
-            {% if e.final %}<span class="version-chip atual">final</span>{% endif %}
             <span class="muted">{{ e.data_inicio|date:"d/m/Y" }} • etapa {{ e.etapa }}</span>
             <form class="inline-form" method="post" action="{{ base }}versoes/excluir/"
                   onsubmit="return confirm('Excluir a versão {{ e.versao|escapejs }}? Esta ação não pode ser desfeita.');">
@@ -116,20 +115,13 @@
             <small class="field-hint">Quantas semanas ficam na 1ª parte; o restante vira reposição (padrão: 9).</small>
           </label>
         </div>
-        <label class="field field-inline">
-          <input type="checkbox" id="fFinal"> Marcar como versão final (publicável)
-        </label>
-        <p class="field-hint field-hint-inline">
-          A versão final é a publicada como atual; apenas uma pode ser final.
-        </p>
         <label class="field">Observações
           <textarea id="fObs" rows="2" placeholder="Anotações desta etapa…"></textarea>
           <small class="field-hint">Aparecem no documento publicado, na seção “Observações”.</small>
         </label>
       </form>
       <div class="editor-actions">
-        <button id="btnSalvar" class="button button-primary" type="button">Salvar etapa</button>
-        <button id="btnFinal" class="button" type="button">Salvar como final</button>
+        <button id="btnSalvar" class="button button-primary" type="button">Salvar versão</button>
         <button id="btnNovo" class="button" type="button">Nova versão</button>
       </div>
       <div id="editorMsg" class="editor-msg" role="status"></div>
