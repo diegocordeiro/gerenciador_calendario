@@ -198,6 +198,15 @@ python manage.py seed_feriados --versao 2026.1.final
   versão do banco — e os feriados dela, em cascata — e volta para a listagem com uma
   mensagem de retorno. A ação é **permanente** e **não** aparece no site estático (o
   Pages não tem banco). A API `POST /api/excluir/` segue disponível para integrações.
+- **Clonar versões** — o painel **“Clonar uma versão”** em `/versoes/` usa uma versão
+  existente como **base** para elaborar o calendário de **outra modalidade/curso**
+  (ex.: partir do Integrado PROEJA e adaptar para o Subsequente). O clone copia o
+  cabeçalho, o período, as metas de dias letivos, os **feriados** e os **eventos**, e a
+  cópia nasce como **etapa** (não é final). Informe o **nome da nova versão** e, se
+  quiser, troque a **modalidade** e o **curso**; o botão *Clonar e editar* abre a nova
+  versão no editor. É um **POST de formulário** para `/versoes/clonar/` (funciona sem
+  JavaScript) e **não** aparece no site estático. A API `POST /api/clonar/` segue
+  disponível para integrações.
 
 ## Publicação (GitHub Pages)
 
@@ -218,6 +227,9 @@ python manage.py seed_feriados --versao 2026.1.final
 >
 > Após **excluir** uma versão, rode `make gerar` (ou `make publicar`) para o `build/`
 > deixar de conter o HTML da versão removida — o gerador recria a pasta do zero.
+>
+> Após **clonar** uma versão, a cópia é uma *etapa* — rode `make gerar` só quando ela
+> virar final (ou para publicá-la em `versoes/<slug>/`).
 
 ## Testes
 
@@ -228,8 +240,9 @@ python manage.py test
 A suíte cobre o **algoritmo** (semana/feriados/remanejamento/validação), a
 **agenda do documento** (status por dia, dias letivos por mês, sábados letivos e
 validação de 100 dias), os **feriados nacionais** (Páscoa e feriados móveis), a
-**API** (preview/salvar/eventos), o **seed 2026.2**, as **views** e o **build
-estático versionado**.
+**API** (preview/salvar/eventos/clonar), a **clonagem de versão** (cópia de
+parâmetros, feriados e eventos; nome único; não herda *final*), o **seed 2026.2**,
+as **views** e o **build estático versionado**.
 
 ## Observações
 

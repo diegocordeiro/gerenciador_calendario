@@ -60,4 +60,56 @@
       {% endif %}
     </tbody>
   </table>
+
+  {% if not static_build %}
+  <section class="panel clone-panel">
+    <h2>Clonar uma versão</h2>
+    <p class="editor-help">
+      <strong>Como utilizar:</strong> use uma versão como <strong>base</strong> para
+      elaborar o calendário de <strong>outra modalidade/curso</strong> (ex.: começar do
+      calendário do Integrado PROEJA e adaptar para o Subsequente). O clone copia o
+      cabeçalho, o período, os feriados e os eventos; a nova versão nasce como
+      <em>etapa</em> (não é final) e abre no editor para você ajustar e salvar.
+    </p>
+    <form class="clone-form" method="post" action="{{ base }}versoes/clonar/">
+      {% csrf_token %}
+      <input type="hidden" name="destino" value="editor">
+      <div class="field-row">
+        <label class="field">Versão base
+          <select name="versao" required>
+            {% if atual %}
+              <option value="{{ atual.versao }}">{{ atual.versao }}{% if atual.final %} — final{% endif %}</option>
+            {% endif %}
+            {% for v in history %}
+              <option value="{{ v.versao }}">{{ v.versao }} (etapa {{ v.etapa }})</option>
+            {% endfor %}
+          </select>
+          <small class="field-hint">Versão que servirá de base para a cópia.</small>
+        </label>
+        <label class="field">Nova versão
+          <input type="text" name="nova_versao" placeholder="ex.: 2026.2.subsequente" autocomplete="off" required>
+          <small class="field-hint">Identificador único da nova etapa (não pode repetir).</small>
+        </label>
+      </div>
+      <div class="field-row">
+        <label class="field">Modalidade
+          <select name="modalidade">
+            <option value="">Manter a da versão base</option>
+            {% for m in modalidades %}
+              <option value="{{ m.valor }}">{{ m.label }}</option>
+            {% endfor %}
+          </select>
+          <small class="field-hint">Troque aqui para gerar o calendário de outra modalidade.</small>
+        </label>
+        <label class="field">Curso
+          <input type="text" name="curso" placeholder="ex.: Técnico em Administração" autocomplete="off">
+          <small class="field-hint">Deixe em branco para manter o curso da versão base.</small>
+        </label>
+      </div>
+      <div class="editor-actions">
+        <button type="submit" class="button button-primary">Clonar e editar</button>
+      </div>
+    </form>
+  </section>
+  {% endif %}
 {% endblock %}

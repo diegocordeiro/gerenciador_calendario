@@ -9,6 +9,9 @@ composto por **eventos** (matrículas, avaliações, recessos, sábados letivos�
 e por **feriados/pontos facultativos** — representados por :class:`Evento` e
 :class:`Feriado`.
 """
+from __future__ import annotations
+
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from .slug import versao_slug
@@ -121,6 +124,88 @@ class Calendario(models.Model):
             dias_letivos_previstos=self.dias_letivos_previstos,
             dias_letivos_por_mes=self.dias_letivos_por_mes,
         )
+
+    def clonar(
+        self,
+        versao: str,
+        *,
+        titulo: str | None = None,
+        curso: str | None = None,
+        modalidade: str | None = None,
+        semestre: str | None = None,
+        periodo: str | None = None,
+        etapa: int = 1,
+        observacoes: str | None = None,
+    ) -> "Calendario":
+        """Duplica esta versão em uma **nova etapa** (base para outra modalidade).
+
+        Copia o cabeçalho, o período, as metas de dias letivos, os feriados e os
+        eventos da origem. A cópia **nunca** nasce final/atual (``status="etapa"``):
+        serve de ponto de partida para montar o calendário de outra
+        modalidade/curso, que depois é ajustado e salvo como versão final.
+
+        ``titulo``, ``curso``, ``modalidade``, ``semestre``, ``periodo`` e
+        ``observacoes`` sobrescrevem os valores da origem quando informados
+        (``None`` mantém o valor original).
+        """
+        versao = (versao or "").strip()
+        if not versao:
+            raise ValidationError("Informe o nome da nova versão.")
+        if versao == self.versao:
+            raise ValidationError(
+                "A nova versão precisa ter um nome diferente da versão de origem."
+            )
+        if Calendario.objects.filter(versao__iexact=versao).exists():
+            raise ValidationError(f'A versão "{versao}" já existe.')
+
+        novo = Calendario.objects.create(
+            versao=versao,
+            titulo=self.titulo if titulo is None else titulo,
+            periodo=self.periodo if periodo is None else periodo,
+            instituicao=self.instituicao,
+            curso=self.curso if curso is None else curso,
+            modalidade=self.modalidade if modalidade is None else modalidade,
+            semestre=self.semestre if semestre is None else semestre,
+            data_inicio=self.data_inicio,
+            data_fim=self.data_fim,
+            total_semanas=self.total_semanas,
+            semanas_primeira_parte=self.semanas_primeira_parte,
+            dias_letivos_previstos=self.dias_letivos_previstos,
+            dias_letivos_por_mes=list(self.dias_letivos_por_mes or []),
+            etapa=max(1, int(etapa or 1)),
+            status="etapa",
+            final=False,
+            atual=False,
+            observacoes=self.observacoes if observacoes is None else observacoes,
+        )
+        Feriado.objects.bulk_create(
+            [
+                Feriado(
+                    calendario=novo,
+                    data=f.data,
+                    descricao=f.descricao,
+                    origem=f.origem,
+                    tipo=f.tipo,
+                )
+                for f in self.feriados.all()
+            ]
+        )
+        Evento.objects.bulk_create(
+            [
+                Evento(
+                    calendario=novo,
+                    titulo=e.titulo,
+                    tipo=e.tipo,
+                    data_inicio=e.data_inicio,
+                    data_fim=e.data_fim,
+                    dia_semana_referencia=e.dia_semana_referencia,
+                    descricao=e.descricao,
+                    destaque=e.destaque,
+                )
+                for e in self.eventos.all()
+            ]
+        )
+        return novo
 
     def __str__(self) -> str:
         return self.versao

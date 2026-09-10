@@ -10,8 +10,10 @@ import json
 
 from django.conf import settings
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from .agenda import build_agenda
@@ -59,7 +61,14 @@ def versoes(request):
     return render(
         request,
         "calendario/versoes.html",
-        {"atual": atual, "history": _history(atual.id if atual else None)},
+        {
+            "atual": atual,
+            "history": _history(atual.id if atual else None),
+            "modalidades": [
+                {"valor": v, "label": lbl} for v, lbl in Calendario.MODALIDADE_CHOICES
+            ],
+            "active": "versoes",
+        },
     )
 
 
@@ -266,6 +275,25 @@ def _normalizar_resumo_meses(raw) -> list[dict]:
 
 
 
+def _overrides_clone(dados) -> dict:
+    """Lê os *overrides* opcionais do clone (``None`` mantém o valor da origem)."""
+    modalidade = (dados.get("modalidade") or "").strip()
+    if modalidade and modalidade not in dict(Calendario.MODALIDADE_CHOICES):
+        modalidade = ""
+    try:
+        etapa = int(dados.get("etapa") or 0)
+    except (TypeError, ValueError):
+        etapa = 0
+    return {
+        "titulo": (dados.get("titulo") or "").strip() or None,
+        "curso": (dados.get("curso") or "").strip() or None,
+        "modalidade": modalidade or None,
+        "semestre": (dados.get("semestre") or "").strip() or None,
+        "periodo": (dados.get("periodo") or "").strip() or None,
+        "etapa": etapa if etapa > 0 else 1,
+    }
+
+
 @require_POST
 def api_preview(request):
     """Calcula a grade e a agenda no servidor e devolve o JSON para a interface."""
@@ -465,6 +493,40 @@ def api_excluir(request):
     return JsonResponse({"ok": True, "versao": versao})
 
 
+@require_POST
+def api_clonar(request):
+    """Clona uma versão/etapa (feriados e eventos) como base de outra modalidade.
+
+    POST ``{versao, nova_versao, titulo?, curso?, modalidade?, semestre?,
+    periodo?, etapa?}`` → ``{ok, versao, slug, origem, eventos}``.
+    """
+    dados = _payload(request)
+    versao = (dados.get("versao") or "").strip()
+    nova = (dados.get("nova_versao") or dados.get("versao_nova") or "").strip()
+
+    origem = Calendario.objects.filter(versao=versao).first()
+    if origem is None:
+        return JsonResponse(
+            {"ok": False, "erros": ["Versão de origem não encontrada."]}, status=404
+        )
+
+    try:
+        novo = origem.clonar(nova, **_overrides_clone(dados))
+    except ValidationError as exc:
+        return JsonResponse({"ok": False, "erros": list(exc.messages)}, status=400)
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "versao": novo.versao,
+            "slug": novo.slug,
+            "origem": origem.versao,
+            "modalidade": novo.modalidade,
+            "eventos": _eventos_para_json(novo),
+        }
+    )
+
+
 # Destinos válidos após excluir (evita redirecionamento aberto).
 _EXCLUIR_DESTINOS = {"versoes": "versoes", "editor": "editor"}
 
@@ -485,6 +547,44 @@ def excluir_versao(request):
     else:
         cal.delete()
         messages.success(request, f'Versão "{versao}" excluída.')
+    return redirect(destino)
+
+
+# Destinos válidos após clonar (evita redirecionamento aberto).
+_CLONAR_DESTINOS = {"editor": "editor", "versoes": "versoes"}
+
+
+@require_POST
+def clonar_versao(request):
+    """Clona uma versão via formulário HTML e abre o editor da cópia.
+
+    Funciona sem JavaScript (form POST + redirect PRG): o token CSRF vai no corpo
+    e o navegador recarrega a página. A nova versão nasce como *etapa* (não é
+    final) e herda feriados e eventos da origem, pronta para virar o calendário de
+    outra modalidade/curso.
+    """
+    versao = (request.POST.get("versao") or "").strip()
+    nova = (request.POST.get("nova_versao") or "").strip()
+    destino = _CLONAR_DESTINOS.get(request.POST.get("destino"), "editor")
+
+    origem = Calendario.objects.filter(versao=versao).first()
+    if origem is None:
+        messages.error(request, f'Versão "{versao}" não encontrada.')
+        return redirect("versoes")
+
+    try:
+        novo = origem.clonar(nova, **_overrides_clone(request.POST.dict()))
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages))
+        return redirect("versoes")
+
+    messages.success(
+        request,
+        f'Versão "{novo.versao}" criada a partir de "{origem.versao}" — '
+        "ajuste os dados e salve.",
+    )
+    if destino == "editor":
+        return redirect(f"{reverse('editor')}?versao={novo.slug}")
     return redirect(destino)
 
 

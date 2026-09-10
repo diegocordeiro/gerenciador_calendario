@@ -4,6 +4,7 @@ import re
 import tempfile
 from pathlib import Path
 
+from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.test import Client, TestCase
 from django.urls import reverse
@@ -919,6 +920,209 @@ class PreviewAgendaTests(TestCase):
         titulos = [i["titulo"] for i in grupos["SET/2026"]["itens"]]
         self.assertIn("Sábado letivo", titulos)
         self.assertIn("Avaliações do 1º Bimestre", titulos)
+
+
+class ClonarVersaoTests(TestCase):
+    """Clonar uma versão como base para o calendário de outra modalidade."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.cal = Calendario.objects.create(
+            versao="2026.2.integrado",
+            titulo="Calendário 2026.2 — Administração",
+            periodo="2026.2",
+            curso="Técnico em Administração",
+            modalidade="integrado_proeja",
+            semestre="2º Semestre",
+            data_inicio=dt.date(2026, 9, 14),
+            data_fim=dt.date(2027, 2, 12),
+            total_semanas=22,
+            semanas_primeira_parte=11,
+            dias_letivos_previstos=100,
+            dias_letivos_por_mes=[{"mes": "SET/2026", "letivos": 13}],
+            etapa=1,
+            status="final",
+            final=True,
+            atual=True,
+            observacoes="Base do integrado.",
+        )
+
+        Feriado.objects.create(
+            calendario=cls.cal,
+            data=dt.date(2026, 11, 20),
+            descricao="Consciência Negra",
+            origem="nacional",
+            tipo="feriado",
+        )
+        Evento.objects.create(
+            calendario=cls.cal,
+            titulo="Avaliações do 1º Bimestre",
+            tipo="avaliacao",
+            data_inicio=dt.date(2026, 11, 4),
+            data_fim=dt.date(2026, 11, 7),
+        )
+        Evento.objects.create(
+            calendario=cls.cal,
+            titulo="Sábado letivo",
+            tipo="sabado_letivo",
+            data_inicio=dt.date(2026, 11, 7),
+            dia_semana_referencia=2,
+        )
+
+    # ---- núcleo (modelo) ----
+    def test_clonar_copia_parametros_feriados_e_eventos(self):
+        novo = self.cal.clonar(
+            "2026.2.subsequente",
+            modalidade="subsequente",
+            curso="Técnico em Administração Subsequente",
+        )
+        self.assertEqual(novo.modalidade, "subsequente")
+        self.assertEqual(novo.curso, "Técnico em Administração Subsequente")
+        # Cabeçalho/período herdados.
+        self.assertEqual(novo.titulo, self.cal.titulo)
+        self.assertEqual(novo.periodo, "2026.2")
+        self.assertEqual(novo.data_inicio, self.cal.data_inicio)
+        self.assertEqual(novo.total_semanas, 22)
+        self.assertEqual(
+            novo.dias_letivos_por_mes, [{"mes": "SET/2026", "letivos": 13}]
+        )
+        # Feriados e eventos copiados.
+        self.assertEqual(novo.feriados.count(), 1)
+        self.assertEqual(novo.eventos.count(), 2)
+        # A origem permanece intacta.
+        self.assertEqual(self.cal.feriados.count(), 1)
+        self.assertEqual(self.cal.eventos.count(), 2)
+
+    def test_clonar_nao_herda_final(self):
+        novo = self.cal.clonar("2026.2.copia")
+        self.assertFalse(novo.final)
+        self.assertFalse(novo.atual)
+        self.assertEqual(novo.status, "etapa")
+        # A origem continua final/atual.
+        self.cal.refresh_from_db()
+        self.assertTrue(self.cal.final)
+        self.assertTrue(self.cal.atual)
+
+    def test_clonar_nome_repetido_falha(self):
+        with self.assertRaises(ValidationError):
+            self.cal.clonar("2026.2.integrado")
+        self.assertEqual(Calendario.objects.count(), 1)
+
+    def test_clonar_nome_vazio_falha(self):
+        with self.assertRaises(ValidationError):
+            self.cal.clonar("   ")
+
+    # ---- formulário (funciona sem JS) ----
+    def test_clonar_via_formulario_redireciona_para_editor(self):
+        resp = self.client.post(
+            reverse("clonar_versao"),
+            {
+                "versao": "2026.2.integrado",
+                "nova_versao": "2026.2.subsequente",
+                "modalidade": "subsequente",
+                "curso": "Administração Subsequente",
+                "destino": "editor",
+            },
+        )
+        novo = Calendario.objects.get(versao="2026.2.subsequente")
+        self.assertRedirects(resp, reverse("editor") + f"?versao={novo.slug}")
+        self.assertEqual(novo.modalidade, "subsequente")
+        self.assertEqual(novo.eventos.count(), 2)
+
+    def test_clonar_formulario_origem_inexistente_avisa(self):
+        resp = self.client.post(
+            reverse("clonar_versao"),
+            {"versao": "nao.existe", "nova_versao": "x", "destino": "versoes"},
+            follow=True,
+        )
+        self.assertContains(resp, "não encontrada")
+        self.assertFalse(Calendario.objects.filter(versao="x").exists())
+
+    def test_clonar_formulario_nome_igual_avisa(self):
+        resp = self.client.post(
+            reverse("clonar_versao"),
+            {"versao": "2026.2.integrado", "nova_versao": "2026.2.integrado"},
+            follow=True,
+        )
+        self.assertContains(resp, "diferente")
+        self.assertEqual(Calendario.objects.count(), 1)
+
+    def test_clonar_formulario_modalidade_invalida_mantem_base(self):
+        self.client.post(
+            reverse("clonar_versao"),
+            {
+                "versao": "2026.2.integrado",
+                "nova_versao": "2026.2.x",
+                "modalidade": "inexistente",
+                "destino": "versoes",
+            },
+        )
+        novo = Calendario.objects.get(versao="2026.2.x")
+        self.assertEqual(novo.modalidade, "integrado_proeja")
+
+    def test_clonar_get_nao_permitido(self):
+        self.assertEqual(self.client.get(reverse("clonar_versao")).status_code, 405)
+
+    def test_clonar_exige_csrf(self):
+        cliente = Client(enforce_csrf_checks=True)
+        self.assertEqual(
+            cliente.post(
+                reverse("clonar_versao"), {"versao": "2026.2.integrado"}
+            ).status_code,
+            403,
+        )
+
+    # ---- API ----
+    def test_api_clonar(self):
+        resp = self.client.post(
+            reverse("api_clonar"),
+            data=json.dumps(
+                {
+                    "versao": "2026.2.integrado",
+                    "nova_versao": "2026.2.superior",
+                    "modalidade": "superior",
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        dados = resp.json()
+        self.assertTrue(dados["ok"])
+        self.assertEqual(dados["versao"], "2026.2.superior")
+        self.assertEqual(len(dados["eventos"]), 2)
+
+    def test_api_clonar_origem_inexistente(self):
+        resp = self.client.post(
+            reverse("api_clonar"),
+            data=json.dumps({"versao": "nada", "nova_versao": "x"}),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 404)
+
+    def test_api_clonar_duplicado(self):
+        resp = self.client.post(
+            reverse("api_clonar"),
+            data=json.dumps(
+                {"versao": "2026.2.integrado", "nova_versao": "2026.2.integrado"}
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertFalse(resp.json()["ok"])
+
+    # ---- página ----
+    def test_versoes_tem_painel_de_clone(self):
+        resp = self.client.get(reverse("versoes"))
+        self.assertContains(resp, "versoes/clonar/")
+        self.assertContains(resp, "Clonar uma versão")
+        self.assertContains(resp, 'name="nova_versao"')
+        self.assertContains(resp, "Manter a da versão base")
+
+    def test_editor_carrega_versao_clonada(self):
+        novo = self.cal.clonar("2026.2.subsequente")
+        resp = self.client.get(reverse("editor") + f"?versao={novo.slug}")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "2026.2.subsequente")
 
 
 
