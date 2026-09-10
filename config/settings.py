@@ -135,7 +135,7 @@ def _normalize_base(raw):
 
 
 # Site base URL (subpath do GitHub Pages), calculado dinamicamente no CI.
-# Ex.: "/calendario_academico/" para project pages, ou "/" para user/org pages.
+# Ex.: "/gerenciador_calendario/" para project pages, ou "/" para user/org pages.
 SITE_BASE_URL = _normalize_base(os.environ.get("SITE_BASE_URL", "/"))
 SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")
 

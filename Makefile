@@ -23,7 +23,7 @@ PORT     ?= 8000
 # Base local: o site é servido na raiz do http.server.
 BASE_URL   ?= /
 # Base usada no build publicado (project pages: /nome-do-repo/).
-PAGES_BASE ?= /calendario_academico/
+PAGES_BASE ?= /gerenciador_calendario/
 
 .PHONY: ajuda configurar banco importar semear exemplo oficial gerar site ver rodar publicar testar limpar
 .PHONY: help setup migrate data render build serve dev test clean

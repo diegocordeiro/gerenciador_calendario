@@ -211,8 +211,9 @@ python manage.py seed_feriados --versao 2026.1.final
 
 ## Publicação (GitHub Pages)
 
-1. Ajuste a base do Pages no `Makefile` (`PAGES_BASE`) conforme o nome do
-   repositório (project pages → `/nome-do-repo/`).
+1. A base do Pages já está configurada no `Makefile` (`PAGES_BASE`), apontando
+   para o nome do repositório (project pages → `/nome-do-repo/`). Neste projeto:
+   `PAGES_BASE ?= /gerenciador_calendario/`.
 2. Gere e commite o build:
 
    ```bash
