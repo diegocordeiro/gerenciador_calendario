@@ -2457,6 +2457,15 @@ blockquote {
   text-align: center;
 }
 
+.doc-table-dias td,
+.doc-table-dias tfoot td {
+  text-align: center;
+}
+
+.doc-table-dias thead th {
+  text-align: center;
+}
+
 .doc-mes-cel {
   white-space: nowrap;
   background: var(--accent);

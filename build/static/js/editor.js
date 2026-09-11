@@ -544,6 +544,75 @@
     );
   }
 
+  // Tabela "Dias letivos por dia da semana" — contagem SEPARADA de cada dia
+  // útil (seg–sex) somada aos SÁBADOS LETIVOS pelo dia da semana informado no
+  // campo "Referência" (dia_semana_referencia). A meta do semestre é dividida
+  // pelos 5 dias (ex.: 100/5 = 20). Recalculada a cada prévia (dinâmica).
+  function renderResumoDias(agenda) {
+    var itens = agenda.dias_por_dia || [];
+    if (!itens.length) return "";
+    var previsto =
+      agenda.validacao && agenda.validacao.previsto ? agenda.validacao.previsto : 0;
+    var linhas = itens
+      .map(function (d) {
+        var situacao = !d.meta ? "—" : d.ok ? "OK" : "Faltam " + esc(d.falta);
+        return (
+          '<tr class="' +
+          (d.ok ? "" : "doc-dif") +
+          '"><th>' +
+          esc(d.label) +
+          "</th><td>" +
+          esc(d.seg_sex) +
+          "</td><td>" +
+          esc(d.sabados) +
+          "</td><td>" +
+          esc(d.letivos) +
+          "</td><td>" +
+          (d.meta ? esc(d.meta) : "—") +
+          "</td><td>" +
+          situacao +
+          "</td></tr>"
+        );
+      })
+      .join("");
+    var porDiaOk = !agenda.validacao || agenda.validacao.por_dia_ok !== false;
+    return (
+      "<h3>Dias letivos por dia da semana</h3>" +
+      '<p class="muted">Contagem de <strong>segunda a sexta, em separado</strong>. Os ' +
+      "<strong>sábados letivos/de reposição</strong> entram somados ao " +
+      "<strong>dia da semana do campo “Referência”</strong> do evento. A meta é " +
+      "distribuída pelos 5 dias úteis (ex.: 100/5 = 20 por dia).</p>" +
+      '<table class="doc-table doc-table-dias"><thead><tr>' +
+      "<th>Dia da semana</th><th>Seg–sex</th><th>Sábados</th><th>Total</th><th>Mínimo" +
+      (previsto ? " (" + esc(previsto) + "/5)" : "") +
+      "</th><th>Situação</th></tr></thead><tbody>" +
+      linhas +
+      '</tbody><tfoot><tr><th>Total</th><td>' +
+      esc(agenda.letivos_seg_sex) +
+      "</td><td>" +
+      esc(agenda.sabados_total) +
+      "</td><td>" +
+      esc(agenda.total_letivos) +
+      "</td><td>" +
+      (previsto ? esc(previsto) : "—") +
+      "</td><td>" +
+      (porDiaOk ? "OK" : "Abaixo da meta") +
+      "</td></tr></tfoot></table>" +
+      (agenda.sabados_sem_referencia
+        ? '<p class="muted"><strong>' +
+          esc(agenda.sabados_sem_referencia) +
+          " sábado(s) letivo(s) sem Referência — não contabilizados por dia.</strong></p>"
+        : "") +
+      '<p class="muted">Total geral do documento: <strong>' +
+      esc(agenda.total_letivos) +
+      "</strong> dias (" +
+      esc(agenda.letivos_seg_sex) +
+      " seg–sex + " +
+      esc(agenda.sabados_total) +
+      " sábados letivos).</p>"
+    );
+  }
+
   function renderEventosDoc(agenda) {
     var grupos = agenda.eventos_por_mes || [];
     if (!grupos.length) {
@@ -605,6 +674,7 @@
       renderMensalAgenda(agenda) +
       '<div class="doc-section">' +
       renderResumoDoc(agenda) +
+      renderResumoDias(agenda) +
       renderEventosDoc(agenda) +
       renderLegendaDoc(agenda) +
       "</div>";
@@ -655,6 +725,20 @@
         segSex,
         "sem sábados",
         "Dias letivos de segunda a sexta no período, sem contar os sábados letivos."
+      ) +
+      metric(
+        "Letivos por dia (seg–sex + sábados)",
+        (ag.letivos_por_dia || []).join(" / ") || "0 / 0 / 0 / 0 / 0",
+        "mínimo " + (ag.meta_por_dia || 0) + " por dia (100/5)",
+        "Contagem separada por dia da semana (Seg / Ter / Qua / Qui / Sex), somando " +
+          "os sábados letivos ao dia informado no campo Referência. " +
+          "Seg–sex: " +
+          ((ag.letivos_seg_sex_por_dia || []).join(" / ") || "0 / 0 / 0 / 0 / 0") +
+          " + sábados: " +
+          ((ag.sabados_por_dia || []).join(" / ") || "0 / 0 / 0 / 0 / 0") +
+          ". Cada dia deve ter pelo menos 100/5 = " +
+          (ag.meta_por_dia || 0) +
+          " dias letivos."
       ) +
       metric(
         "Sábados letivos",
