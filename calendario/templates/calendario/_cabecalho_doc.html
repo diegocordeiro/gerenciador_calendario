@@ -34,7 +34,7 @@
     </div>
     {% endif %}
   </dl>
-  {% if not agenda.validacao.ok %}
+  {% if not agenda.validacao.ok or not agenda.validacao.por_dia_ok %}
   <div class="cal-alert">
     <strong>Conferência dos dias letivos</strong>
     <ul>{% for a in agenda.validacao.avisos %}<li>{{ a }}</li>{% endfor %}</ul>

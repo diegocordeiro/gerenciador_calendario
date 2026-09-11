@@ -424,6 +424,8 @@ class BuildTests(TestCase):
         self.assertIn("doc-mes", html)
         self.assertIn("doc-table-eventos", html)
         self.assertIn("doc-table-resumo", html)
+        self.assertIn("doc-table-dias", html)
+        self.assertIn("Dias letivos por dia da semana", html)
         self.assertIn("doc-legenda", html)
         self.assertIn("Quantidade de dias letivos por mês", html)
         # Os dias têm tooltip próprio (data/status/eventos) também no build.
@@ -493,6 +495,55 @@ class AgendaTests(TestCase):
         self.assertFalse(divergente["validacao"]["ok"])
         self.assertTrue(divergente["validacao"]["avisos"])
 
+    def test_contagem_por_dia_da_semana_separada(self):
+        # A meta do semestre é dividida pelos 5 dias úteis: 9/5 -> 2 por dia.
+        ag = self._agenda()
+        self.assertEqual(ag["meta_por_dia"], 2)
+        # 2026-09-14(seg) a 2026-09-25(sex): seg 2, ter 2, qua 1, qui 1, sex 2.
+        self.assertEqual(ag["letivos_seg_sex_por_dia"], [2, 2, 1, 1, 2])
+        # O sábado letivo (19/09) é referente à quarta-feira (dia_semana_referencia=2).
+        self.assertEqual(ag["sabados_por_dia"], [0, 0, 1, 0, 0])
+        # Total por dia = seg–sex + sábados (pela Referência).
+        self.assertEqual(ag["letivos_por_dia"], [2, 2, 2, 1, 2])
+        self.assertEqual(len(ag["dias_por_dia"]), 5)
+        self.assertEqual(ag["dias_por_dia"][0]["label"], "Segunda-feira")
+
+        por_dia = {d["weekday"]: d for d in ag["dias_por_dia"]}
+        self.assertEqual(por_dia[2]["letivos"], 2)  # 1 seg–sex + 1 sábado
+        self.assertEqual(por_dia[2]["seg_sex"], 1)
+        self.assertEqual(por_dia[2]["sabados"], 1)
+        self.assertTrue(por_dia[2]["ok"])  # quarta: 2 >= 2
+        self.assertFalse(por_dia[3]["ok"])  # quinta: 1 < 2
+        self.assertEqual(por_dia[3]["falta"], 1)
+        self.assertFalse(ag["validacao"]["por_dia_ok"])
+        avisos = "".join(ag["validacao"]["avisos"])
+        self.assertIn("Quinta-feira: 1 dia(s) letivo(s)", avisos)
+        # A soma por dia confere com o total (seg–sex + sábados).
+        self.assertEqual(sum(ag["letivos_por_dia"]), ag["total_letivos"])
+
+    def test_sabado_sem_referencia_nao_conta_por_dia(self):
+        ag = self._agenda(
+            eventos=[
+                {
+                    "titulo": "Sábado letivo",
+                    "tipo": "sabado_letivo",
+                    "data_inicio": "2026-09-19",
+                }
+            ]
+        )
+        self.assertEqual(ag["sabados_total"], 1)
+        self.assertEqual(ag["sabados_sem_referencia"], 1)
+        self.assertEqual(ag["sabados_por_dia"], [0, 0, 0, 0, 0])
+        # Sem Referência, o sábado não é somado a nenhum dia da semana.
+        self.assertEqual(ag["letivos_por_dia"], [2, 2, 1, 1, 2])
+        self.assertIn("sem dia da semana", "".join(ag["validacao"]["avisos"]))
+
+    def test_sem_meta_por_dia_quando_sem_previsto(self):
+        ag = self._agenda(dias_letivos_previstos=0)
+        self.assertEqual(ag["meta_por_dia"], 0)
+        self.assertTrue(ag["validacao"]["por_dia_ok"])
+        self.assertTrue(all(d["ok"] for d in ag["dias_por_dia"]))
+
     def test_eventos_por_mes_e_legenda(self):
         ag = self._agenda()
         self.assertEqual(ag["eventos_por_mes"][0]["label"], "SET/2026")
@@ -530,6 +581,19 @@ class Seed20262Tests(TestCase):
         self.assertEqual(
             agenda["letivos_seg_sex"] + agenda["sabados_total"], agenda["total_letivos"]
         )
+        # Contagem por dia da semana, em separado (meta 100/5 = 20 por dia),
+        # somando os sábados letivos ao dia informado no campo Referência.
+        self.assertEqual(agenda["meta_por_dia"], 20)
+        self.assertEqual(agenda["letivos_seg_sex_por_dia"], [17, 18, 18, 18, 18])
+        self.assertEqual(agenda["sabados_por_dia"], [3, 0, 4, 2, 2])
+        self.assertEqual(agenda["letivos_por_dia"], [20, 18, 22, 20, 20])
+        self.assertEqual(agenda["sabados_sem_referencia"], 0)
+        self.assertFalse(agenda["validacao"]["por_dia_ok"])
+        self.assertEqual(
+            [d["falta"] for d in agenda["dias_por_dia"]], [0, 2, 0, 0, 0]
+        )
+        # A soma por dia confere com o total de dias letivos do documento.
+        self.assertEqual(sum(agenda["letivos_por_dia"]), agenda["total_letivos"])
         # O período vai de agosto/2026 (matrículas) a fevereiro/2027.
         labels = [m["label"] for m in agenda["meses"]]
         self.assertEqual(labels[0], "AGO/2026")
@@ -698,12 +762,14 @@ class DocumentoViewTests(TestCase):
             "CALENDÁRIO ACADÊMICO 2026.2",
             "Calendário mensal",
             "Quantidade de dias letivos por mês",
+            "Dias letivos por dia da semana",
             "Feriados e pontos facultativos",
             "Sábados letivos",
             "Legenda",
             "doc-mes",
             "doc-legenda",
             "doc-table-eventos",
+            "doc-table-dias",
         ):
             self.assertContains(resp, trecho)
 
@@ -834,6 +900,19 @@ class DocumentoViewTests(TestCase):
         self.assertIn("Dias letivos (seg–sex)", js)
         self.assertIn("Sábados letivos", js)
         self.assertIn("Total de dias letivos", js)
+
+    def test_editor_js_tabela_por_dia_da_semana(self):
+        # A elaboração traz a tabela com a contagem SEPARADA por dia da semana
+        # (seg–sex) e o mínimo de 100/5 = 20 por dia.
+        js = (
+            Path(__file__).resolve().parent.parent / "static" / "js" / "editor.js"
+        ).read_text(encoding="utf-8")
+        self.assertIn("renderResumoDias", js)
+        self.assertIn("doc-table-dias", js)
+        self.assertIn("Letivos por dia (seg–sex + sábados)", js)
+        self.assertIn("por_dia_ok", js)
+        self.assertIn("Dias letivos por dia da semana", js)
+        self.assertIn("sabados_por_dia", js)
 
     def test_documento_lista_sabados_letivos(self):
         # Sem a grade x1/x2, os sábados letivos continuam no documento (lista própria).

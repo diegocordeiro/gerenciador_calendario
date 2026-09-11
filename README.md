@@ -73,6 +73,12 @@ PROEJA`) — a **grade x1/x2 de reposição fica restrita à prévia do editor**
   não letivo;
 - **Quantidade de dias letivos por mês** (calculado × declarado no documento) e
   o **total**, usado para conferir a meta (ex.: 100 dias);
+- **Dias letivos por dia da semana** — a contagem **em separado** de segunda a
+  sexta (seg–sex + sábados) com o **mínimo de `100/5 = 20` por dia** e a situação
+  de cada dia (OK / Faltam N). Os **sábados letivos/de reposição** entram somados
+  ao **dia da semana do campo “Referência”** do evento. Também aparece na
+  **elaboração** (`/editor/`), recalculada dinamicamente a cada alteração de
+  feriado/evento, e como métrica da prévia da grade;
 - **Tabela de eventos** (`MÊS · DIA · EVENTO`): matrículas, jornada pedagógica,
   PSAD, avaliações (1º/2º bimestre e 2ª chamada), recuperação paralela, fim de
   bimestre/entrega de notas no SUAP, conselho de classe, recessos, semanas
@@ -91,6 +97,15 @@ PROEJA`) — a **grade x1/x2 de reposição fica restrita à prévia do editor**
   e avaliação final;
 - **sábado** só é letivo quando há evento *sábado letivo* / *sábado de reposição*;
 - **domingo** nunca é letivo.
+
+Além do total, os dias letivos são contados **por dia da semana, em separado**
+(segunda, terça, quarta, quinta, sexta). A meta de dias letivos do semestre é
+dividida pelos 5 dias úteis — **`100/5 = 20`** — e cada dia da semana deve
+atingir esse mínimo; os dias abaixo da meta são destacados na tabela e nos avisos
+de conferência. Os **sábados letivos/de reposição** são somados ao **dia da
+semana informado no campo “Referência”** do evento (ex.: um sábado referente à
+quarta-feira conta como uma quarta letiva), de modo que
+`Σ(seg–sex + sábados) = total de dias letivos`.
 
 > O código-fonte da regra e dos cálculos está em `calendario/agenda.py`
 > (`build_agenda`) e é coberto por testes.

@@ -102,7 +102,7 @@
           </label>
           <label class="field">Dias letivos previstos
             <input type="number" id="fPrevistos" min="0" step="1" value="0">
-            <small class="field-hint">Total exigido no semestre (ex.: 100); comparado com o calculado.</small>
+            <small class="field-hint">Meta do semestre (ex.: 100). Por dia da semana exige-se 100/5 = 20 (sábados entram pela Referência).</small>
           </label>
         </div>
         <div class="field-row">
@@ -193,7 +193,7 @@
                 <option value="{{ d.valor }}">{{ d.label }}</option>
               {% endfor %}
             </select>
-            <small class="field-hint">Use em sábados letivos/reposição (ex.: referente à quarta-feira).</small>
+            <small class="field-hint">Em sábados letivos/reposição, este é o dia da semana somado na contagem por dia (ex.: referente à quarta-feira).</small>
           </label>
         </div>
         <label class="field field-inline">

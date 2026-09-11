@@ -18,6 +18,7 @@ Regra de dia letivo (documentada e coberta por testes):
 from __future__ import annotations
 
 import datetime as dt
+import math
 
 from .scheduling import parse_date
 
@@ -32,6 +33,15 @@ NOMES_SEMANA = [
     "quarta-feira",
     "quinta-feira",
     "sexta-feira",
+]
+#: rótulo de cada dia útil (índice = ``date.weekday()``: 0=segunda … 4=sexta),
+#: usado na contagem dos dias letivos **por dia da semana**.
+DIAS_SEMANA_LABEL = [
+    "Segunda-feira",
+    "Terça-feira",
+    "Quarta-feira",
+    "Quinta-feira",
+    "Sexta-feira",
 ]
 
 #: status possíveis de um dia na agenda
@@ -164,6 +174,22 @@ def _status_dia(d: dt.date, ini: dt.date, fim: dt.date, feriados_map, eventos_po
     return STATUS_LETIVO
 
 
+def _referencia_sabado(evs) -> int | None:
+    """Dia da semana (0..4) referenciado por um sábado letivo/de reposição.
+
+    O ``Evento`` do tipo *sábado letivo* / *sábado de reposição* é somado ao dia
+    da semana informado no campo ``dia_semana_referencia`` (ex.: um sábado
+    referente à quarta-feira conta como uma **quarta letiva**).
+    """
+    for e in evs or []:
+        if e.get("tipo") not in ("sabado_letivo", "sabado_reposicao"):
+            continue
+        ref = e.get("dia_semana_referencia")
+        if ref is not None and 0 <= int(ref) < 5:
+            return int(ref)
+    return None
+
+
 def _mes(primeiro: dt.date, ini: dt.date, fim: dt.date, feriados_map, eventos_por_dia) -> dict:
     """Monta a grade de um mês (domingo primeiro), como no documento."""
     ultimo = _fim_do_mes(primeiro)
@@ -173,19 +199,29 @@ def _mes(primeiro: dt.date, ini: dt.date, fim: dt.date, feriados_map, eventos_po
 
     celulas = []
     letivos = feriados = sabados = 0
+    letivos_por_dia = [0] * 5   # letivos de segunda a sexta
+    sabados_por_dia = [0] * 5   # sábados letivos, pelo dia da semana referenciado
+    sabados_sem_referencia = 0
     d = inicio_grid
     while d <= fim_grid:
         if d.month != primeiro.month:
             celulas.append({"vazio": True})
         else:
             status = _status_dia(d, ini, fim, feriados_map, eventos_por_dia)
+            evs = eventos_por_dia.get(d, [])
             if status in STATUS_LETIVOS:
                 letivos += 1
+            if status == STATUS_LETIVO:
+                letivos_por_dia[d.weekday()] += 1
             if status == STATUS_LETIVO_SABADO:
                 sabados += 1
+                ref = _referencia_sabado(evs)
+                if ref is None:
+                    sabados_sem_referencia += 1
+                else:
+                    sabados_por_dia[ref] += 1
             if status in (STATUS_FERIADO, STATUS_PONTO):
                 feriados += 1
-            evs = eventos_por_dia.get(d, [])
             celulas.append(
                 {
                     "vazio": False,
@@ -205,6 +241,9 @@ def _mes(primeiro: dt.date, ini: dt.date, fim: dt.date, feriados_map, eventos_po
         "ano": primeiro.year,
         "mes": primeiro.month,
         "letivos": letivos,
+        "letivos_por_dia": letivos_por_dia,
+        "sabados_por_dia": sabados_por_dia,
+        "sabados_sem_referencia": sabados_sem_referencia,
         "feriados": feriados,
         "sabados": sabados,
         "semanas": [celulas[i:i + 7] for i in range(0, len(celulas), 7)],
@@ -238,6 +277,12 @@ def _vazio() -> dict:
         "resumo": [],
         "total_letivos": 0,
         "letivos_seg_sex": 0,
+        "letivos_por_dia": [0, 0, 0, 0, 0],
+        "letivos_seg_sex_por_dia": [0, 0, 0, 0, 0],
+        "sabados_por_dia": [0, 0, 0, 0, 0],
+        "sabados_sem_referencia": 0,
+        "meta_por_dia": 0,
+        "dias_por_dia": [],
         "sabados_total": 0,
         "sabados_letivos": [],
         "eventos_por_mes": [],
@@ -249,6 +294,9 @@ def _vazio() -> dict:
         "validacao": {
             "total_letivos": 0,
             "previsto": 0,
+            "letivos_seg_sex": 0,
+            "por_dia_ok": True,
+            "dias_por_dia": [],
             "diferenca": None,
             "ok": True,
             "avisos": [],
@@ -354,6 +402,36 @@ def build_agenda(
     sabados_total = sum(r["sabados"] for r in resumo)
     letivos_seg_sex = total - sabados_total
 
+    # Contagem dos dias letivos **por dia da semana, em separado**: soma os dias
+    # de segunda a sexta e **acrescenta os sábados letivos** ao dia da semana
+    # informado no campo ``Referência`` do evento (``dia_semana_referencia``).
+    # A meta do semestre dividida pelos 5 dias úteis (ex.: 100/5 = 20) define o
+    # mínimo esperado em cada dia da semana.
+    previsto = int(dias_letivos_previstos or 0)
+    letivos_seg_sex_por_dia = [
+        sum(m["letivos_por_dia"][k] for m in meses) for k in range(5)
+    ]
+    sabados_por_dia = [sum(m["sabados_por_dia"][k] for m in meses) for k in range(5)]
+    sabados_sem_referencia = sum(m["sabados_sem_referencia"] for m in meses)
+    letivos_por_dia = [
+        letivos_seg_sex_por_dia[k] + sabados_por_dia[k] for k in range(5)
+    ]
+    meta_por_dia = math.ceil(previsto / 5) if previsto else 0
+    dias_por_dia = [
+        {
+            "weekday": k,
+            "label": DIAS_SEMANA_LABEL[k],
+            "seg_sex": letivos_seg_sex_por_dia[k],
+            "sabados": sabados_por_dia[k],
+            "letivos": letivos_por_dia[k],
+            "meta": meta_por_dia,
+            "falta": max(meta_por_dia - letivos_por_dia[k], 0),
+            "ok": (meta_por_dia == 0) or letivos_por_dia[k] >= meta_por_dia,
+        }
+        for k in range(5)
+    ]
+    por_dia_ok = all(d["ok"] for d in dias_por_dia)
+
     # Tabela de eventos agrupada por mês (MÊS · DIA · EVENTO).
     eventos_por_mes = []
     for m in meses:
@@ -418,12 +496,23 @@ def build_agenda(
                     usados[st] = STATUS_LABEL.get(st, st)
     legenda = [{"status": k, "label": v} for k, v in usados.items()]
 
-    # Validação: total calculado × previsto e calculado × declarado por mês.
-    previsto = int(dias_letivos_previstos or 0)
+    # Validação: total calculado × previsto, calculado × declarado por mês e a
+    # contagem de cada dia da semana (mínimo de ``previsto/5`` por dia).
     avisos = []
     if previsto and total != previsto:
         avisos.append(
             f"Total de dias letivos calculado ({total}) difere do previsto ({previsto})."
+        )
+    for d in dias_por_dia:
+        if not d["ok"]:
+            avisos.append(
+                f"{d['label']}: {d['letivos']} dia(s) letivo(s) — mínimo "
+                f"{d['meta']} ({previsto}/5)."
+            )
+    if sabados_sem_referencia:
+        avisos.append(
+            f"{sabados_sem_referencia} sábado(s) letivo(s) sem dia da semana "
+            "referenciado (campo Referência) — não contabilizados por dia."
         )
     for r in resumo:
         if r["diferenca"]:
@@ -437,6 +526,12 @@ def build_agenda(
         "resumo": resumo,
         "total_letivos": total,
         "letivos_seg_sex": letivos_seg_sex,
+        "letivos_por_dia": letivos_por_dia,
+        "letivos_seg_sex_por_dia": letivos_seg_sex_por_dia,
+        "sabados_por_dia": sabados_por_dia,
+        "sabados_sem_referencia": sabados_sem_referencia,
+        "meta_por_dia": meta_por_dia,
+        "dias_por_dia": dias_por_dia,
         "sabados_total": sabados_total,
         "sabados_letivos": sabados,
         "eventos_por_mes": eventos_por_mes,
@@ -448,6 +543,14 @@ def build_agenda(
         "validacao": {
             "total_letivos": total,
             "previsto": previsto,
+            "letivos_seg_sex": letivos_seg_sex,
+            "letivos_por_dia": letivos_por_dia,
+            "letivos_seg_sex_por_dia": letivos_seg_sex_por_dia,
+            "sabados_por_dia": sabados_por_dia,
+            "sabados_sem_referencia": sabados_sem_referencia,
+            "meta_por_dia": meta_por_dia,
+            "por_dia_ok": por_dia_ok,
+            "dias_por_dia": dias_por_dia,
             "diferenca": (total - previsto) if previsto else None,
             "ok": (not previsto) or total == previsto,
             "avisos": avisos,

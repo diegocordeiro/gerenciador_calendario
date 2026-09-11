@@ -1,0 +1,58 @@
+<section class="doc-section" id="resumo-dias">
+  <h2>Dias letivos por dia da semana</h2>
+  <p class="muted">
+    Contagem dos dias letivos de <strong>segunda a sexta, em separado</strong>. Os
+    <strong>sábados letivos/de reposição</strong> entram no cálculo somados ao
+    <strong>dia da semana informado no campo “Referência”</strong> do evento (ex.: um sábado
+    referente à quarta-feira conta como uma quarta letiva). A meta do semestre é distribuída
+    pelos 5 dias úteis (ex.: 100/5 = 20 por dia).
+  </p>
+  <table class="doc-table doc-table-dias">
+    <thead>
+      <tr>
+        <th scope="col">Dia da semana</th>
+        <th scope="col">Seg–sex</th>
+        <th scope="col">Sábados</th>
+        <th scope="col">Total</th>
+        <th scope="col">Mínimo{% if agenda.validacao.previsto %} ({{ agenda.validacao.previsto }}/5){% endif %}</th>
+        <th scope="col">Situação</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in agenda.dias_por_dia %}
+      <tr class="{% if not d.ok %}doc-dif{% endif %}">
+        <th scope="row">{{ d.label }}</th>
+        <td>{{ d.seg_sex }}</td>
+        <td>{{ d.sabados }}</td>
+        <td>{{ d.letivos }}</td>
+        <td>{% if d.meta %}{{ d.meta }}{% else %}—{% endif %}</td>
+        <td>{% if not d.meta %}—{% elif d.ok %}OK{% else %}Faltam {{ d.falta }}{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="muted">Sem dias letivos no período informado.</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <th scope="row">Total</th>
+        <td>{{ agenda.letivos_seg_sex }}</td>
+        <td>{{ agenda.sabados_total }}</td>
+        <td>{{ agenda.total_letivos }}</td>
+        <td>{% if agenda.validacao.previsto %}{{ agenda.validacao.previsto }}{% else %}—{% endif %}</td>
+        <td>{% if agenda.validacao.por_dia_ok %}OK{% else %}Abaixo da meta{% endif %}</td>
+      </tr>
+    </tfoot>
+  </table>
+  <p class="muted">
+    Total geral do documento: <strong>{{ agenda.total_letivos }}</strong> dias
+    ({{ agenda.letivos_seg_sex }} seg–sex + {{ agenda.sabados_total }} sábados letivos).
+    {% if not agenda.validacao.por_dia_ok %}
+    <strong>Há dias da semana abaixo do mínimo de {{ agenda.meta_por_dia }}
+    ({{ agenda.validacao.previsto }}/5).</strong>
+    {% endif %}
+    {% if agenda.sabados_sem_referencia %}
+    <strong>{{ agenda.sabados_sem_referencia }} sábado(s) letivo(s) sem Referência —
+    não contabilizados por dia.</strong>
+    {% endif %}
+  </p>
+</section>
