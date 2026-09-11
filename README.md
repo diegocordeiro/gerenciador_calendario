@@ -49,29 +49,32 @@ calendario_academico/
 A raiz `/calendario/` é o **índice** (lista todas as versões). Cada versão tem sua
 página em `/versoes/<slug>/` com o **documento no formato do calendário oficial do
 campus** (`CALENDÁRIO ACADÊMICO 2026.2 — Técnico em Administração Integrado
-PROEJA`) — a **grade x1/x2 de reposição fica restrita à prévia do editor** —, com:
+PROEJA`) — a **grade x1/x2 de reposição fica restrita à prévia do editor**. A
+página é uma **folha A4 retrato** (o botão *Exportar PDF* usa a impressão do
+navegador) com o mesmo desenho na tela e no papel:
 
-- **Cabeçalho** com instituição, curso, modalidade, semestre, início, término e o
-  total de dias letivos (calculado × previsto);
-- **Grade mensal** de AGO/2026 a FEV/2027 (domingo primeiro) com o **status de
-  cada dia**: dia letivo, sábado letivo, feriado, ponto facultativo, recesso,
-  férias coletivas, jornada pedagógica, avaliação final, conselho de classe e
-  não letivo;
-- **Quantidade de dias letivos por mês** (calculado × declarado no documento) e
-  o **total**, usado para conferir a meta (ex.: 100 dias);
-- **Dias letivos por dia da semana** — a contagem **em separado** de segunda a
-  sexta (seg–sex + sábados) com o **mínimo de `100/5 = 20` por dia** e a situação
-  de cada dia (OK / Faltam N). Os **sábados letivos/de reposição** entram somados
-  ao **dia da semana do campo “Referência”** do evento. Também aparece na
-  **elaboração** (`/editor/`), recalculada dinamicamente a cada alteração de
-  feriado/evento, e como métrica da prévia da grade;
-- **Tabela de eventos** (`MÊS · DIA · EVENTO`): matrículas, jornada pedagógica,
-  PSAD, avaliações (1º/2º bimestre e 2ª chamada), recuperação paralela, fim de
-  bimestre/entrega de notas no SUAP, conselho de classe, recessos, semanas
-  temáticas e eventos institucionais;
-- **Sábados letivos** com o **dia da semana referenciado** (ex.: “referente à
-  quarta-feira”);
-- **Feriados e pontos facultativos** e a **legenda** das categorias;
+- **Cabeçalho institucional** com o **logotipo do campus** (a mesma imagem do
+  documento oficial, em `static/img/logo_doc.jpeg`), a instituição, o **Campus
+  Barras**, o título e o curso/modalidade;
+- **Quadro de identificação** em 3 colunas — `INÍCIO` · `TÉRMINO` ·
+  `QUANTIDADE DE DIAS LETIVOS` (total de dias, com o previsto ao lado) — e uma
+  linha com o período;
+- **Grade mensal** de AGO/2026 a FEV/2027 (domingo primeiro), **duas por linha**,
+  com o **quantitativo de dias letivos ao lado de cada mês** (coluna *Quant. de
+  dias letivos*: dias letivos, sábados letivos, sábados de reposição e
+  feriados/pontos) e o **status de cada dia**: dia letivo, sábado letivo, feriado,
+  ponto facultativo, recesso, férias coletivas, jornada pedagógica, avaliação
+  final, conselho de classe e não letivo;
+- **Seções numeradas**: 1. Calendário mensal · 2. Eventos (`MÊS · DIA · EVENTO`) ·
+  3. Sábados letivos (com o **dia da semana referenciado**) · 4. Feriados e pontos
+  facultativos · 5. Legenda das categorias · 6. Observações. As tabelas de
+  conferência (**dias letivos por mês** e **por dia da semana**) **não** entram no
+  documento publicado — a contagem por mês aparece ao lado de cada grade, e a
+  conferência detalhada (metas, declarado × calculado) fica no editor (`/editor/`);
+- **Impressão formal**: cabeçalho de tabela **repetido** quando a página quebra,
+  bordas finas em preto, rótulos em maiúsculas, nada de navegação/botões e um
+  **rodapé com versão/período + data e hora da geração** (o `#printDate` é
+  preenchido no clique de *Exportar PDF*);
 - **Tooltip nos dias** da grade mensal: ao passar o mouse — ou focar pelo
   teclado — aparecem a **data**, o **status** e os **eventos** do dia, sem
   depender do `title` nativo do navegador.

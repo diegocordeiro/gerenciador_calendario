@@ -1,47 +1,69 @@
 {% load filters %}
 
 <section class="doc-section" id="calendario-mensal">
-  <h2>Calendário mensal</h2>
-  <p class="muted">
+  <h2>1. Calendário mensal</h2>
+  <p class="doc-nota no-print">
     Passe o mouse (ou toque) sobre um dia para ver a <strong>data</strong>, o
     <strong>status</strong> e os <strong>eventos</strong> daquele dia.
   </p>
   <div class="doc-meses">
     {% for m in agenda.meses %}
-    <div class="doc-mes">
+    <section class="doc-mes">
       <h3 class="doc-mes-titulo">MÊS: {{ m.label }}</h3>
-      <table class="doc-mes-grid">
-        <thead>
-          <tr>
-            {% for d in agenda.dias_cabecalho %}<th scope="col">{{ d }}</th>{% endfor %}
-          </tr>
-        </thead>
-        <tbody>
-          {% for semana in m.semanas %}
-          <tr>
-            {% for c in semana %}
-              {% if c.vazio %}
-                <td class="doc-dia doc-dia-vazio"></td>
-              {% else %}
-                {% with eventos=c.eventos|join:"; " %}
-                <td class="doc-dia doc-dia-{{ c.status }}{% if c.letivo %} doc-dia-conta{% endif %}{% if c.destaque %} doc-dia-destaque{% endif %}{% if c.eventos %} doc-dia-com-evento{% endif %}"
-                    data-tip="{{ c.date|data_br }} — {{ c.status_label }}{% if eventos %} — {{ eventos }}{% endif %}"
-                    aria-label="{{ c.date|data_br }} — {{ c.status_label }}{% if eventos %} — {{ eventos }}{% endif %}">
-                  <span class="doc-dia-num">{{ c.dia }}</span>
-                </td>
-                {% endwith %}
-              {% endif %}
+      <div class="doc-mes-corpo">
+        <table class="doc-mes-grid">
+          <thead>
+            <tr>
+              {% for d in agenda.dias_cabecalho %}<th scope="col">{{ d }}</th>{% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for semana in m.semanas %}
+            <tr>
+              {% for c in semana %}
+                {% if c.vazio %}
+                  <td class="doc-dia doc-dia-vazio"></td>
+                {% else %}
+                  {% with eventos=c.eventos|join:"; " %}
+                  <td class="doc-dia doc-dia-{{ c.status }}{% if c.letivo %} doc-dia-conta{% endif %}{% if c.destaque %} doc-dia-destaque{% endif %}{% if c.eventos %} doc-dia-com-evento{% endif %}"
+                      data-tip="{{ c.date|data_br }} — {{ c.status_label }}{% if eventos %} — {{ eventos }}{% endif %}"
+                      aria-label="{{ c.date|data_br }} — {{ c.status_label }}{% if eventos %} — {{ eventos }}{% endif %}">
+                    <span class="doc-dia-num">{{ c.dia }}</span>
+                  </td>
+                  {% endwith %}
+                {% endif %}
+              {% endfor %}
+            </tr>
             {% endfor %}
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      <p class="doc-mes-resumo">
-        Dias letivos: <strong>{{ m.letivos }}</strong>
-        {% if m.sabados %} • Sábados letivos: {{ m.sabados }}{% endif %}
-        {% if m.reposicoes %} • Sábados de reposição: {{ m.reposicoes }}{% endif %}
-      </p>
-    </div>
+          </tbody>
+        </table>
+        {% comment %}
+          Quantitativo do mês ao lado da grade, como no documento oficial do campus
+          (coluna "QUANT. DE DIAS LETIVOS").
+        {% endcomment %}
+        <div class="doc-mes-quant">
+          <p class="doc-mes-quant-titulo">Quant. de dias letivos</p>
+          <p class="doc-mes-quant-linha">
+            <span>Dias letivos</span><strong>{{ m.letivos }}</strong>
+          </p>
+          {% if m.sabados %}
+          <p class="doc-mes-quant-linha">
+            <span>Sábados letivos</span><strong>{{ m.sabados }}</strong>
+          </p>
+          {% endif %}
+          {% if m.reposicoes %}
+          <p class="doc-mes-quant-linha">
+            <span>Sáb. de reposição</span><strong>{{ m.reposicoes }}</strong>
+          </p>
+          {% endif %}
+          {% if m.feriados %}
+          <p class="doc-mes-quant-linha">
+            <span>Feriados/pontos</span><strong>{{ m.feriados }}</strong>
+          </p>
+          {% endif %}
+        </div>
+      </div>
+    </section>
     {% empty %}
     <p class="muted">Informe o período para gerar o calendário mensal.</p>
     {% endfor %}

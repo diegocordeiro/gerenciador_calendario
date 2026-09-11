@@ -1,6 +1,31 @@
 from django import template
 
+import re
+
 register = template.Library()
+
+
+def _partes_instituicao(valor):
+    """Divide a instituição pelos travessões (``IFPI — Campus Barras``)."""
+    return [p.strip() for p in re.split(r"[—–-]", str(valor or "")) if p.strip()]
+
+
+@register.filter
+def sem_campus(valor):
+    """Instituição sem o campus final.
+
+    ``"… do Piauí — IFPI — Campus Barras"`` → ``"… do Piauí — IFPI"``: no cabeçalho
+    formal o campus aparece em linha própria, como no documento oficial do campus.
+    """
+    partes = _partes_instituicao(valor)
+    return " — ".join(partes[:-1]) if len(partes) > 1 else str(valor or "")
+
+
+@register.filter
+def depois_do_travessao(valor):
+    """Trecho após o último travessão (``"… — Campus Barras"`` → ``"Campus Barras"``)."""
+    partes = _partes_instituicao(valor)
+    return partes[-1] if len(partes) > 1 else ""
 
 
 @register.filter

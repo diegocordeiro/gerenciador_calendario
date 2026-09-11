@@ -1862,8 +1862,8 @@ blockquote {
 }
 
 @page {
-  size: A4 landscape;
-  margin: 8mm;
+  size: A4 portrait;
+  margin: 15mm;
 }
 
 @media print {
@@ -1919,36 +1919,7 @@ blockquote {
     min-height: 0;
   }
 
-  /* Cabeçalho impresso (título, versão e data/hora da geração). */
-  .print-head {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
-    margin: 0 0 .6rem;
-    padding-bottom: .35rem;
-    border-bottom: 2px solid var(--primary);
-  }
-
-  .print-head-main strong {
-    display: block;
-    font-size: 1.05rem;
-  }
-
-  .print-head-main span,
-  .print-head-meta {
-    font-size: .8rem;
-    color: var(--muted);
-  }
-
-  .print-head-meta {
-    text-align: right;
-  }
-
-  .print-head-meta span {
-    display: block;
-  }
+  /* O rodapé de geração (`_print_footer.html`) é tratado no bloco do documento. */
 
   /* A grade imprime sempre completa: o modo "super condensado" esconde
      linhas/colunas com display:none inline. */
@@ -3331,93 +3302,208 @@ blockquote {
 
 
 /* ===== Documento do calendário (layout oficial) ===== */
-.doc-cabecalho {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1rem 1.25rem;
-  margin-bottom: 1rem;
+/* ===== Documento do calendário (folha formal — tela e PDF) ===== */
+.site-main.doc-main {
+  width: min(1000px, 96%);
+}
+
+.doc-sheet {
   background: var(--card-bg);
-  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.6rem 1.8rem;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, .08);
+}
+
+/* Cabeçalho institucional: logotipo + identificação do documento */
+.doc-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: .8rem;
+  border-bottom: 2px solid var(--text);
+}
+
+.doc-head-marca {
+  flex: none;
+  padding: .25rem .45rem;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.doc-logo {
+  display: block;
+  height: 52px;
+  width: auto;
+}
+
+.doc-head-texto {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .doc-instituicao {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: .76rem;
+  font-weight: 700;
+  letter-spacing: .04em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+}
+
+.doc-campus {
+  margin: .1rem 0 0;
+  font-size: .82rem;
+  font-weight: 600;
   color: var(--muted);
 }
 
 .doc-titulo {
-  margin: 0.35rem 0 0.2rem;
-  font-size: 1.5rem;
+  margin: .4rem 0 .15rem;
+  font-size: 1.35rem;
+  letter-spacing: .01em;
+  text-transform: uppercase;
 }
 
 .doc-curso {
-  margin: 0 0 0.75rem;
-  font-weight: 600;
-  color: var(--primary);
-  text-transform: uppercase;
-  font-size: 0.95rem;
-}
-
-.doc-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem 1.5rem;
-  justify-content: center;
   margin: 0;
-}
-
-.doc-meta > div {
-  min-width: 120px;
-}
-
-.doc-meta dt {
-  font-size: 0.7rem;
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+}
+
+/* Quadro de identificação (INÍCIO · TÉRMINO · QUANTIDADE DE DIAS LETIVOS) */
+.doc-ident {
+  width: 100%;
+  margin: .9rem 0 0;
+  border-collapse: collapse;
+}
+
+.doc-ident th,
+.doc-ident td {
+  padding: .45rem .7rem;
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
+.doc-ident thead th {
+  background: var(--accent);
+  color: var(--muted);
+  font-size: .7rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.doc-ident td {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.doc-ident-nota {
+  display: block;
+  font-size: .7rem;
+  font-weight: 400;
   color: var(--muted);
 }
 
-.doc-meta dd {
-  margin: 0.1rem 0 0;
-  font-size: 1.05rem;
-  font-weight: 700;
+.doc-ident-obs {
+  margin: .4rem 0 0;
+  font-size: .78rem;
+  color: var(--muted);
+  text-align: center;
 }
 
 .doc-toolbar {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 0.5rem;
+  margin-bottom: .5rem;
 }
 
 .doc-section {
-  margin: 1.5rem 0;
+  margin: 1.6rem 0 0;
 }
 
 .doc-section h2 {
-  margin-bottom: 0.6rem;
+  margin: 0 0 .6rem;
+  padding-bottom: .25rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 1rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.doc-nota {
+  margin: 0 0 .6rem;
+  font-size: .8rem;
+  color: var(--muted);
 }
 
 .doc-meses {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 1rem;
 }
 
 .doc-mes {
+  padding: .55rem .6rem;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 0.6rem;
+  border-radius: 6px;
   background: var(--card-bg);
 }
 
 .doc-mes-titulo {
-  margin: 0 0 0.4rem;
-  font-size: 0.85rem;
+  margin: 0 0 .35rem;
+  padding-bottom: .2rem;
+  border-bottom: 1px solid var(--border);
+  font-size: .8rem;
+  font-weight: 700;
+  letter-spacing: .04em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+}
+
+/* Grade do mês + quantitativo de dias letivos ao lado (documento oficial) */
+.doc-mes-corpo {
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+}
+
+.doc-mes-corpo .doc-mes-grid {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.doc-mes-quant {
+  flex: 0 0 6.6rem;
+  padding: .3rem .35rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: .68rem;
+}
+
+.doc-mes-quant-titulo {
+  margin: 0 0 .2rem;
+  padding-bottom: .15rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: .6rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+
+.doc-mes-quant-linha {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .3rem;
+  margin: 0;
+  color: var(--muted);
+}
+
+.doc-mes-quant-linha strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 
 .doc-mes-grid {
@@ -3755,44 +3841,12 @@ blockquote {
 
 
 /* ===== Impressão (Exportar PDF) ===== */
-.print-head {
+/* O rodapé de geração (versão + data/hora) existe apenas no papel. */
+.print-foot {
   display: none;
 }
 
 @media print {
-  .site-header,
-  .site-footer,
-  .nav,
-  .version-banner,
-  .cal-toolbar,
-  .editor-layout,
-  .doc-tooltip,
-  .editor-tooltip,
-  .editor-msg,
-  .breadcrumb,
-  .theme-btn {
-    display: none !important;
-  }
-
-  .site-main {
-    padding: 0;
-  }
-
-  .print-head {
-    display: block;
-    margin-bottom: 8pt;
-  }
-
-  .print-head-brand {
-    font-size: 13pt;
-    font-weight: 700;
-  }
-
-  .print-head-meta {
-    font-size: 9pt;
-    color: #444;
-  }
-
   .cal-table th,
   .cal-table td {
     border: 1.2pt solid #000;
@@ -3807,11 +3861,6 @@ blockquote {
     page-break-inside: auto;
     font-size: 8pt;
   }
-
-  @page {
-    size: A4 landscape;
-    margin: 10mm;
-  }
 }
 
 /* ===== Impressão do documento do calendário ===== */
@@ -3821,20 +3870,50 @@ blockquote {
     display: none !important;
   }
 
-  .doc-cabecalho {
-    border: 1.5pt solid #000;
+  /* A folha vira a própria página: sem sombra, borda ou margem própria. */
+  .doc-sheet {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: #fff;
+    box-shadow: none;
+  }
+
+  .doc-head {
+    border-bottom: 1.5pt solid #000;
     break-inside: avoid;
   }
 
+  .doc-logo {
+    height: 12mm;
+  }
+
+  .doc-ident {
+    break-inside: avoid;
+  }
+
+  .doc-ident th,
+  .doc-ident td,
+  .doc-mes,
+  .doc-mes-titulo,
+  .doc-mes-quant,
+  .doc-mes-quant-titulo {
+    border-color: #000;
+  }
+
   .doc-meses {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6mm;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5mm;
   }
 
   .doc-mes {
     break-inside: avoid;
     border: 0.8pt solid #000;
     background: #fff;
+  }
+
+  .doc-mes-quant {
+    border-width: 0.6pt;
   }
 
   .doc-dia,
@@ -3851,12 +3930,36 @@ blockquote {
     border: 0.6pt solid #000;
   }
 
+  /* O cabeçalho das tabelas se repete quando a tabela quebra de página. */
+  .doc-table thead,
+  .doc-ident thead,
+  .doc-mes-grid thead {
+    display: table-header-group;
+  }
+
+  .doc-table tr,
+  .doc-legenda li {
+    break-inside: avoid;
+  }
+
   .doc-section {
     break-inside: auto;
   }
 
   .doc-section h2 {
     break-after: avoid;
+  }
+
+  /* Rodapé de geração (só no papel): versão/período + data/hora da exportação. */
+  .print-foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 6mm;
+    padding-top: 1.5mm;
+    border-top: 0.6pt solid #000;
+    color: #444;
+    font-size: 8pt;
   }
 }
 

@@ -1,21 +1,12 @@
 {% extends "calendario/base.html" %}
 {% block title %}{{ cal.titulo|default:cal.versao }} — {{ site_title }}{% endblock %}
+{% block main_class %} doc-main{% endblock %}
 {% block content %}
-  {% if pdf_export %}{% include "calendario/_print_head.html" %}{% endif %}
-  <nav class="breadcrumb">
+  <nav class="breadcrumb no-print">
     <a href="{{ root_base }}versoes/">Versões</a> / <span>{{ cal.versao }}</span>
   </nav>
 
-  {% include "calendario/_cabecalho_doc.html" %}
-
-  {% if dados.erros %}
-  <div class="cal-alert">
-    <strong>Ajustes necessários:</strong>
-    <ul>{% for e in dados.erros %}<li>{{ e }}</li>{% endfor %}</ul>
-  </div>
-  {% endif %}
-
-  <div class="doc-toolbar">
+  <div class="doc-toolbar no-print">
     {% if pdf_export %}
     <button class="mode-btn pdf-btn" type="button"
             data-print-pdf
@@ -24,19 +15,34 @@
     {% endif %}
   </div>
 
-  {% include "calendario/_mensal.html" %}
-  {% include "calendario/_resumo_meses.html" %}
-  {% include "calendario/_resumo_dias.html" %}
-  {% include "calendario/_tabela_eventos.html" %}
-  {% include "calendario/_tabela_feriados.html" %}
-  {% include "calendario/_legenda.html" %}
+  {% comment %}
+    A "folha" do documento: no papel vira a própria página (A4 retrato) e na tela
+    aparece como uma folha branca centralizada, com o mesmo desenho do PDF.
+  {% endcomment %}
+  <article class="doc-sheet">
+    {% include "calendario/_cabecalho_doc.html" %}
 
-  {% if cal.observacoes %}
-  <section class="panel">
-    <h2>Observações</h2>
-    <p>{{ cal.observacoes|linebreaksbr }}</p>
-  </section>
-  {% endif %}
+    {% if dados.erros %}
+    <div class="cal-alert">
+      <strong>Ajustes necessários:</strong>
+      <ul>{% for e in dados.erros %}<li>{{ e }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+
+    {% include "calendario/_mensal.html" %}
+    {% include "calendario/_tabela_eventos.html" %}
+    {% include "calendario/_tabela_feriados.html" %}
+    {% include "calendario/_legenda.html" %}
+
+    {% if cal.observacoes %}
+    <section class="doc-section">
+      <h2>6. Observações</h2>
+      <p>{{ cal.observacoes|linebreaksbr }}</p>
+    </section>
+    {% endif %}
+
+    {% if pdf_export %}{% include "calendario/_print_footer.html" %}{% endif %}
+  </article>
 {% endblock %}
 
 {% block scripts %}

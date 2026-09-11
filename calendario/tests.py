@@ -431,8 +431,11 @@ class BuildTests(TestCase):
     def test_impressao_e_sem_editor_no_build(self):
         html = self._html("versoes", self.final.slug, "index.html")
         self.assertIn("data-print-pdf", html)
-        self.assertIn("print-head", html)
+        self.assertIn("print-foot", html)
         self.assertIn("Exportar PDF", html)
+        # Cabeçalho institucional com o logotipo do campus (também no PDF).
+        self.assertIn("doc-head", html)
+        self.assertIn("img/logo_doc.jpeg", html)
         # O editor não é publicado no site estático.
         self.assertNotIn('href="/repo/editor/"', html)
 
@@ -464,14 +467,16 @@ class BuildTests(TestCase):
     def test_documento_no_build(self):
         # A página publicada traz o documento oficial (grades mensais, eventos, legenda).
         html = self._html("versoes", self.final.slug, "index.html")
-        self.assertIn("Calendário mensal", html)
+        self.assertIn("1. Calendário mensal", html)
         self.assertIn("doc-mes", html)
         self.assertIn("doc-table-eventos", html)
-        self.assertIn("doc-table-resumo", html)
-        self.assertIn("doc-table-dias", html)
-        self.assertIn("Dias letivos por dia da semana", html)
+        self.assertIn("2. Eventos", html)
         self.assertIn("doc-legenda", html)
-        self.assertIn("Quantidade de dias letivos por mês", html)
+        # As tabelas de conferência (por mês e por dia da semana) saíram da página.
+        self.assertNotIn("doc-table-resumo", html)
+        self.assertNotIn("doc-table-dias", html)
+        self.assertNotIn("Quantidade de dias letivos por mês", html)
+        self.assertNotIn("Dias letivos por dia da semana", html)
         # Os dias têm tooltip próprio (data/status/eventos) também no build.
         self.assertIn('data-tip="', html)
         self.assertIn("static/js/documento.js", html)
@@ -816,23 +821,79 @@ class DocumentoViewTests(TestCase):
             reverse("calendario_versionado", kwargs={"slug": cal.slug})
         )
 
+    def test_documento_tem_cabecalho_formal_com_logo(self):
+        # Cabeçalho institucional (logo + identificação) e a "folha" do documento,
+        # no formato do documento oficial do campus.
+        resp = self._doc()
+        html = resp.content.decode("utf-8")
+        self.assertContains(resp, 'class="doc-sheet"')
+        self.assertContains(resp, 'class="doc-head"')
+        self.assertContains(resp, "img/logo_doc.jpeg")
+        self.assertContains(resp, 'class="doc-ident"')
+        self.assertContains(resp, "Quantidade de dias letivos")
+        self.assertContains(resp, "Campus Barras")
+        # Logo publicado junto com os assets estáticos.
+        logo = Path(__file__).resolve().parent.parent / "static" / "img" / "logo_doc.jpeg"
+        self.assertTrue(logo.exists(), "faltou static/img/logo_doc.jpeg")
+        # Seções numeradas na ordem do documento (sem as tabelas de conferência).
+        for trecho in (
+            "1. Calendário mensal",
+            "2. Eventos",
+            "3. Sábados letivos",
+            "4. Feriados e pontos facultativos",
+            "5. Legenda",
+        ):
+            self.assertIn(trecho, html)
+        self.assertLess(html.index("1. Calendário mensal"), html.index("2. Eventos"))
+        self.assertLess(html.index("2. Eventos"), html.index("3. Sábados letivos"))
+        self.assertLess(html.index("3. Sábados letivos"), html.index("4. Feriados"))
+        # A conferência por mês e por dia da semana não aparece nesta página.
+        self.assertNotIn("Quantidade de dias letivos por mês", html)
+        self.assertNotIn("Dias letivos por dia da semana", html)
+        # O rodapé de geração (impressão) faz parte do documento.
+        self.assertIn("print-foot", html)
+
+    def test_documento_quantitativo_ao_lado_da_grade(self):
+        # Cada mês traz a grade + a coluna "Quant. de dias letivos" (documento oficial).
+        resp = self._doc()
+        self.assertContains(resp, "doc-mes-corpo")
+        self.assertContains(resp, "doc-mes-quant")
+        self.assertContains(resp, "Quant. de dias letivos")
+
+    def test_documento_pagina_retrato_na_impressao(self):
+        css = (
+            Path(__file__).resolve().parent.parent / "static" / "css" / "main.css"
+        ).read_text(encoding="utf-8")
+        self.assertIn("size: A4 portrait", css)
+        self.assertNotIn("size: A4 landscape", css)
+
+    def test_css_doc_mes_resumo_preservado(self):
+        # A prévia do editor usa `.doc-mes-resumo` — a regra não pode ser removida.
+        css = (
+            Path(__file__).resolve().parent.parent / "static" / "css" / "main.css"
+        ).read_text(encoding="utf-8")
+        self.assertIn(".doc-mes-resumo {", css)
+
     def test_documento_renderiza_documento(self):
         resp = self._doc()
         self.assertEqual(resp.status_code, 200)
         for trecho in (
             "CALENDÁRIO ACADÊMICO 2026.2",
             "Calendário mensal",
-            "Quantidade de dias letivos por mês",
-            "Dias letivos por dia da semana",
+            "Eventos",
             "Feriados e pontos facultativos",
             "Sábados letivos",
             "Legenda",
             "doc-mes",
             "doc-legenda",
             "doc-table-eventos",
-            "doc-table-dias",
         ):
             self.assertContains(resp, trecho)
+        # As tabelas de conferência (por mês e por dia da semana) saíram da página.
+        self.assertNotContains(resp, "Quantidade de dias letivos por mês")
+        self.assertNotContains(resp, "Dias letivos por dia da semana")
+        self.assertNotContains(resp, "doc-table-dias")
+        self.assertNotContains(resp, "doc-table-resumo")
 
     def test_documento_tem_tooltip_nos_dias(self):
         # Os dias das grades levam "data-tip" (tooltip próprio, igual ao da prévia
