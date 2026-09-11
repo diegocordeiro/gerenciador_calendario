@@ -2351,9 +2351,9 @@ blockquote {
   font-style: italic;
 }
 
-/* Dia que CONTA na carga horária: faixa verde na base da célula (letivo, sábado
-   letivo, jornada pedagógica, avaliação, recuperação, conselho de classe e evento
-   institucional). Complementa a cor do status. */
+/* Dia que CONTA na carga horária: faixa verde na base da célula (dia letivo,
+   sábado letivo, avaliação, recuperação paralela e evento institucional).
+   Complementa a cor do status. */
 .doc-dia-conta {
   box-shadow: inset 0 -3px 0 0 rgba(34, 139, 84, 0.65);
 }
@@ -2372,10 +2372,6 @@ blockquote {
 
 .doc-dia-ferias {
   background: rgba(30, 58, 138, 0.30);
-}
-
-.doc-dia-jornada {
-  background: rgba(79, 70, 229, 0.22);
 }
 
 .doc-dia-avaliacao_final {
