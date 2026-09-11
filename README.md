@@ -78,11 +78,28 @@ PROEJA`) — a **grade x1/x2 de reposição fica restrita à prévia do editor**
 
 ### Regra de dia letivo
 
-- **segunda a sexta**, dentro do período, é *letivo* — exceto feriado, ponto
-  facultativo, recesso, férias coletivas, jornada pedagógica, conselho de classe
-  e avaliação final;
-- **sábado** só é letivo quando há evento *sábado letivo* / *sábado de reposição*;
-- **domingo** nunca é letivo.
+**Faixa do cálculo:** só entra o que está dentro do período **declarado**
+(`Início do semestre` → `Término do período letivo`). Registros fora dessa faixa
+continuam aparecendo no documento (matrículas, 07/SET, férias depois do término…),
+mas ficam com o status **“Fora do período”** e **não entram em nenhum cálculo**.
+Se o término não for informado, a faixa é estimada pelo último registro (com nota
+de aviso no documento).
+
+**Tipos que contam** na carga horária (`calendario.TIPOS_QUE_CONTAM`):
+
+| Contam | Removem o dia letivo (`TIPOS_QUE_REMOVEM`) | Neutros (`TIPOS_NEUTROS`) |
+| --- | --- | --- |
+| Dia letivo, Sábado letivo, Avaliação, Recuperação paralela, Evento institucional | Feriado, Ponto facultativo, Recesso escolar, Férias coletivas, Avaliação final, **Jornada pedagógica**, **Conselho de classe**, **Sábado de reposição** | Matrícula, Administrativo — *não criam dia letivo nem o removem*: o dia segue a regra normal (útil dentro do período = letivo) |
+
+- **segunda a sexta**, dentro da faixa, é *letivo* — os tipos da primeira coluna
+  mantêm o dia contabilizado; os da segunda **removem** o dia letivo, inclusive
+  **jornada pedagógica** e **conselho de classe** (aparecem na grade com cor e
+  legenda próprias, mas o dia sai da conta);
+- **sábado** conta somente com evento *sábado letivo*; **domingo** nunca conta;
+- os tipos que contam somam **apenas em dia útil** — uma avaliação em sábado/domingo
+  aparece na grade, mas não entra na carga horária;
+- o dia que conta recebe uma **faixa verde** na grade mensal (`doc-dia-conta`) e a
+  legenda indica “conta na carga horária” / “não conta”.
 
 Além do total, os dias letivos são contados **por dia da semana, em separado**
 (segunda, terça, quarta, quinta, sexta). A meta de dias letivos do semestre é

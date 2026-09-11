@@ -24,7 +24,7 @@
                 <td class="doc-dia doc-dia-vazio"></td>
               {% else %}
                 {% with eventos=c.eventos|join:"; " %}
-                <td class="doc-dia doc-dia-{{ c.status }}{% if c.destaque %} doc-dia-destaque{% endif %}{% if c.eventos %} doc-dia-com-evento{% endif %}"
+                <td class="doc-dia doc-dia-{{ c.status }}{% if c.letivo %} doc-dia-conta{% endif %}{% if c.destaque %} doc-dia-destaque{% endif %}{% if c.eventos %} doc-dia-com-evento{% endif %}"
                     data-tip="{{ c.date|data_br }} — {{ c.status_label }}{% if eventos %} — {{ eventos }}{% endif %}"
                     aria-label="{{ c.date|data_br }} — {{ c.status_label }}{% if eventos %} — {{ eventos }}{% endif %}">
                   <span class="doc-dia-num">{{ c.dia }}</span>
@@ -39,6 +39,7 @@
       <p class="doc-mes-resumo">
         Dias letivos: <strong>{{ m.letivos }}</strong>
         {% if m.sabados %} • Sábados letivos: {{ m.sabados }}{% endif %}
+        {% if m.reposicoes %} • Sábados de reposição: {{ m.reposicoes }}{% endif %}
       </p>
     </div>
     {% empty %}

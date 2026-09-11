@@ -4,7 +4,7 @@
     {% for l in agenda.legenda %}
     <li>
       <span class="doc-dia-swatch doc-dia-{{ l.status }}" aria-hidden="true"></span>
-      {{ l.label }}
+      {{ l.label }}{% if l.conta %} — <em>conta na carga horária</em>{% else %} — não conta{% endif %}
     </li>
     {% empty %}
     <li class="muted">Sem informações para exibir.</li>

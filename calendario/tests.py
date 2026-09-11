@@ -575,6 +575,9 @@ class Seed20262Tests(TestCase):
         self.assertEqual(cal.eventos.count(), 37)
 
         agenda = cal.agenda()
+        # Jornada pedagógica e conselho de classe NÃO contam: o Conselho de Classe
+        # (12/02/2027, sexta) remove aquele dia letivo e as férias de 13/02 ficam
+        # fora do período declarado (12/02) — o cálculo fecha nos 100 do documento.
         self.assertEqual(agenda["total_letivos"], 100)
         self.assertEqual(len(agenda["sabados_letivos"]), 11)
         # O total do documento = seg–sex + sábados letivos.
@@ -601,9 +604,14 @@ class Seed20262Tests(TestCase):
         self.assertEqual(labels[0], "AGO/2026")
         self.assertEqual(labels[-1], "FEV/2027")
         self.assertEqual(agenda["resumo"][0]["letivos"], 0)
+        # Férias coletivas começam depois do término: ficam fora do cálculo.
+        self.assertIn("2027-02-13", agenda["eventos_fora"])
+        self.assertEqual(agenda["reposicoes_total"], 0)
 
     def test_ferias_coletivas_sem_colisao(self):
-        # Dias de férias coletivas não devem ser "roubados" por feriados.
+        # As férias coletivas começam em 13/02/2027, depois do término declarado
+        # (12/02/2027): continuam no documento, mas o dia fica "fora" e não entra na
+        # carga horária.
         call_command("seed_calendario_2026_2", verbosity=0)
         cal = Calendario.objects.get(versao="2026.2.final")
         ag = cal.agenda()
@@ -614,7 +622,16 @@ class Seed20262Tests(TestCase):
             for c in s
             if not c.get("vazio")
         }
-        self.assertEqual(dias["2027-02-13"], "ferias")
+        self.assertEqual(dias["2027-02-13"], "fora")
+        self.assertFalse(
+            next(
+                c
+                for m in ag["meses"]
+                for s in m["semanas"]
+                for c in s
+                if not c.get("vazio") and c["date"] == "2027-02-13"
+            )["letivo"]
+        )
         # Colisão legítima e documentada: Natal (feriado) dentro do recesso.
         self.assertEqual(dias["2026-12-25"], "feriado")
 
@@ -1806,6 +1823,142 @@ class IaVerificarApiTests(IaApiTestsBase):
         self.assertEqual(resp.status_code, 502)
 
 
+class ContagemDiasLetivosTests(TestCase):
+    """Quais tipos contam na carga horária — e só dentro do período declarado."""
+
+    INICIO = dt.date(2026, 9, 14)  # segunda-feira
+    FIM = dt.date(2026, 9, 25)     # sexta-feira
+    QUARTA = "2026-09-16"
+    SABADO = "2026-09-19"
+
+    def _agenda(self, eventos, feriados=(), fim_=None, inicio=None):
+        return build_agenda(
+            data_inicio=inicio or self.INICIO,
+            data_fim=self.FIM if fim_ is None else fim_,
+            feriados=list(feriados),
+            eventos=list(eventos),
+            dias_letivos_previstos=0,
+        )
+
+    def _celula(self, agenda, iso):
+        for m in agenda["meses"]:
+            for s in m["semanas"]:
+                for c in s:
+                    if not c.get("vazio") and c["date"] == iso:
+                        return c
+        raise AssertionError(f"célula {iso} não encontrada")
+
+    def _evento(self, tipo, data=None):
+        return {"titulo": f"Evento {tipo}", "tipo": tipo, "data_inicio": data or self.QUARTA}
+
+    def test_base_do_periodo(self):
+        # 14/09 a 25/09/2026 sem eventos: 10 dias úteis.
+        ag = self._agenda([])
+        self.assertEqual(ag["total_letivos"], 10)
+        self.assertEqual(ag["letivos_seg_sex"], 10)
+
+    def test_tipos_que_contam(self):
+        # Num dia útil o dia já é letivo; o que importa é que o evento do tipo que
+        # conta mantém o dia contabilizado.
+        for tipo in ("letivo", "avaliacao", "recuperacao", "evento"):
+            with self.subTest(tipo=tipo):
+                ag = self._agenda([self._evento(tipo)])
+                self.assertEqual(ag["total_letivos"], 10, tipo)
+                self.assertTrue(self._celula(ag, self.QUARTA)["letivo"], tipo)
+
+    def test_jornada_e_conselho_removem_o_dia_letivo(self):
+        # Jornada pedagógica e conselho de classe NÃO contam: o dia útil deixa de
+        # ser letivo (fica com o status do tipo, em cor e legenda).
+        for tipo, status in (
+            ("jornada_pedagogica", "jornada"),
+            ("conselho_classe", "conselho"),
+        ):
+            with self.subTest(tipo=tipo):
+                ag = self._agenda([self._evento(tipo)])
+                celula = self._celula(ag, self.QUARTA)
+                self.assertEqual(celula["status"], status)
+                self.assertFalse(celula["letivo"])
+                self.assertEqual(ag["total_letivos"], 9)
+                self.assertEqual(ag["letivos_seg_sex"], 9)
+
+    def test_tipos_que_nao_contam(self):
+        for tipo in (
+            "feriado",
+            "ponto_facultativo",
+            "recesso",
+            "ferias_coletivas",
+            "avaliacao_final",
+            "jornada_pedagogica",
+            "conselho_classe",
+        ):
+            with self.subTest(tipo=tipo):
+                ag = self._agenda([self._evento(tipo)])
+                self.assertEqual(ag["total_letivos"], 9, tipo)
+                self.assertFalse(self._celula(ag, self.QUARTA)["letivo"], tipo)
+
+    def test_marcadores_sao_neutros(self):
+        # Matrícula e administrativo são avisos: o dia continua sendo "Dia letivo".
+        for tipo in ("matricula", "administrativo"):
+            with self.subTest(tipo=tipo):
+                ag = self._agenda([self._evento(tipo)])
+                self.assertEqual(ag["total_letivos"], 10, tipo)
+                celula = self._celula(ag, self.QUARTA)
+                self.assertEqual(celula["status"], "letivo", tipo)
+                self.assertTrue(celula["letivo"], tipo)
+
+    def test_sabado_letivo_conta_e_reposicao_nao(self):
+        letivo = self._agenda([self._evento("sabado_letivo", self.SABADO)])
+        self.assertEqual(letivo["total_letivos"], 11)
+        self.assertEqual(letivo["sabados_total"], 1)
+        self.assertTrue(self._celula(letivo, self.SABADO)["letivo"])
+
+        reposicao = self._agenda([self._evento("sabado_reposicao", self.SABADO)])
+        self.assertEqual(reposicao["total_letivos"], 10)
+        self.assertEqual(reposicao["sabados_total"], 0)
+        self.assertEqual(reposicao["reposicoes_total"], 1)
+        self.assertFalse(self._celula(reposicao, self.SABADO)["letivo"])
+
+    def test_tipo_que_conta_depois_do_fim_nao_conta(self):
+        # Avaliação em 28/09/2026 (depois do término declarado).
+        ag = self._agenda([self._evento("avaliacao", "2026-09-28")])
+        self.assertEqual(ag["total_letivos"], 10)
+        self.assertEqual(self._celula(ag, "2026-09-28")["status"], "fora")
+        self.assertIn("2026-09-28", ag["eventos_fora"])
+        self.assertTrue(any("fora do período letivo" in n for n in ag["notas"]))
+
+    def test_tipo_que_conta_antes_do_inicio_nao_conta(self):
+        # Avaliação em 10/09/2026 (antes do início declarado).
+        ag = self._agenda([self._evento("avaliacao", "2026-09-10")])
+        self.assertEqual(ag["total_letivos"], 10)
+        self.assertEqual(self._celula(ag, "2026-09-10")["status"], "fora")
+
+    def test_tipo_que_conta_em_sabado_nao_conta(self):
+        # Avaliação num sábado dentro do período: aparece no documento, mas o sábado
+        # não entra na carga horária (só sábado letivo conta).
+        ag = self._agenda([self._evento("avaliacao", self.SABADO)])
+        self.assertEqual(ag["total_letivos"], 10)
+        celula = self._celula(ag, self.SABADO)
+        self.assertEqual(celula["status"], "nao_letivo")
+        self.assertFalse(celula["letivo"])
+
+    def test_sem_termino_informado_estima_a_faixa(self):
+        ag = self._agenda([self._evento("avaliacao", "2026-09-30")], fim_="")
+        self.assertEqual(ag["total_letivos"], 13)  # até 30/09 (quarta)
+        self.assertEqual(self._celula(ag, "2026-09-30")["status"], "letivo")
+        self.assertTrue(any("estimada" in n for n in ag["notas"]))
+
+    def test_legenda_traz_quem_conta(self):
+        ag = self._agenda([self._evento("jornada_pedagogica")])
+        conta = {l["status"]: l["conta"] for l in ag["legenda"]}
+        self.assertFalse(conta["jornada"])  # jornada não conta
+        self.assertTrue(ag["status_conta"]["letivo"])
+        self.assertFalse(ag["status_conta"]["reposicao"])
+        self.assertIn("avaliacao", ag["tipos_que_contam"])
+        self.assertNotIn("conselho_classe", ag["tipos_que_contam"])
+        self.assertIn("conselho_classe", ag["tipos_que_removem"])
+        self.assertIn("matricula", ag["tipos_neutros"])
+
+
 class SabadosLetivosTests(TestCase):
     """Sábado letivo conta; sábado de reposição **não** conta na carga horária."""
 
@@ -1937,6 +2090,7 @@ class SabadosLetivosTests(TestCase):
         cal = Calendario.objects.get(versao="2026.2.final")
         agenda = cal.agenda()
         self._invariantes(agenda)
+        # Jornada e conselho não contam: o cálculo fecha nos 100 do documento.
         self.assertEqual(agenda["total_letivos"], 100)
         self.assertEqual(agenda["reposicoes_total"], 0)
 
