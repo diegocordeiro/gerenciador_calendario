@@ -973,8 +973,10 @@ class DocumentoViewTests(TestCase):
         self.assertContains(resp, 'id="editorBuscaResultados"')
         for alvo in ("toolVersao", "toolEtapa", "toolPeriodo", "stVersao", "stSalvo"):
             self.assertContains(resp, 'id="%s"' % alvo)
-        for alvo in ("stLetivos", "stFeriados", "stEventos", "stErros"):
+        for alvo in ("stLetivos", "stSabados", "stPorDia", "stFeriados", "stEventos"):
             self.assertContains(resp, 'id="%s"' % alvo)
+        # A métrica de remanejamento saiu da barra de status (fica só na prévia).
+        self.assertNotContains(resp, 'id="stErros"')
         for alvo in ("navLetivos", "navFeriados", "navEventos"):
             self.assertContains(resp, 'id="%s"' % alvo)
         # Dica de atalhos na barra de status.

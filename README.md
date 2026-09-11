@@ -159,9 +159,11 @@ divergência é exibida na página como conferência).
   editor** (não é publicada no documento), com cores por paridade e a **legenda
   de cores** (x1/x2, feriado sem aula, sábado letivo, 1ª parte, dia com evento e
   aula remanejada);
-- **Métricas** de erro (paridade / dia da semana / parte do semestre) e validação
-  em tempo real, com explicação na **prévia do editor** de como lê-las (quanto
-  menor, melhor — `0 / 0 / 0` é o ideal);
+- **Aulas remanejadas fora do padrão** (paridade / dia da semana / parte do
+  semestre) e validação em tempo real, com explicação na **prévia do editor** de
+  como ler o indicador (quanto menor, melhor — `0 / 0 / 0` é o ideal). É um
+  indicador **diagnóstico** do remanejamento: não altera a carga horária nem o
+  documento publicado e não aparece na barra de status do editor;
 - **Coluna “Sáb” na grade** (prévia do editor) com os **sábados letivos/de
   reposição** (e o dia da semana referenciado) — no documento publicado eles
   aparecem na lista **Sábados letivos**;
@@ -190,7 +192,7 @@ divergência é exibida na página como conferência).
   **sem Referência**) e **dias letivos por dia da semana** (`Seg 20/20`, colorido
   pela meta), **blocos recolhíveis** (a preferência é lembrada no navegador),
   **prévias em abas** (*Documento* / *Grade (reposição)*) e **barra de status** no
-  rodapé com letivos, sábados, `Seg–sex` por dia, feriados, eventos, erros e o
+  rodapé com letivos, sábados, `Seg–sex` por dia, feriados, eventos e o
   estado de salvamento;
 - **Área única de mensagens no editor** — logo abaixo do quadro azul com as
   instruções de atalho ficam o **sucesso/erro** das ações, o aviso de **itens da IA

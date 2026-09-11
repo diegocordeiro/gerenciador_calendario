@@ -412,13 +412,13 @@
     );
   }
 
-  // Explicação da métrica "Erros (paridade / dia / parte)" com a leitura dos
+  // Explicação da métrica "Aulas remanejadas fora do padrão" com a leitura dos
   // valores atuais do calendário.
   function renderAjudaMetricas(d) {
     var m = (d && d.metricas) || { parity: 0, weekday: 0, part: 0 };
     return (
       '<div class="cal-help">' +
-      '<strong>Como ler “Erros (paridade / dia / parte)”</strong>' +
+      '<strong>Como ler “Aulas remanejadas fora do padrão”</strong>' +
       "<p>Ao remanejar as aulas interrompidas por feriados, o sistema tenta recolocá-las na " +
       "<strong>mesma semana (paridade x1/x2)</strong>, no <strong>mesmo dia da semana</strong> e na " +
       "<strong>mesma parte do semestre</strong>. Cada número conta quantas aulas <em>não</em> " +
@@ -787,10 +787,10 @@
         "Total do documento oficial: " + segSex + " dias (seg–sex) + " + sabados + " sábados letivos."
       ) +
       metric(
-        "Erros (paridade / dia / parte)",
+        "Aulas remanejadas fora do padrão",
         d.metricas.parity + " / " + d.metricas.weekday + " / " + d.metricas.part,
         "ideal: 0 / 0 / 0 — quanto menor, melhor",
-        "Cada número conta aulas remanejadas que perderam a paridade (x1/x2), o dia da semana ou a parte do semestre. Menor é melhor."
+        "Cada número conta aulas remanejadas que perderam a paridade (x1/x2), o dia da semana ou a parte do semestre. Menor é melhor — este indicador é só diagnóstico e não altera a carga horária."
       ) +
       "</div>";
 
@@ -2989,8 +2989,6 @@
       tot.sabados_sem_referencia !== undefined
         ? tot.sabados_sem_referencia
         : ag.sabados_sem_referencia;
-    var met = d && d.metricas;
-    var somaErros = met ? met.parity + met.weekday + met.part : null;
     var textoLetivos = total === null ? "—" : total + (previstos ? " / " + previstos : "");
 
     atualizarContadores();
@@ -3000,11 +2998,6 @@
       total === null ? "" : previstos && total < previstos ? "is-warn" : "is-ok"
     );
     setTexto("navLetivos", textoLetivos, "");
-    setTexto(
-      "stErros",
-      met ? met.parity + " / " + met.weekday + " / " + met.part : "—",
-      somaErros === null ? "" : somaErros > 0 ? "is-erro" : "is-ok"
-    );
 
     // Sábados letivos contabilizados (os de reposição não entram na carga horária).
     var avisoSemRef = typeof semRef === "number" && semRef > 0;
