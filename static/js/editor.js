@@ -160,7 +160,7 @@
     $("fPeriodo").value = inicial.periodo || "";
     $("fInstituicao").value = inicial.instituicao || "";
     $("fCurso").value = inicial.curso || "";
-    $("fModalidade").value = inicial.modalidade || "integrado_proeja";
+    $("fModalidade").value = inicial.modalidade || "integrado_medio";
     $("fSemestre").value = inicial.semestre || "";
     $("fInicio").value = inicial.data_inicio || "";
     $("fDataFim").value = inicial.data_fim || "";
@@ -916,11 +916,17 @@
   }
 
   // ---- Salvar / nova versão ---------------------------------------------
+  function marcarPendenteIA(pendente) {
+    var el = $("iaPendente");
+    if (el) el.hidden = !pendente;
+  }
+
   function salvar() {
     postJSON(BASE + "api/salvar/", payload())
       .then(function (res) {
         if (res && res.ok) {
           msg("Versão " + res.versao + " salva.", "ok");
+          marcarPendenteIA(false);
           if (res.dados) renderPreview(res.dados);
         } else {
           msg(((res && res.erros) || ["Erro ao salvar."]).join(" "), "erro");
@@ -941,8 +947,830 @@
     atualizarBotaoEvento();
     renderChips();
     renderEventos();
+    marcarPendenteIA(false);
+    atualizarNormaIA();
     preview();
     msg("Novo formulário pronto para uma nova versão.", "ok");
+  }
+
+  // ---- Preenchimento com IA (LLM) ----------------------------------------
+  // Fluxo em duas etapas: a IA gera uma PRÉVIA (nada é gravado) que pode ser
+  // editada aqui; "Aplicar ao editor" leva os itens para as tabelas/chips do
+  // editor e só "Salvar versão" grava no banco.
+  var IA = inicial.llm || {};
+  var iaState = {
+    modo: "gerar",
+    eventos: [],
+    feriados: [],
+    avisos: [],
+    observacoes: [],
+    requisitos: null,
+    selecionados: {},
+    agenda: null,
+    estatisticas: null,
+    editando: null,
+    gerado: false
+  };
+  var iaTimer = null;
+
+  function normaDaModalidadeIA() {
+    var valor = $("fModalidade") ? $("fModalidade").value : "";
+    return (IA.normas || {})[valor] || null;
+  }
+
+  function rotuloNormaIA() {
+    var info = normaDaModalidadeIA();
+    if (!info) return "";
+    return info.norma + " — " + info.titulo + " (" + info.total_itens + " itens)";
+  }
+
+  function atualizarNormaIA() {
+    var alvo = $("iaNorma");
+    if (alvo) alvo.textContent = rotuloNormaIA() ? "Norma aplicada: " + rotuloNormaIA() : "";
+  }
+
+  function modoIA(modo) {
+    iaState.modo = modo || "gerar";
+    var gerar = iaState.modo === "gerar";
+    var titulo = $("iaTitulo");
+    if (titulo) titulo.textContent = gerar ? "Preencher eventos com IA" : "Verificar eventos com IA";
+    var botao = $("iaGerar");
+    if (botao) botao.textContent = gerar ? "Gerar prévia" : "Verificar eventos";
+    var ajuda = $("iaAjudaVerificar");
+    if (ajuda) ajuda.hidden = gerar;
+    var camposGerar = $("iaCamposGerar");
+    if (camposGerar) camposGerar.hidden = !gerar;
+    var aplicar = $("iaAplicar");
+    if (aplicar) aplicar.hidden = !gerar;
+    var selecionados = $("iaAplicarSelecionados");
+    if (selecionados) selecionados.hidden = gerar;
+    var marcarTodos = $("iaMarcarTodos");
+    if (marcarTodos) marcarTodos.hidden = gerar;
+    var blocoEventos = $("iaBlocoEventos");
+    if (blocoEventos) blocoEventos.hidden = !gerar;
+    var blocoFeriados = $("iaBlocoFeriados");
+    if (blocoFeriados) blocoFeriados.hidden = !gerar;
+    atualizarNormaIA();
+  }
+
+  function msgIA(texto, tipo) {
+    var el = $("iaMsg");
+    if (!el) return;
+    el.textContent = texto;
+    el.className =
+      "editor-msg" +
+      (tipo === "ok" ? " editor-msg-ok" : tipo === "erro" ? " editor-msg-erro" : "");
+  }
+
+  function provedorSelecionadoIA() {
+    var sel = $("iaProvedor");
+    return sel ? sel.value : "";
+  }
+
+  function labelProvedorIA() {
+    var valor = provedorSelecionadoIA();
+    var achado = (IA.provedores || []).filter(function (p) {
+      return p.valor === valor;
+    })[0];
+    return achado ? achado.label : valor;
+  }
+
+  function preencherSelectsIA() {
+    var lista = IA.provedores || [];
+    var sel = $("iaProvedor");
+    if (sel) {
+      sel.innerHTML = lista
+        .map(function (p) {
+          var rotulo =
+            p.label + (p.modelo ? " — " + p.modelo : "") + (p.disponivel ? "" : " (sem chave)");
+          return (
+            '<option value="' +
+            esc(p.valor) +
+            '"' +
+            (p.disponivel ? "" : " disabled") +
+            ">" +
+            esc(rotulo) +
+            "</option>"
+          );
+        })
+        .join("");
+      var escolhido =
+        lista.filter(function (p) {
+          return p.disponivel && p.valor === IA.padrao;
+        })[0] ||
+        lista.filter(function (p) {
+          return p.disponivel;
+        })[0];
+      if (escolhido) sel.value = escolhido.valor;
+    }
+    var tipos = $("iaEvTipo");
+    if (tipos && !tipos.options.length) {
+      tipos.innerHTML += Object.keys(TIPOS_EVENTO)
+        .map(function (t) {
+          return '<option value="' + esc(t) + '">' + esc(TIPOS_EVENTO[t]) + "</option>";
+        })
+        .join("");
+    }
+    var refs = $("iaEvReferencia");
+    if (refs && !refs.options.length) {
+      refs.innerHTML =
+        '<option value="">— não se aplica —</option>' +
+        Object.keys(DIAS_SEMANA)
+          .map(function (d) {
+            return '<option value="' + esc(d) + '">' + esc(DIAS_SEMANA[d]) + "</option>";
+          })
+          .join("");
+    }
+  }
+
+  function mostrarPassoIA(passo) {
+    var entrada = $("iaStepEntrada");
+    var previa = $("iaStepPrevia");
+    if (entrada) entrada.hidden = passo !== "entrada";
+    if (previa) previa.hidden = passo !== "previa";
+  }
+
+  function abrirIA() {
+    abrirIAComo("gerar");
+  }
+
+  function abrirIAComo(modo) {
+    var modal = $("iaModal");
+    if (!modal) return;
+    if (!IA.habilitado) {
+      msg(
+        "Nenhum provedor de IA está configurado. Defina a chave de API em uma variável " +
+          "de ambiente (DEEPSEEK_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY ou " +
+          "ANTHROPIC_API_KEY), reinicie o servidor e recarregue esta página.",
+        "erro"
+      );
+      return;
+    }
+    preencherSelectsIA();
+    modoIA(modo);
+    iaState.requisitos = null;
+    iaState.observacoes = [];
+    iaState.selecionados = {};
+    iaState.gerado = false;
+    iaState.editando = null;
+    if (iaState.modo === "gerar") {
+      iaState.eventos = [];
+      iaState.feriados = [];
+    }
+    $("iaCidade").value = $("iaCidade").value || IA.cidade || "";
+    $("iaEstado").value = $("iaEstado").value || IA.estado || "";
+    $("iaPais").value = $("iaPais").value || IA.pais || "Brasil";
+    mostrarPassoIA("entrada");
+    msgIA("", "");
+    if (typeof modal.showModal === "function") modal.showModal();
+    else modal.setAttribute("open", "open");
+    $("iaCidade").focus();
+  }
+
+  function fecharIA() {
+    var modal = $("iaModal");
+    if (!modal) return;
+    if (typeof modal.close === "function" && modal.open) modal.close();
+    else modal.removeAttribute("open");
+  }
+
+  function gerarIA() {
+    var gerar = iaState.modo === "gerar";
+    var cidade = $("iaCidade").value.trim();
+    var estado = $("iaEstado").value.trim();
+    if (gerar && (!cidade || !estado)) {
+      msgIA("Informe a cidade e o estado (UF) onde fica a unidade.", "erro");
+      return;
+    }
+    var p = payload();
+    if (!p.data_inicio || !p.data_fim) {
+      msgIA(
+        "Informe o início e o término do período letivo (bloco 1.2) antes de usar a IA.",
+        "erro"
+      );
+      return;
+    }
+
+    var botao = $("iaGerar");
+    var rotulo = botao.textContent;
+    var iniciadoEm = Date.now();
+    botao.disabled = true;
+    botao.textContent = "Consultando…";
+    msgIA(
+      (gerar ? "Gerando eventos em " : "Verificando os eventos com ") +
+        labelProvedorIA() +
+        "… aguarde (pode levar até " +
+        (IA.timeout || 120) +
+        "s).",
+      ""
+    );
+
+    var corpo = {
+      cidade: cidade,
+      estado: estado,
+      pais: $("iaPais").value.trim() || "Brasil",
+      provedor: provedorSelecionadoIA(),
+      modelo: $("iaModelo").value.trim(),
+      instituicao: p.instituicao,
+      curso: p.curso,
+      modalidade: p.modalidade,
+      data_inicio: p.data_inicio,
+      data_fim: p.data_fim,
+      total_semanas: p.total_semanas,
+      semanas_primeira_parte: p.semanas_primeira_parte,
+      dias_letivos_previstos: p.dias_letivos_previstos,
+      dias_letivos_por_mes: p.dias_letivos_por_mes,
+      feriados: p.feriados,
+      eventos: p.eventos
+    };
+    if (gerar) corpo.completar_sabados = $("iaCompletarSabados").checked;
+
+    postJSON(BASE + (gerar ? "api/ia/eventos/" : "api/ia/verificar/"), corpo)
+      .then(function (d) {
+        botao.disabled = false;
+        botao.textContent = rotulo;
+        if (!d || !d.ok) {
+          msgIA(((d && d.erros) || ["Não foi possível concluir a operação."]).join(" "), "erro");
+          return;
+        }
+        iaState.avisos = d.avisos || [];
+        iaState.observacoes = d.observacoes || [];
+        iaState.requisitos = d.requisitos || null;
+        iaState.editando = null;
+        iaState.selecionados = {};
+        if (gerar) {
+          iaState.eventos = d.eventos || [];
+          iaState.feriados = d.feriados || [];
+          iaState.estatisticas = d.estatisticas || {};
+          iaState.agenda = d.agenda ? recorteAgenda(d.agenda) : null;
+        } else {
+          iaState.agenda = null;
+          iaState.estatisticas = null;
+        }
+        // Itens faltantes que vieram com sugestão já entram marcados para aplicar.
+        ((iaState.requisitos || {}).itens || []).forEach(function (it) {
+          if (it.situacao === "faltando" && it.evento_sugerido) {
+            iaState.selecionados[it.codigo] = true;
+          }
+        });
+        iaState.gerado = true;
+        renderIA();
+        mostrarPassoIA("previa");
+        if (!gerar) atualizarAgendaEditorIA();
+        var segundos = Math.max(1, Math.round((Date.now() - iniciadoEm) / 1000));
+        var norma = (iaState.requisitos || {}).norma || "";
+        msgIA(
+          (gerar ? "Prévia gerada por " : "Verificação concluída por ") +
+            (d.provedor_label || d.provedor) +
+            (d.modelo ? " (" + d.modelo + ")" : "") +
+            " em " +
+            segundos +
+            "s" +
+            (norma ? " — " + norma : "") +
+            (gerar
+              ? ". Revise, edite e clique em “Aplicar ao editor”."
+              : ". Marque os itens faltantes e clique em “Aplicar selecionados ao editor”."),
+          "ok"
+        );
+      })
+      .catch(function () {
+        botao.disabled = false;
+        botao.textContent = rotulo;
+        msgIA("Não foi possível falar com o servidor.", "erro");
+      });
+  }
+
+  function renderResumoIA() {
+    var alvo = $("iaResumo");
+    if (!alvo) return;
+    var ag = iaState.agenda || {};
+    var est = iaState.estatisticas || {};
+    var req = iaState.requisitos || {};
+    var resumoReq = req.resumo || null;
+    var previsto =
+      (ag.validacao && ag.validacao.previsto) || parseInt($("fPrevistos").value || "0", 10);
+    var sabados = typeof ag.sabados_total === "number" ? ag.sabados_total : 0;
+    var faltandoSab = (est.faltando || []).reduce(function (a, b) {
+      return a + b;
+    }, 0);
+    var porDiaOk = !ag.validacao || ag.validacao.por_dia_ok !== false;
+    var comSugestao = (req.itens || []).filter(function (i) {
+      return i.situacao === "faltando" && i.evento_sugerido;
+    }).length;
+
+    var html = '<div class="cal-metrics">';
+    if (resumoReq) {
+      html += metric(
+        (req.norma || "Norma") + " — itens conferidos",
+        resumoReq.total,
+        req.titulo || "",
+        "Conferência automática dos requisitos da norma da modalidade."
+      );
+      html += metric("Itens atendidos", resumoReq.atendidos, "com evidência no calendário");
+      html += metric("Itens faltando", resumoReq.faltando, comSugestao + " com sugestão da IA");
+      html += metric("Itens a conferir", resumoReq.conferir, "verificação manual");
+    }
+    if (iaState.modo === "gerar") {
+      html += metric(
+        "Eventos sugeridos",
+        iaState.eventos.length,
+        (est.sabados_criados || 0) + " sábado(s) pelo sistema"
+      );
+      html += metric("Feriados do período", iaState.feriados.length, "federal + estadual + municipal");
+    }
+    html += metric("Total de dias letivos", ag.total_letivos || 0, "meta: " + (previsto || "—"));
+    html += metric(
+      "Dias por dia da semana",
+      (ag.letivos_por_dia || []).join(" / ") || "0 / 0 / 0 / 0 / 0",
+      "mínimo " + (ag.meta_por_dia || 0) + " por dia"
+    );
+    html += metric("Sábados letivos", sabados, "distribuídos por Referência");
+    html += metric(
+      "Situação da carga horária",
+      porDiaOk && !faltandoSab ? "OK" : "Faltam " + (faltandoSab || "?"),
+      porDiaOk ? "todos os dias na meta" : "abaixo da meta em algum dia"
+    );
+    html += "</div>";
+    alvo.innerHTML = html;
+  }
+
+  function renderIA() {
+    renderResumoIA();
+    pintarDiasIA();
+    renderEventosIA();
+    renderFeriadosIA();
+    renderRequisitosIA();
+    renderObservacoesIA();
+    renderAvisosIA();
+  }
+
+  function renderEventosIA() {
+    var tbody = $("iaEventosBody");
+    if (!tbody) return;
+    var ordenados = iaState.eventos.slice().sort(function (a, b) {
+      return a.data_inicio < b.data_inicio ? -1 : 1;
+    });
+    tbody.innerHTML = ordenados
+      .map(function (e) {
+        var i = iaState.eventos.indexOf(e);
+        var ref =
+          e.dia_semana_referencia === null || e.dia_semana_referencia === undefined
+            ? ""
+            : DIAS_SEMANA[e.dia_semana_referencia] || "";
+        return (
+          "<tr" +
+          (i === iaState.editando ? ' class="row-editando"' : "") +
+          ">" +
+          "<td>" +
+          esc(e.data_inicio.split("-").reverse().join("/")) +
+          "</td><td>" +
+          (e.data_fim ? esc(e.data_fim.split("-").reverse().join("/")) : "—") +
+          "</td><td>" +
+          esc(e.titulo) +
+          "</td><td>" +
+          esc(TIPOS_EVENTO[e.tipo] || e.tipo) +
+          "</td><td>" +
+          esc(ref) +
+          "</td>" +
+          '<td class="evento-acoes">' +
+          '<button type="button" class="btn-editar" data-edit="' +
+          i +
+          '" title="Editar evento" aria-label="Editar evento">&#9998;</button>' +
+          '<button type="button" class="chip-remove" data-idx="' +
+          i +
+          '" aria-label="Remover">&times;</button>' +
+          "</td></tr>"
+        );
+      })
+      .join("");
+    Array.prototype.forEach.call(tbody.querySelectorAll(".btn-editar"), function (btn) {
+      btn.addEventListener("click", function () {
+        editarEventoIA(parseInt(btn.getAttribute("data-edit"), 10));
+      });
+    });
+    Array.prototype.forEach.call(tbody.querySelectorAll(".chip-remove"), function (btn) {
+      btn.addEventListener("click", function () {
+        var idx = parseInt(btn.getAttribute("data-idx"), 10);
+        iaState.eventos.splice(idx, 1);
+        if (iaState.editando === idx) iaState.editando = null;
+        else if (iaState.editando !== null && iaState.editando > idx) iaState.editando -= 1;
+        atualizarBotaoEventoIA();
+        renderIA();
+        recalcularIA();
+      });
+    });
+  }
+
+  function limparFormEventoIA() {
+    $("iaEvTitulo").value = "";
+    $("iaEvInicio").value = "";
+    $("iaEvFim").value = "";
+    $("iaEvReferencia").value = "";
+    $("iaEvDestaque").checked = false;
+  }
+
+  function atualizarBotaoEventoIA() {
+    var btn = $("iaAddEvento");
+    var cancelar = $("iaCancelarEvento");
+    var editando = iaState.editando !== null;
+    if (btn) btn.textContent = editando ? "Salvar alterações" : "Adicionar evento";
+    if (cancelar) cancelar.hidden = !editando;
+  }
+
+  function editarEventoIA(idx) {
+    var e = iaState.eventos[idx];
+    if (!e) return;
+    $("iaEvTitulo").value = e.titulo || "";
+    $("iaEvTipo").value = e.tipo || "evento";
+    $("iaEvInicio").value = e.data_inicio || "";
+    $("iaEvFim").value = e.data_fim || "";
+    $("iaEvReferencia").value =
+      e.dia_semana_referencia === null || e.dia_semana_referencia === undefined
+        ? ""
+        : String(e.dia_semana_referencia);
+    $("iaEvDestaque").checked = !!e.destaque;
+    iaState.editando = idx;
+    atualizarBotaoEventoIA();
+    renderEventosIA();
+    $("iaEvTitulo").focus();
+  }
+
+  function salvarEventoIA() {
+    var titulo = $("iaEvTitulo").value.trim();
+    var inicio = $("iaEvInicio").value;
+    if (!titulo || !inicio) {
+      msgIA("Informe o título e a data inicial do evento.", "erro");
+      return;
+    }
+    var ref = $("iaEvReferencia").value;
+    var idx = iaState.editando;
+    var anterior = idx !== null ? iaState.eventos[idx] : null;
+    var evento = {
+      titulo: titulo,
+      tipo: $("iaEvTipo").value,
+      data_inicio: inicio,
+      data_fim: $("iaEvFim").value || "",
+      dia_semana_referencia: ref === "" ? null : parseInt(ref, 10),
+      descricao: anterior ? anterior.descricao || "" : "",
+      destaque: $("iaEvDestaque").checked,
+      sugerido_ia: true
+    };
+    if (idx !== null) {
+      iaState.eventos[idx] = evento;
+      iaState.editando = null;
+      msgIA("Evento da prévia atualizado (ainda não salvo).", "ok");
+    } else {
+      iaState.eventos.push(evento);
+      msgIA("Evento incluído na prévia (ainda não salvo).", "ok");
+    }
+    limparFormEventoIA();
+    atualizarBotaoEventoIA();
+    renderIA();
+    recalcularIA();
+  }
+
+  function cancelarEdicaoEventoIA() {
+    iaState.editando = null;
+    limparFormEventoIA();
+    atualizarBotaoEventoIA();
+    renderEventosIA();
+  }
+
+  function renderFeriadosIA() {
+    var ul = $("iaFeriadosList");
+    if (!ul) return;
+    var ordenados = iaState.feriados.slice().sort(function (a, b) {
+      return a.data < b.data ? -1 : 1;
+    });
+    ul.innerHTML = ordenados
+      .map(function (f, i) {
+        var rotulo = f.data.split("-").reverse().join("/");
+        var tipo = f.tipo === "ponto_facultativo" ? "Ponto facultativo" : "Feriado";
+        var esfera = f.esfera ? " · " + f.esfera : "";
+        var confianca = f.confianca === "baixa" ? ' <em class="ia-conf-baixa">confiança baixa</em>' : "";
+        return (
+          '<li class="chip chip-removable">' +
+          '<button type="button" class="chip-remove" data-idx="' +
+          i +
+          '" aria-label="Remover">&times;</button> ' +
+          "<strong>" +
+          esc(rotulo) +
+          "</strong> " +
+          esc(tipo) +
+          esc(esfera) +
+          " — " +
+          esc(f.descricao || "") +
+          confianca +
+          "</li>"
+        );
+      })
+      .join("");
+    Array.prototype.forEach.call(ul.querySelectorAll(".chip-remove"), function (btn) {
+      btn.addEventListener("click", function () {
+        iaState.feriados.splice(parseInt(btn.getAttribute("data-idx"), 10), 1);
+        renderIA();
+        recalcularIA();
+      });
+    });
+  }
+
+  function renderAvisosIA() {
+    var alvo = $("iaAvisos");
+    if (!alvo) return;
+    var itens = iaState.avisos || [];
+    if (!itens.length) {
+      alvo.innerHTML = "";
+      return;
+    }
+    alvo.innerHTML =
+      '<div class="cal-alert"><strong>Atenção antes de aplicar:</strong><ul>' +
+      itens
+        .map(function (a) {
+          return "<li>" + esc(a) + "</li>";
+        })
+        .join("") +
+      "</ul></div>";
+  }
+
+  function renderRequisitosIA() {
+    var alvo = $("iaRequisitos");
+    if (!alvo) return;
+    var req = iaState.requisitos || {};
+    var itens = req.itens || [];
+    var titulo = $("iaRequisitosTitulo");
+    if (titulo) {
+      titulo.textContent = req.norma
+        ? "Requisitos " + req.norma + " — " + (req.titulo || "")
+        : "Requisitos da norma";
+    }
+    if (!itens.length) {
+      alvo.innerHTML = '<p class="muted">Gere ou verifique para ver o checklist.</p>';
+      return;
+    }
+    var linhas = itens
+      .map(function (it) {
+        var marca = "";
+        if (it.evento_sugerido && it.situacao === "faltando" && iaState.modo === "verificar") {
+          marca =
+            '<input type="checkbox" class="ia-req-check" data-codigo="' +
+            esc(it.codigo) +
+            '"' +
+            (iaState.selecionados[it.codigo] ? " checked" : "") +
+            ">";
+        }
+        var evidencias = (it.evidencias || [])
+          .map(function (e) {
+            return "<li>" + esc(e) + "</li>";
+          })
+          .join("");
+        var sugestao = it.evento_sugerido
+          ? '<p class="ia-req-sugestao">Sugestão da IA: <strong>' +
+            esc(it.evento_sugerido.titulo) +
+            "</strong> em " +
+            esc((it.evento_sugerido.data_inicio || "").split("-").reverse().join("/")) +
+            (it.evento_sugerido.tipo ? " · " + esc(TIPOS_EVENTO[it.evento_sugerido.tipo] || it.evento_sugerido.tipo) : "") +
+            (it.evento_sugerido.dia_semana_referencia === null ||
+            it.evento_sugerido.dia_semana_referencia === undefined
+              ? ""
+              : " · referente à " + esc(DIAS_SEMANA[it.evento_sugerido.dia_semana_referencia] || "")) +
+            "</p>"
+          : "";
+        return (
+          '<div class="ia-req-item ia-req-' +
+          esc(it.situacao) +
+          '">' +
+          marca +
+          '<div class="ia-req-texto">' +
+          '<span class="ia-req-badge">' +
+          esc(it.codigo) +
+          "</span> " +
+          esc(it.descricao) +
+          ' <em class="ia-req-status">' +
+          esc(it.situacao_label || it.situacao) +
+          "</em>" +
+          (evidencias ? '<ul class="ia-req-ev">' + evidencias + "</ul>" : "") +
+          (it.motivo ? '<p class="muted">' + esc(it.motivo) + "</p>" : "") +
+          sugestao +
+          "</div></div>"
+        );
+      })
+      .join("");
+    alvo.innerHTML = linhas;
+
+    Array.prototype.forEach.call(alvo.querySelectorAll(".ia-req-check"), function (chk) {
+      chk.addEventListener("change", function () {
+        var codigo = chk.getAttribute("data-codigo");
+        if (chk.checked) iaState.selecionados[codigo] = true;
+        else delete iaState.selecionados[codigo];
+      });
+    });
+  }
+
+  function renderObservacoesIA() {
+    var alvo = $("iaObservacoes");
+    if (!alvo) return;
+    var itens = iaState.observacoes || [];
+    if (!itens.length) {
+      alvo.innerHTML = "";
+      return;
+    }
+    alvo.innerHTML =
+      '<div class="cal-alert"><strong>Observações da IA:</strong><ul>' +
+      itens
+        .map(function (o) {
+          return "<li>" + esc(o) + "</li>";
+        })
+        .join("") +
+      "</ul></div>";
+  }
+
+  // Eventos sugeridos pela IA nos itens faltantes da norma (modo verificar).
+  function sugeridosIA() {
+    var itens = ((iaState.requisitos || {}).itens || []).filter(function (it) {
+      return it.situacao === "faltando" && it.evento_sugerido;
+    });
+    return itens;
+  }
+
+  function marcarTodosIA() {
+    sugeridosIA().forEach(function (it) {
+      iaState.selecionados[it.codigo] = true;
+    });
+    renderRequisitosIA();
+    msgIA("Todos os itens faltantes com sugestão foram marcados.", "ok");
+  }
+
+  function aplicarSelecionadosIA() {
+    var escolhidos = sugeridosIA().filter(function (it) {
+      return iaState.selecionados[it.codigo];
+    });
+    if (!escolhidos.length) {
+      msgIA("Marque pelo menos um item faltante para aplicar no editor.", "erro");
+      return;
+    }
+    var inseridos = 0;
+    var chaves = {};
+    state.eventos.forEach(function (e) {
+      chaves[e.data_inicio + "|" + String(e.titulo || "").toLowerCase()] = true;
+    });
+    escolhidos.forEach(function (it) {
+      var e = it.evento_sugerido;
+      var chave = (e.data_inicio || "") + "|" + String(e.titulo || "").toLowerCase();
+      if (!e.data_inicio || chaves[chave]) return;
+      chaves[chave] = true;
+      state.eventos.push({
+        titulo: e.titulo,
+        tipo: e.tipo || "evento",
+        data_inicio: e.data_inicio,
+        data_fim: e.data_fim || "",
+        dia_semana_referencia:
+          e.dia_semana_referencia === undefined ? null : e.dia_semana_referencia,
+        descricao: e.descricao || "",
+        destaque: !!e.destaque
+      });
+      inseridos += 1;
+    });
+    state.eventoEditandoIdx = null;
+    fecharIA();
+    renderEventos();
+    preview();
+    var pendente = $("iaPendente");
+    if (pendente) pendente.hidden = false;
+    msg(
+      inseridos +
+        " item(ns) da norma aplicado(s) ao editor. NADA foi salvo ainda — confira e " +
+        "clique em “Salvar versão”.",
+      "ok"
+    );
+  }
+
+  function payloadIA() {
+    var p = payload();
+    p.feriados = iaState.feriados.map(function (f) {
+      return {
+        data: f.data,
+        descricao: f.descricao || "",
+        origem: f.origem || "manual",
+        tipo: f.tipo || "feriado"
+      };
+    });
+    p.eventos = iaState.eventos;
+    return p;
+  }
+
+  function recorteAgenda(ag) {
+    ag = ag || {};
+    return {
+      dias_por_dia: ag.dias_por_dia,
+      meta_por_dia: ag.meta_por_dia,
+      letivos_por_dia: ag.letivos_por_dia,
+      letivos_seg_sex_por_dia: ag.letivos_seg_sex_por_dia,
+      sabados_por_dia: ag.sabados_por_dia,
+      sabados_total: ag.sabados_total,
+      sabados_sem_referencia: ag.sabados_sem_referencia,
+      total_letivos: ag.total_letivos,
+      letivos_seg_sex: ag.letivos_seg_sex,
+      validacao: ag.validacao
+    };
+  }
+
+  function pintarDiasIA() {
+    var dias = $("iaDiasSemana");
+    if (dias) dias.innerHTML = iaState.agenda ? renderResumoDias(iaState.agenda) : "";
+  }
+
+  // Recalcula a carga horária no SERVIDOR (mesmo algoritmo do documento) sempre
+  // que a prévia é alterada aqui.
+  function recalcularIA() {
+    if (!iaState.gerado || iaState.modo !== "gerar") return;
+    if (iaTimer) clearTimeout(iaTimer);
+    iaTimer = setTimeout(function () {
+      postJSON(BASE + "api/preview/", payloadIA()).then(function (d) {
+        if (!d || !d.agenda) return;
+        iaState.agenda = recorteAgenda(d.agenda);
+        renderResumoIA();
+        pintarDiasIA();
+      });
+    }, 350);
+  }
+
+  // No modo verificar, a carga horária exibida é a do estado atual do editor.
+  function atualizarAgendaEditorIA() {
+    postJSON(BASE + "api/preview/", payload()).then(function (d) {
+      if (!d || !d.agenda) return;
+      iaState.agenda = recorteAgenda(d.agenda);
+      renderResumoIA();
+      pintarDiasIA();
+    });
+  }
+
+  function aplicarIA() {
+    var modo = $("iaModo").value;
+    var novosEventos = iaState.eventos.map(function (e) {
+      return {
+        titulo: e.titulo,
+        tipo: e.tipo,
+        data_inicio: e.data_inicio,
+        data_fim: e.data_fim || "",
+        dia_semana_referencia:
+          e.dia_semana_referencia === undefined ? null : e.dia_semana_referencia,
+        descricao: e.descricao || "",
+        destaque: !!e.destaque
+      };
+    });
+    var novosFeriados = iaState.feriados.map(function (f) {
+      return {
+        data: f.data,
+        descricao: f.descricao || "",
+        origem: f.origem || "manual",
+        tipo: f.tipo === "ponto_facultativo" ? "ponto_facultativo" : "feriado"
+      };
+    });
+
+    if (modo === "substituir") {
+      state.eventos = novosEventos;
+      state.feriados = novosFeriados;
+    } else {
+      var chavesEvento = {};
+      state.eventos.forEach(function (e) {
+        chavesEvento[e.data_inicio + "|" + String(e.titulo || "").toLowerCase()] = true;
+      });
+      novosEventos.forEach(function (e) {
+        var chave = e.data_inicio + "|" + String(e.titulo || "").toLowerCase();
+        if (chavesEvento[chave]) return;
+        chavesEvento[chave] = true;
+        state.eventos.push(e);
+      });
+      var datasFeriado = {};
+      state.feriados.forEach(function (f) {
+        datasFeriado[f.data] = true;
+      });
+      novosFeriados.forEach(function (f) {
+        if (datasFeriado[f.data]) return;
+        datasFeriado[f.data] = true;
+        state.feriados.push(f);
+      });
+    }
+
+    state.eventoEditandoIdx = null;
+    fecharIA();
+    atualizarBotaoEventoIA();
+    limparFormEventoIA();
+    renderEventos();
+    renderChips();
+    preview();
+    var pendente = $("iaPendente");
+    if (pendente) pendente.hidden = false;
+    msg(
+      "Prévia da IA aplicada ao editor (" +
+        novosEventos.length +
+        " evento(s) e " +
+        novosFeriados.length +
+        " feriado(s), modo " +
+        modo +
+        "). NADA foi salvo ainda — confira e clique em “Salvar versão”.",
+      "ok"
+    );
   }
 
   // ---- Exibir/ocultar blocos (preenchimento e prévias) -------------------
@@ -1039,6 +1867,33 @@
   $("btnNacionais").addEventListener("click", carregarNacionais);
   $("btnSalvar").addEventListener("click", salvar);
   $("btnNovo").addEventListener("click", novaVersao);
+
+  // ---- Preenchimento/verificação por IA ----------------------------------
+  if ($("btnIA")) $("btnIA").addEventListener("click", abrirIA);
+  if ($("btnIAVerificar")) {
+    $("btnIAVerificar").addEventListener("click", function () {
+      abrirIAComo("verificar");
+    });
+  }
+  if ($("fModalidade")) $("fModalidade").addEventListener("change", atualizarNormaIA);
+  if ($("iaGerar")) $("iaGerar").addEventListener("click", gerarIA);
+  if ($("iaAplicar")) $("iaAplicar").addEventListener("click", aplicarIA);
+  if ($("iaAplicarSelecionados")) {
+    $("iaAplicarSelecionados").addEventListener("click", aplicarSelecionadosIA);
+  }
+  if ($("iaMarcarTodos")) $("iaMarcarTodos").addEventListener("click", marcarTodosIA);
+  if ($("iaRegerar")) $("iaRegerar").addEventListener("click", gerarIA);
+  if ($("iaVoltar")) {
+    $("iaVoltar").addEventListener("click", function () {
+      mostrarPassoIA("entrada");
+    });
+  }
+  if ($("iaFechar")) $("iaFechar").addEventListener("click", fecharIA);
+  if ($("iaCancelar")) $("iaCancelar").addEventListener("click", fecharIA);
+  if ($("iaAddEvento")) $("iaAddEvento").addEventListener("click", salvarEventoIA);
+  if ($("iaCancelarEvento")) {
+    $("iaCancelarEvento").addEventListener("click", cancelarEdicaoEventoIA);
+  }
 
   if ($("fInicio").value) preview();
   else {

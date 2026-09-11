@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 db.sqlite3
 staticfiles/
+# Chaves de API da IA — NUNCA versionar (use variáveis de ambiente)
+.env
+.env.local
 # Editor
 .DS_Store
 # OBS: build/ NÃO é ignorado de propósito — o HTML versionado por etapa e a

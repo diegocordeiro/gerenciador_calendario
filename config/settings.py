@@ -139,6 +139,82 @@ def _normalize_base(raw):
 SITE_BASE_URL = _normalize_base(os.environ.get("SITE_BASE_URL", "/"))
 SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")
 
+
+def _flag(nome, padrao=True):
+    """Lê uma variável de ambiente booleana (``0``/``false``/``no`` desligam)."""
+    valor = os.environ.get(nome)
+    if valor is None or not valor.strip():
+        return padrao
+    return valor.strip().lower() not in ("0", "false", "no", "off")
+
+
+# ---- LLM (preenchimento assistido dos eventos) -----------------------------
+# As chaves ficam **somente** em variáveis de ambiente; nada é versionado e os
+# valores nunca chegam ao navegador nem ao site estático (o editor não é publicado).
+#
+#   export DEEPSEEK_API_KEY="sk-..."
+#   export LLM_PROVIDER="deepseek"      # deepseek | openai | gemini | anthropic
+#
+LLM_ENABLED = _flag("LLM_ENABLED", True)
+LLM_DEFAULT_PROVIDER = os.environ.get("LLM_PROVIDER", "deepseek").strip().lower()
+LLM_TIMEOUT = int(os.environ.get("LLM_TIMEOUT", "120"))
+LLM_MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "8000"))
+LLM_TEMPERATURE = float(os.environ.get("LLM_TEMPERATURE", "0.2"))
+
+# Localização padrão da unidade (usada como valor inicial no modal do editor).
+LLM_CIDADE_PADRAO = os.environ.get("LLM_CIDADE_PADRAO", "Barras")
+LLM_ESTADO_PADRAO = os.environ.get("LLM_ESTADO_PADRAO", "PI")
+LLM_PAIS_PADRAO = os.environ.get("LLM_PAIS_PADRAO", "Brasil")
+
+#: Provedores suportados. ``dialeto`` define o formato do corpo da requisição:
+#: ``openai`` (ChatGPT/OpenAI e DeepSeek), ``gemini`` (Google) e ``anthropic``.
+LLM_PROVIDERS = {
+    "deepseek": {
+        "label": "DeepSeek",
+        "dialeto": "openai",
+        "url": os.environ.get("DEEPSEEK_API_URL", "https://api.deepseek.com/chat/completions"),
+        "model": os.environ.get("DEEPSEEK_MODEL", "deepseek-chat"),
+        "api_key": os.environ.get("DEEPSEEK_API_KEY", ""),
+    },
+    "openai": {
+        "label": "ChatGPT (OpenAI)",
+        "dialeto": "openai",
+        "url": os.environ.get("OPENAI_API_URL", "https://api.openai.com/v1/chat/completions"),
+        "model": os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
+        "api_key": os.environ.get("OPENAI_API_KEY", ""),
+    },
+    "gemini": {
+        "label": "Gemini (Google)",
+        "dialeto": "gemini",
+        "url": os.environ.get(
+            "GEMINI_API_URL",
+            "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+        ),
+        "model": os.environ.get("GEMINI_MODEL", "gemini-2.0-flash"),
+        "api_key": os.environ.get("GEMINI_API_KEY", ""),
+    },
+    "anthropic": {
+        "label": "Claude (Anthropic)",
+        "dialeto": "anthropic",
+        "url": os.environ.get("ANTHROPIC_API_URL", "https://api.anthropic.com/v1/messages"),
+        "model": os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-5"),
+        "api_key": os.environ.get("ANTHROPIC_API_KEY", ""),
+    },
+}
+
+#: Apelidos aceitos nas configurações/entrada (ex.: ``chatgpt`` → ``openai``).
+LLM_PROVIDER_ALIASES = {
+    "chatgpt": "openai",
+    "gpt": "openai",
+    "openai": "openai",
+    "claude": "anthropic",
+    "claudecode": "anthropic",
+    "anthropic": "anthropic",
+    "google": "gemini",
+    "gemini": "gemini",
+    "deepseek": "deepseek",
+}
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 

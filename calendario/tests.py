@@ -3,12 +3,14 @@ import json
 import re
 import tempfile
 from pathlib import Path
+from unittest import mock
 
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
+from . import llm, requisitos
 from .agenda import build_agenda
 from .data.feriados import feriados_nacionais, pascoa
 from .models import Calendario, Evento, Feriado
@@ -1018,7 +1020,7 @@ class ClonarVersaoTests(TestCase):
             titulo="Calendário 2026.2 — Administração",
             periodo="2026.2",
             curso="Técnico em Administração",
-            modalidade="integrado_proeja",
+            modalidade="integrado_medio",
             semestre="2º Semestre",
             data_inicio=dt.date(2026, 9, 14),
             data_fim=dt.date(2027, 2, 12),
@@ -1056,10 +1058,10 @@ class ClonarVersaoTests(TestCase):
     def test_clonar_copia_parametros_feriados_e_eventos(self):
         novo = self.cal.clonar(
             "2026.2.subsequente",
-            modalidade="subsequente",
+            modalidade="concomitante_subsequente",
             curso="Técnico em Administração Subsequente",
         )
-        self.assertEqual(novo.modalidade, "subsequente")
+        self.assertEqual(novo.modalidade, "concomitante_subsequente")
         self.assertEqual(novo.curso, "Técnico em Administração Subsequente")
         # Cabeçalho/período herdados.
         self.assertEqual(novo.titulo, self.cal.titulo)
@@ -1100,14 +1102,14 @@ class ClonarVersaoTests(TestCase):
             {
                 "versao": "2026.2.integrado",
                 "nova_versao": "2026.2.subsequente",
-                "modalidade": "subsequente",
+                "modalidade": "concomitante_subsequente",
                 "curso": "Administração Subsequente",
                 "destino": "editor",
             },
         )
         novo = Calendario.objects.get(versao="2026.2.subsequente")
         self.assertRedirects(resp, reverse("editor") + f"?versao={novo.slug}")
-        self.assertEqual(novo.modalidade, "subsequente")
+        self.assertEqual(novo.modalidade, "concomitante_subsequente")
         self.assertEqual(novo.eventos.count(), 2)
 
     def test_clonar_formulario_origem_inexistente_avisa(self):
@@ -1139,7 +1141,7 @@ class ClonarVersaoTests(TestCase):
             },
         )
         novo = Calendario.objects.get(versao="2026.2.x")
-        self.assertEqual(novo.modalidade, "integrado_proeja")
+        self.assertEqual(novo.modalidade, "integrado_medio")
 
     def test_clonar_get_nao_permitido(self):
         self.assertEqual(self.client.get(reverse("clonar_versao")).status_code, 405)
@@ -1161,7 +1163,7 @@ class ClonarVersaoTests(TestCase):
                 {
                     "versao": "2026.2.integrado",
                     "nova_versao": "2026.2.superior",
-                    "modalidade": "superior",
+                    "modalidade": "graduacao",
                 }
             ),
             content_type="application/json",
@@ -1204,6 +1206,658 @@ class ClonarVersaoTests(TestCase):
         resp = self.client.get(reverse("editor") + f"?versao={novo.slug}")
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "2026.2.subsequente")
+
+
+
+
+
+# ===========================================================================
+# Requisitos das normas (arts. 38, 39 e 40)
+# ===========================================================================
+
+
+class RequisitosTests(TestCase):
+    """Conferência determinística dos itens exigidos por norma."""
+
+    def test_modalidade_aponta_para_a_norma(self):
+        self.assertEqual(requisitos.norma_da_modalidade("integrado_medio"), "Art. 38")
+        self.assertEqual(
+            requisitos.norma_da_modalidade("concomitante_subsequente"), "Art. 39"
+        )
+        self.assertEqual(requisitos.norma_da_modalidade("graduacao"), "Art. 40")
+
+    def test_modalidade_desconhecida_cai_no_padrao(self):
+        self.assertEqual(requisitos.norma_da_modalidade("inexistente"), "Art. 38")
+
+    def test_quantidade_de_itens_por_norma(self):
+        self.assertEqual(len(requisitos.itens_da_modalidade("integrado_medio")), 22)
+        self.assertEqual(len(requisitos.itens_da_modalidade("concomitante_subsequente")), 21)
+        self.assertEqual(len(requisitos.itens_da_modalidade("graduacao")), 23)
+
+    def test_prompt_lista_os_itens_da_norma(self):
+        texto = requisitos.formatar_para_prompt("graduacao")
+        self.assertIn("I)", texto)
+        self.assertIn("ATPA", texto)
+
+    def _itens(self, modalidade, eventos, agenda=None, **extra):
+        return {
+            i["codigo"]: i
+            for i in requisitos.verificar_requisitos(
+                modalidade, eventos=eventos, agenda=agenda, **extra
+            )["itens"]
+        }
+
+    def test_detecta_por_tipo(self):
+        itens = self._itens(
+            "integrado_medio",
+            [
+                {"titulo": "Recuperação paralela", "tipo": "recuperacao",
+                 "data_inicio": "2026-11-23"},
+                {"titulo": "Conselho de Classe", "tipo": "conselho_classe",
+                 "data_inicio": "2026-11-30"},
+            ],
+        )
+        self.assertEqual(itens["VII"]["situacao"], requisitos.SITUACAO_ATENDIDO)
+        self.assertEqual(itens["XX"]["situacao"], requisitos.SITUACAO_ATENDIDO)
+        self.assertEqual(itens["VII"]["evidencias"], ["23/11 — Recuperação paralela"])
+
+    def test_detecta_por_palavra_mesmo_com_outro_titulo(self):
+        itens = self._itens(
+            "integrado_medio",
+            [{"titulo": "Eleição dos representantes de turma", "tipo": "evento",
+              "data_inicio": "2026-09-22"}],
+        )
+        self.assertEqual(itens["IV"]["situacao"], requisitos.SITUACAO_ATENDIDO)
+
+    def test_detecta_por_calculo_da_agenda(self):
+        agenda = {
+            "parametros": {"data_inicio": "2026-09-14", "data_fim": "2027-02-12"},
+            "total_letivos": 100,
+            "sabados_total": 11,
+            "feriados": [{"data": "2026-10-12"}],
+        }
+        itens = self._itens("integrado_medio", [], agenda=agenda)
+        for codigo in ("VIII", "XI", "XII", "XIV"):
+            self.assertEqual(
+                itens[codigo]["situacao"], requisitos.SITUACAO_ATENDIDO, codigo
+            )
+        # Dias letivos por mês não declarados → conferir
+        self.assertEqual(itens["XVII"]["situacao"], requisitos.SITUACAO_CONFERIR)
+
+    def test_dias_por_mes_declarado_e_atendido(self):
+        agenda = {
+            "parametros": {"data_inicio": "2026-09-14", "data_fim": "2027-02-12"},
+            "total_letivos": 100,
+            "sabados_total": 11,
+            "feriados": [],
+        }
+        itens = self._itens(
+            "integrado_medio", [], agenda=agenda,
+            dias_letivos_por_mes=[{"mes": "SET/2026", "letivos": 13}],
+        )
+        self.assertEqual(itens["XVII"]["situacao"], requisitos.SITUACAO_ATENDIDO)
+
+    def test_item_manual_fica_como_conferir(self):
+        itens = self._itens("integrado_medio", [])
+        self.assertEqual(itens["XXI"]["situacao"], requisitos.SITUACAO_CONFERIR)
+        self.assertIn("manualmente", itens["XXI"]["motivo"])
+
+    def test_sem_agenda_os_itens_calculados_nao_afirmam_atendido(self):
+        resultado = requisitos.verificar_requisitos("integrado_medio", eventos=[])
+        itens = {i["codigo"]: i for i in resultado["itens"]}
+        self.assertNotEqual(itens["XI"]["situacao"], requisitos.SITUACAO_ATENDIDO)
+        self.assertTrue(resultado["avisos"])
+
+    def test_ia_nao_rebaixa_evidencia_local(self):
+        eventos = [
+            {"titulo": "Recuperação paralela", "tipo": "recuperacao",
+             "data_inicio": "2026-11-23"}
+        ]
+        extras = {"VII": {"situacao": "faltando", "motivo": "a IA não encontrou"}}
+        itens = {
+            i["codigo"]: i
+            for i in requisitos.verificar_requisitos(
+                "integrado_medio", eventos=eventos, extras=extras
+            )["itens"]
+        }
+        self.assertEqual(itens["VII"]["situacao"], requisitos.SITUACAO_ATENDIDO)
+        self.assertEqual(itens["VII"]["evidencias"], ["23/11 — Recuperação paralela"])
+
+    def test_ia_sem_prova_local_vira_conferir(self):
+        extras = {"IV": {"situacao": "atendido", "motivo": "consta na ata"}}
+        itens = {
+            i["codigo"]: i
+            for i in requisitos.verificar_requisitos(
+                "integrado_medio", eventos=[], extras=extras
+            )["itens"]
+        }
+        self.assertEqual(itens["IV"]["situacao"], requisitos.SITUACAO_CONFERIR)
+        self.assertEqual(itens["IV"]["motivo"], "consta na ata")
+
+    def test_sugestao_da_ia_nao_entra_em_item_atendido(self):
+        eventos = [
+            {"titulo": "Recuperação paralela", "tipo": "recuperacao",
+             "data_inicio": "2026-11-23"}
+        ]
+        extras = {
+            "VII": {
+                "situacao": "faltando",
+                "evento_sugerido": {"titulo": "Recuperação", "data_inicio": "2026-11-24"},
+            }
+        }
+        itens = {
+            i["codigo"]: i
+            for i in requisitos.verificar_requisitos(
+                "integrado_medio", eventos=eventos, extras=extras
+            )["itens"]
+        }
+        self.assertEqual(itens["VII"]["situacao"], requisitos.SITUACAO_ATENDIDO)
+        self.assertIsNone(itens["VII"]["evento_sugerido"])
+
+    def test_calendario_oficial_2026_2_atende_o_art_38(self):
+        call_command("seed_calendario_2026_2")
+        cal = Calendario.objects.get(versao="2026.2.final")
+        resultado = requisitos.verificar_requisitos(
+            cal.modalidade,
+            eventos=cal.eventos.all(),
+            feriados=cal.feriados.all(),
+            agenda=cal.agenda(),
+            dias_letivos_por_mes=cal.dias_letivos_por_mes,
+        )
+        self.assertEqual(resultado["norma"], "Art. 38")
+        self.assertEqual(resultado["resumo"]["total"], 22)
+        self.assertGreaterEqual(resultado["resumo"]["atendidos"], 15)
+        itens = {i["codigo"]: i for i in resultado["itens"]}
+        for codigo in ("V", "VII", "XI", "XII", "XIV", "XV", "XX"):
+            self.assertEqual(
+                itens[codigo]["situacao"], requisitos.SITUACAO_ATENDIDO, codigo
+            )
+
+
+# ===========================================================================
+# LLM: configuração, leitura da resposta e carga horária
+# ===========================================================================
+
+PROVEDOR_FAKE = {
+    "deepseek": {
+        "label": "DeepSeek",
+        "dialeto": "openai",
+        "url": "https://exemplo.invalido/chat",
+        "model": "deepseek-chat",
+        "api_key": "chave-fake",
+    },
+    "anthropic": {
+        "label": "Claude (Anthropic)",
+        "dialeto": "anthropic",
+        "url": "https://exemplo.invalido/messages",
+        "model": "claude-sonnet-4-5",
+        "api_key": "",
+    },
+}
+
+
+class LlmConfigTests(TestCase):
+    """Apelidos de provedor e disponibilidade conforme as chaves."""
+
+    def test_resolve_apelidos(self):
+        self.assertEqual(llm.resolver_provedor("chatgpt"), "openai")
+        self.assertEqual(llm.resolver_provedor("claude"), "anthropic")
+        self.assertEqual(llm.resolver_provedor("claudecode"), "anthropic")
+        self.assertEqual(llm.resolver_provedor("google"), "gemini")
+        self.assertEqual(llm.resolver_provedor("DeepSeek"), "deepseek")
+
+    @override_settings(LLM_PROVIDERS=PROVEDOR_FAKE)
+    def test_provedores_disponiveis_so_com_chave(self):
+        itens = {p["valor"]: p for p in llm.provedores_disponiveis()}
+        self.assertTrue(itens["deepseek"]["disponivel"])
+        self.assertFalse(itens["anthropic"]["disponivel"])
+        self.assertEqual(itens["deepseek"]["modelo"], "deepseek-chat")
+
+    @override_settings(LLM_PROVIDERS=PROVEDOR_FAKE)
+    def test_tem_provedor_configurado(self):
+        self.assertTrue(llm.tem_provedor_configurado())
+
+    @override_settings(LLM_PROVIDERS=PROVEDOR_FAKE, LLM_ENABLED=False)
+    def test_desativado_por_flag(self):
+        self.assertFalse(llm.tem_provedor_configurado())
+        with self.assertRaises(llm.LlmConfigError):
+            llm.gerar_eventos({"data_inicio": "2026-09-14", "data_fim": "2027-02-12"})
+
+    def test_provedor_desconhecido(self):
+        with self.assertRaises(llm.LlmConfigError):
+            llm.config_provedor("inexistente")
+
+    @override_settings(LLM_PROVIDERS=PROVEDOR_FAKE)
+    def test_config_provedor_resolve_apelido(self):
+        cfg = llm.config_provedor("claude")
+        self.assertEqual(cfg["chave"], "anthropic")
+        self.assertEqual(cfg["dialeto"], "anthropic")
+
+    @override_settings(LLM_PROVIDERS=PROVEDOR_FAKE)
+    def test_config_provedor_usa_padrao_quando_vazio(self):
+        cfg = llm.config_provedor("")
+        self.assertIn(cfg["chave"], PROVEDOR_FAKE)
+
+    def test_sem_chave_nenhuma_avisa(self):
+        somente_sem_chave = {
+            "deepseek": {
+                "label": "DeepSeek",
+                "dialeto": "openai",
+                "url": "https://exemplo.invalido",
+                "model": "deepseek-chat",
+                "api_key": "",
+            }
+        }
+        with override_settings(LLM_PROVIDERS=somente_sem_chave):
+            with self.assertRaises(llm.LlmConfigError) as ctx:
+                llm.gerar_eventos({"data_inicio": "2026-09-14", "data_fim": "2027-02-12"})
+            self.assertIn("chave", str(ctx.exception).lower())
+
+
+class LlmLeituraRespostaTests(TestCase):
+    """Leitura tolerante e normalização da resposta da IA."""
+
+    def test_parse_json_puro(self):
+        self.assertEqual(llm.parse_resposta('{"eventos": []}'), {"eventos": []})
+
+    def test_parse_com_cerca_e_texto_em_volta(self):
+        texto = 'Claro! ```json\n{"eventos": [{"titulo": "X"}]}\n``` Fim.'
+        self.assertEqual(llm.parse_resposta(texto)["eventos"][0]["titulo"], "X")
+
+    def test_parse_invalido(self):
+        with self.assertRaises(llm.LlmProviderError):
+            llm.parse_resposta("nada de json aqui")
+
+    def test_normalizar_tipo_com_apelidos(self):
+        self.assertEqual(llm.normalizar_tipo("Recuperação"), "recuperacao")
+        self.assertEqual(llm.normalizar_tipo("Sábado letivo"), "sabado_letivo")
+        self.assertEqual(llm.normalizar_tipo("feriado_municipal"), "feriado")
+        self.assertEqual(llm.normalizar_tipo("qualquer"), "evento")
+
+    def test_normalizar_dia_semana(self):
+        self.assertEqual(llm.normalizar_dia_semana("quarta"), 2)
+        self.assertEqual(llm.normalizar_dia_semana("2"), 2)
+        self.assertEqual(llm.normalizar_dia_semana(4), 4)
+        self.assertIsNone(llm.normalizar_dia_semana(9))
+        self.assertIsNone(llm.normalizar_dia_semana(None))
+        self.assertIsNone(llm.normalizar_dia_semana(True))
+
+    def test_normalizar_origem_do_feriado(self):
+        self.assertEqual(llm.normalizar_feriado_origem(None, "municipal"), "municipal")
+        self.assertEqual(llm.normalizar_feriado_origem(None, "estadual"), "estadual")
+        self.assertEqual(llm.normalizar_feriado_origem(None, "outra"), "institucional")
+
+    def test_validar_normalizar_mantem_evento_antes_do_inicio(self):
+        inicio, fim = dt.date(2026, 9, 14), dt.date(2027, 2, 12)
+        dados = {
+            "eventos": [
+                {"titulo": "Matrículas", "tipo": "matricula", "data_inicio": "2026-08-10",
+                 "data_fim": "2026-08-14"},
+                {"titulo": "Fora da janela", "tipo": "evento", "data_inicio": "2020-01-10"},
+                {"titulo": "Sem data", "tipo": "evento"},
+            ],
+            "feriados": [
+                {"data": "2026-09-07", "esfera": "federal", "descricao": "Independência"}
+            ],
+        }
+        resultado = llm.validar_normalizar(dados, inicio, fim)
+        titulos = [e["titulo"] for e in resultado["eventos"]]
+        self.assertIn("Matrículas", titulos)
+        self.assertNotIn("Fora da janela", titulos)
+        self.assertEqual(resultado["feriados"][0]["data"], "2026-09-07")
+        self.assertEqual(resultado["feriados"][0]["origem"], "federal")
+        self.assertTrue(resultado["avisos"])
+
+    def test_validar_normalizar_deduplica(self):
+        inicio, fim = dt.date(2026, 9, 14), dt.date(2027, 2, 12)
+        dados = {
+            "eventos": [
+                {"titulo": "Avaliação", "tipo": "avaliacao", "data_inicio": "2026-11-04"},
+                {"titulo": "avaliação", "tipo": "avaliacao", "data_inicio": "2026-11-04"},
+            ],
+            "feriados": [
+                {"data": "2026-10-12", "descricao": "A"},
+                {"data": "2026-10-12", "descricao": ""},
+            ],
+        }
+        resultado = llm.validar_normalizar(dados, inicio, fim)
+        self.assertEqual(len(resultado["eventos"]), 1)
+        self.assertEqual(len(resultado["feriados"]), 1)
+
+    def test_mesclar_feriados_nacionais_inclui_federal(self):
+        feriados = llm.mesclar_feriados_nacionais(
+            [], dt.date(2026, 9, 14), dt.date(2027, 2, 12)
+        )
+        datas = {f["data"] for f in feriados}
+        self.assertIn("2026-09-07", datas)  # véspera do início (margem)
+        self.assertIn("2026-10-12", datas)
+        self.assertTrue(all(f["origem"] == "nacional" for f in feriados))
+
+
+class CompletarSabadosTests(TestCase):
+    """Distribuição determinística dos sábados para fechar a carga horária."""
+
+    INICIO = dt.date(2026, 9, 14)
+    FIM = dt.date(2027, 2, 12)
+
+    def _agenda(self, eventos, feriados=(), previsto=100):
+        return build_agenda(
+            data_inicio=self.INICIO,
+            data_fim=self.FIM,
+            feriados=list(feriados),
+            eventos=list(eventos),
+            dias_letivos_previstos=previsto,
+        )
+
+    def test_fecha_a_meta_de_cada_dia_da_semana(self):
+        # meta = ceil(120/5) = 24 por dia: o semestre sozinho não alcança, então
+        # os sábados precisam ser distribuídos.
+        resultado = llm.completar_sabados([], [], self.INICIO, self.FIM, 120)
+        self.assertGreater(resultado["criados"], 0)
+        self.assertEqual(resultado["faltando"], [0, 0, 0, 0, 0])
+        self.assertEqual(resultado["avisos"], [])
+        agenda = self._agenda(resultado["eventos"], previsto=120)
+        self.assertEqual(agenda["meta_por_dia"], 24)
+        for dia in agenda["dias_por_dia"]:
+            self.assertGreaterEqual(dia["letivos"], dia["meta"], dia["label"])
+
+    def test_sabados_tem_referencia_valida_e_nao_repetem_data(self):
+        resultado = llm.completar_sabados([], [], self.INICIO, self.FIM, 120)
+        sabados = [e for e in resultado["eventos"] if e["tipo"] == "sabado_letivo"]
+        self.assertTrue(sabados)
+        for s in sabados:
+            self.assertIsNotNone(s["dia_semana_referencia"])
+            self.assertTrue(0 <= s["dia_semana_referencia"] <= 4)
+            self.assertEqual(dt.date.fromisoformat(s["data_inicio"]).weekday(), 5)
+        datas = [s["data_inicio"] for s in sabados]
+        self.assertEqual(len(datas), len(set(datas)))
+
+    def test_nao_usa_sabado_ja_lancado_nem_feriado(self):
+        eventos = [
+            {"titulo": "Sábado letivo", "tipo": "sabado_letivo",
+             "data_inicio": "2026-09-19", "dia_semana_referencia": 0}
+        ]
+        feriados = [{"data": "2026-09-26", "tipo": "feriado", "descricao": "Municipal"}]
+        resultado = llm.completar_sabados(eventos, feriados, self.INICIO, self.FIM, 120)
+        datas = [
+            e["data_inicio"]
+            for e in resultado["eventos"]
+            if e["tipo"] == "sabado_letivo"
+        ]
+        self.assertIn("2026-09-19", datas)
+        self.assertNotIn("2026-09-26", datas)
+        self.assertEqual(len(datas), len(set(datas)))
+
+    def test_sem_previsto_nao_cria_sabados(self):
+        resultado = llm.completar_sabados([], [], self.INICIO, self.FIM, 0)
+        self.assertEqual(resultado["criados"], 0)
+        self.assertEqual(resultado["eventos"], [])
+        self.assertEqual(resultado["avisos"], [])
+
+    def test_avisa_quando_faltam_sabados(self):
+        inicio = dt.date(2026, 9, 14)
+        fim = dt.date(2026, 10, 9)  # janela curta
+        resultado = llm.completar_sabados([], [], inicio, fim, 100)
+        self.assertGreater(sum(resultado["faltando"]), 0)
+        self.assertTrue(resultado["avisos"])
+        self.assertIn("sábados", resultado["avisos"][0])
+
+
+# ===========================================================================
+# Endpoints da IA (com o provedor simulado — nenhum teste toca a rede)
+# ===========================================================================
+
+
+def resposta_ia_gerar() -> str:
+    """Resposta simulada do provedor para o modo *gerar*."""
+    return json.dumps(
+        {
+            "feriados": [
+                {"data": "2026-09-24", "tipo": "feriado", "esfera": "municipal",
+                 "descricao": "Aniversário de Barras-PI", "confianca": "alta"}
+            ],
+            "eventos": [
+                {"titulo": "Matrículas", "tipo": "matricula", "data_inicio": "2026-08-10",
+                 "data_fim": "2026-08-14"},
+                {"titulo": "Aulas do PRAEI", "tipo": "evento", "data_inicio": "2026-09-10"},
+                {"titulo": "Avaliações do 1º Bimestre", "tipo": "avaliacao",
+                 "data_inicio": "2026-11-04", "data_fim": "2026-11-07"},
+                {"titulo": "Recuperação paralela", "tipo": "recuperacao",
+                 "data_inicio": "2026-11-23"},
+                {"titulo": "Conselho de Classe", "tipo": "conselho_classe",
+                 "data_inicio": "2026-11-30"},
+            ],
+        },
+        ensure_ascii=False,
+    )
+
+
+def resposta_ia_verificar() -> str:
+    """Resposta simulada do provedor para o modo *verificar* (com cerca de código)."""
+    dados = {
+        "requisitos": [
+            {
+                "codigo": "IV",
+                "situacao": "faltando",
+                "motivo": "não há evento de eleição de representantes",
+                "evento_sugerido": {
+                    "titulo": "Eleição de representantes de turma",
+                    "tipo": "evento",
+                    "data_inicio": "2026-09-22",
+                },
+            }
+        ],
+        "observacoes": ["Conferir o recesso de dezembro."],
+    }
+    return "```json\n" + json.dumps(dados, ensure_ascii=False) + "\n```"
+
+
+class IaApiTestsBase(TestCase):
+    """Base dos testes de IA: payload padrão e POST JSON."""
+
+    def _post(self, url_name, payload):
+        return self.client.post(
+            reverse(url_name), data=json.dumps(payload), content_type="application/json"
+        )
+
+    def _payload(self, **extra):
+        base = {
+            "cidade": "Barras",
+            "estado": "PI",
+            "pais": "Brasil",
+            "instituicao": "IFPI — Campus Barras",
+            "curso": "Técnico em Administração",
+            "modalidade": "integrado_medio",
+            "data_inicio": "2026-09-14",
+            "data_fim": "2027-02-12",
+            "total_semanas": 22,
+            "semanas_primeira_parte": 11,
+            "dias_letivos_previstos": 100,
+            "feriados": [],
+            "eventos": [],
+            "completar_sabados": True,
+            "provedor": "deepseek",
+        }
+        base.update(extra)
+        return base
+
+
+@override_settings(LLM_PROVIDERS=PROVEDOR_FAKE, LLM_ENABLED=True)
+class IaEventosApiTests(IaApiTestsBase):
+    """``POST /api/ia/eventos/`` — prévia gerada pela IA, sem gravar nada."""
+
+    def test_previa_gera_sem_persistir(self):
+        with mock.patch.object(llm, "chamar_provedor", lambda *a, **k: resposta_ia_gerar()):
+            resp = self._post("api_ia_eventos", self._payload())
+        self.assertEqual(resp.status_code, 200)
+        dados = resp.json()
+        self.assertTrue(dados["ok"])
+        self.assertEqual(dados["provedor"], "deepseek")
+        self.assertEqual(dados["modelo"], "deepseek-chat")
+        self.assertEqual(dados["requisitos"]["norma"], "Art. 38")
+        self.assertTrue(dados["requisitos"]["resumo"]["atendidos"] > 0)
+        # sábados letivos distribuídos pelo cálculo (não pela IA)
+        self.assertTrue(any(e["tipo"] == "sabado_letivo" for e in dados["eventos"]))
+        self.assertIn("dias_por_dia", dados["agenda"])
+        # NADA foi gravado
+        self.assertEqual(Evento.objects.count(), 0)
+        self.assertEqual(Feriado.objects.count(), 0)
+
+    def test_feriado_municipal_com_esfera(self):
+        with mock.patch.object(llm, "chamar_provedor", lambda *a, **k: resposta_ia_gerar()):
+            resp = self._post("api_ia_eventos", self._payload())
+        feriados = resp.json()["feriados"]
+        municipal = [f for f in feriados if f["data"] == "2026-09-24"][0]
+        self.assertEqual(municipal["origem"], "municipal")
+        self.assertEqual(municipal["esfera"], "municipal")
+        # federais entram sempre, pelo cálculo local
+        self.assertTrue(any(f["origem"] == "nacional" for f in feriados))
+
+    def test_exige_cidade_e_estado(self):
+        resp = self._post("api_ia_eventos", self._payload(cidade="", estado=""))
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("cidade", resp.json()["erros"][0].lower())
+
+    def test_exige_periodo(self):
+        resp = self._post("api_ia_eventos", self._payload(data_fim=""))
+        self.assertEqual(resp.status_code, 400)
+
+    def test_provedor_sem_chave(self):
+        sem_chave = {
+            "deepseek": {
+                "label": "DeepSeek",
+                "dialeto": "openai",
+                "url": "https://exemplo.invalido",
+                "model": "deepseek-chat",
+                "api_key": "",
+            }
+        }
+        with override_settings(LLM_PROVIDERS=sem_chave):
+            resp = self._post("api_ia_eventos", self._payload())
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("chave", resp.json()["erros"][0].lower())
+
+    def test_falha_do_provedor_retorna_502(self):
+        erro = llm.LlmProviderError("O provedor respondeu HTTP 500.")
+        with mock.patch.object(llm, "chamar_provedor", side_effect=erro):
+            resp = self._post("api_ia_eventos", self._payload())
+        self.assertEqual(resp.status_code, 502)
+        self.assertFalse(resp.json()["ok"])
+
+    def test_modalidade_desconhecida_cai_no_padrao(self):
+        with mock.patch.object(llm, "chamar_provedor", lambda *a, **k: resposta_ia_gerar()):
+            resp = self._post("api_ia_eventos", self._payload(modalidade="inexistente"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["requisitos"]["norma"], "Art. 38")
+
+    def test_get_nao_permitido(self):
+        self.assertEqual(self.client.get(reverse("api_ia_eventos")).status_code, 405)
+
+
+@override_settings(LLM_PROVIDERS=PROVEDOR_FAKE, LLM_ENABLED=True)
+class IaVerificarApiTests(IaApiTestsBase):
+    """``POST /api/ia/verificar/`` — auditoria dos eventos lançados."""
+
+    def _resposta(self):
+        return mock.patch.object(
+            llm, "chamar_provedor", lambda *a, **k: resposta_ia_verificar()
+        )
+
+    def test_relatorio_com_sugestao_sem_persistir(self):
+        payload = self._payload(
+            eventos=[
+                {"titulo": "Matrículas", "tipo": "matricula", "data_inicio": "2026-08-10"},
+                {"titulo": "Avaliações", "tipo": "avaliacao", "data_inicio": "2026-11-04"},
+            ]
+        )
+        with self._resposta():
+            resp = self._post("api_ia_verificar", payload)
+        self.assertEqual(resp.status_code, 200)
+        dados = resp.json()
+        self.assertTrue(dados["ok"])
+        self.assertEqual(dados["norma"], "Art. 38")
+        itens = {i["codigo"]: i for i in dados["requisitos"]["itens"]}
+        self.assertEqual(itens["IV"]["situacao"], "faltando")
+        self.assertEqual(
+            itens["IV"]["evento_sugerido"]["titulo"], "Eleição de representantes de turma"
+        )
+        self.assertEqual(itens["IV"]["situacao_label"], "Faltando")
+        self.assertEqual(dados["observacoes"], ["Conferir o recesso de dezembro."])
+        self.assertEqual(Evento.objects.count(), 0)
+
+    def test_nao_exige_cidade(self):
+        with self._resposta():
+            resp = self._post(
+                "api_ia_verificar",
+                {"modalidade": "graduacao", "data_inicio": "2026-09-14",
+                 "data_fim": "2027-02-12", "eventos": [], "provedor": "deepseek"},
+            )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["norma"], "Art. 40")
+
+    def test_exige_periodo(self):
+        resp = self._post("api_ia_verificar", {"modalidade": "graduacao"})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_falha_do_provedor_retorna_502(self):
+        erro = llm.LlmProviderError("timeout")
+        with mock.patch.object(llm, "chamar_provedor", side_effect=erro):
+            resp = self._post("api_ia_verificar", self._payload())
+        self.assertEqual(resp.status_code, 502)
+
+
+@override_settings(LLM_PROVIDERS=PROVEDOR_FAKE, LLM_ENABLED=True)
+class IaEditorTests(TestCase):
+    """O editor expõe o preenchimento/verificação por IA sem vazar chaves."""
+
+    def test_editor_tem_os_botoes_e_o_modal(self):
+        resp = self.client.get(reverse("editor"))
+        self.assertEqual(resp.status_code, 200)
+        for marcador in (
+            'id="btnIA"',
+            'id="btnIAVerificar"',
+            'id="iaModal"',
+            'id="iaRequisitos"',
+            'id="iaAplicarSelecionados"',
+            "Preencher com IA",
+            "Verificar com IA",
+        ):
+            self.assertContains(resp, marcador)
+
+    def test_editor_nao_vaza_chave_de_api(self):
+        resp = self.client.get(reverse("editor"))
+        self.assertNotContains(resp, "chave-fake")
+        self.assertNotContains(resp, "DEEPSEEK_API_KEY")
+
+    def test_editor_traz_as_normas_das_modalidades(self):
+        resp = self.client.get(reverse("editor"))
+        self.assertContains(resp, "Art. 38")
+        self.assertContains(resp, "integrado_medio")
+        self.assertContains(resp, "concomitante_subsequente")
+        self.assertContains(resp, "graduacao")
+
+    def test_editor_mostra_modalidades_atuais(self):
+        resp = self.client.get(reverse("editor"))
+        self.assertContains(resp, "Cursos técnicos integrados ao nível médio")
+        self.assertContains(resp, "Cursos técnicos concomitantes/subsequentes")
+        self.assertContains(resp, "Graduação")
+
+    def test_editor_sem_provedor_marca_desabilitado(self):
+        sem_chave = {
+            "deepseek": {
+                "label": "DeepSeek",
+                "dialeto": "openai",
+                "url": "https://exemplo.invalido",
+                "model": "deepseek-chat",
+                "api_key": "",
+            }
+        }
+        with override_settings(LLM_PROVIDERS=sem_chave):
+            resp = self.client.get(reverse("editor"))
+        self.assertContains(resp, '"habilitado": false')
+
+
+
 
 
 

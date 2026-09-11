@@ -104,7 +104,7 @@ class Command(BaseCommand):
                 "periodo": "2026.2",
                 "instituicao": Calendario.INSTITUICAO_PADRAO,
                 "curso": "Cursos Técnico em Administração",
-                "modalidade": "integrado_proeja",
+                "modalidade": "integrado_medio",
                 "semestre": "2º Semestre",
                 "data_inicio": DATA_INICIO,
                 "data_fim": DATA_FIM,

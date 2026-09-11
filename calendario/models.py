@@ -20,13 +20,12 @@ from .slug import versao_slug
 class Calendario(models.Model):
     """Uma versão/etapa do calendário acadêmico."""
 
+    #: Modalidades do calendário — espelham as normas dos arts. 38, 39 e 40
+    #: (ver ``calendario.requisitos``): cada valor aponta para a norma aplicável.
     MODALIDADE_CHOICES = [
-        ("integrado", "Integrado"),
-        ("integrado_proeja", "Integrado PROEJA"),
-        ("subsequente", "Subsequente"),
-        ("proeja", "PROEJA"),
-        ("superior", "Superior"),
-        ("outro", "Outro"),
+        ("integrado_medio", "Cursos técnicos integrados ao nível médio"),
+        ("concomitante_subsequente", "Cursos técnicos concomitantes/subsequentes"),
+        ("graduacao", "Graduação"),
     ]
 
     INSTITUICAO_PADRAO = (
@@ -49,7 +48,7 @@ class Calendario(models.Model):
         max_length=30,
         choices=MODALIDADE_CHOICES,
         blank=True,
-        default="integrado_proeja",
+        default="integrado_medio",
     )
     semestre = models.CharField("Semestre", max_length=20, blank=True)
 
@@ -203,6 +202,8 @@ class Feriado(models.Model):
 
     ORIGEM_CHOICES = [
         ("nacional", "Nacional"),
+        ("estadual", "Estadual"),
+        ("municipal", "Municipal"),
         ("institucional", "Institucional"),
         ("manual", "Manual"),
     ]

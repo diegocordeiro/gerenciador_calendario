@@ -16,6 +16,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
+from . import llm, requisitos
 from .agenda import build_agenda
 from .data.feriados import feriados_nacionais
 from .models import Calendario, Evento, Feriado
@@ -83,6 +84,28 @@ def calendario_versionado(request, slug):
     )
 
 
+def _llm_contexto() -> dict:
+    """Contexto da IA para o editor — **nunca** inclui chaves de API."""
+    normas = {}
+    for valor, _ in Calendario.MODALIDADE_CHOICES:
+        info = requisitos.info_da_modalidade(valor)
+        normas[valor] = {
+            "norma": info["norma"],
+            "titulo": info["titulo"],
+            "total_itens": len(info["itens"]),
+        }
+    return {
+        "habilitado": llm.tem_provedor_configurado(),
+        "padrao": llm.resolver_provedor(None),
+        "provedores": llm.provedores_disponiveis(),
+        "cidade": settings.LLM_CIDADE_PADRAO,
+        "estado": settings.LLM_ESTADO_PADRAO,
+        "pais": settings.LLM_PAIS_PADRAO,
+        "timeout": settings.LLM_TIMEOUT,
+        "normas": normas,
+    }
+
+
 def editor(request):
     """Interface de montagem do calendário (mesmo visual do painel de horários)."""
     versao = request.GET.get("versao")
@@ -96,7 +119,7 @@ def editor(request):
         "periodo": cal.periodo if cal else "",
         "instituicao": cal.instituicao if cal else Calendario.INSTITUICAO_PADRAO,
         "curso": cal.curso if cal else "",
-        "modalidade": cal.modalidade if cal else "integrado_proeja",
+        "modalidade": cal.modalidade if cal else "integrado_medio",
         "semestre": cal.semestre if cal else "",
         "data_inicio": cal.data_inicio.isoformat() if cal else "",
         "data_fim": cal.data_fim.isoformat() if cal and cal.data_fim else "",
@@ -127,6 +150,7 @@ def editor(request):
         "modalidades": [
             {"valor": v, "label": lbl} for v, lbl in Calendario.MODALIDADE_CHOICES
         ],
+        "llm": _llm_contexto(),
     }
     return render(
         request,
@@ -334,7 +358,7 @@ def api_salvar(request):
             "instituicao": (dados.get("instituicao") or "").strip()
             or Calendario.INSTITUICAO_PADRAO,
             "curso": (dados.get("curso") or "").strip(),
-            "modalidade": (dados.get("modalidade") or "").strip() or "integrado_proeja",
+            "modalidade": (dados.get("modalidade") or "").strip() or "integrado_medio",
             "semestre": (dados.get("semestre") or "").strip(),
             "data_inicio": data_inicio,
             "data_fim": _iso_ou_none(dados.get("data_fim")),
@@ -563,6 +587,147 @@ def api_feriados_nacionais(request):
                 {"data": f["data"].isoformat(), "descricao": f["descricao"]}
                 for f in feriados_nacionais(ano)
             ],
+        }
+    )
+
+
+# ---------- IA (LLM) ----------
+
+
+def _agenda_resumida(agenda: dict) -> dict:
+    """Recorte da agenda usado na prévia do modal (carga horária + validação)."""
+    return {
+        "dias_por_dia": agenda["dias_por_dia"],
+        "meta_por_dia": agenda["meta_por_dia"],
+        "letivos_por_dia": agenda["letivos_por_dia"],
+        "letivos_seg_sex_por_dia": agenda["letivos_seg_sex_por_dia"],
+        "sabados_por_dia": agenda["sabados_por_dia"],
+        "sabados_total": agenda["sabados_total"],
+        "sabados_letivos": agenda["sabados_letivos"],
+        "total_letivos": agenda["total_letivos"],
+        "letivos_seg_sex": agenda["letivos_seg_sex"],
+        "validacao": agenda["validacao"],
+    }
+
+
+@require_POST
+def api_ia_eventos(request):
+    """Gera feriados/eventos com a LLM a partir da cidade/UF/país da unidade.
+
+    **Prévia: nada é gravado.** A persistência acontece só quando o usuário confirma
+    no editor e clica em *Salvar versão* (``api_salvar``).
+
+    POST ``{cidade, estado, pais?, provedor?, modelo?, data_inicio, data_fim,
+    total_semanas?, semanas_primeira_parte?, dias_letivos_previstos?, feriados?,
+    eventos?, completar_sabados?}`` → ``{ok, feriados, eventos, avisos, agenda}``.
+    """
+    dados = _payload(request)
+    entrada, erro = _entrada_ia(dados, exigir_local=True)
+    if erro is not None:
+        return erro
+
+    try:
+        resultado = llm.gerar_eventos(entrada)
+    except llm.LlmConfigError as exc:
+        return JsonResponse({"ok": False, "erros": [str(exc)]}, status=400)
+    except llm.LlmProviderError as exc:
+        return JsonResponse({"ok": False, "erros": [str(exc)]}, status=502)
+    except llm.LlmError as exc:  # salvaguarda
+        return JsonResponse({"ok": False, "erros": [str(exc)]}, status=400)
+
+    agenda = resultado["agenda"]
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "provedor": resultado["provedor"],
+            "provedor_label": resultado["provedor_label"],
+            "modelo": resultado["modelo"],
+            "feriados": resultado["feriados"],
+            "eventos": resultado["eventos"],
+            "avisos": resultado["avisos"],
+            "estatisticas": resultado["estatisticas"],
+            "requisitos": resultado["requisitos"],
+            "agenda": _agenda_resumida(agenda),
+        }
+    )
+
+
+def _entrada_ia(dados: dict, *, exigir_local: bool) -> tuple[dict, JsonResponse | None]:
+    """Monta a entrada da IA a partir do payload (com validações comuns)."""
+    entrada = {
+        "cidade": (dados.get("cidade") or "").strip(),
+        "estado": (dados.get("estado") or "").strip(),
+        "pais": (dados.get("pais") or "").strip() or "Brasil",
+        "instituicao": (dados.get("instituicao") or "").strip(),
+        "curso": (dados.get("curso") or "").strip(),
+        "modalidade": (dados.get("modalidade") or "").strip(),
+        "data_inicio": dados.get("data_inicio"),
+        "data_fim": dados.get("data_fim"),
+        "total_semanas": dados.get("total_semanas"),
+        "semanas_primeira_parte": dados.get("semanas_primeira_parte"),
+        "dias_letivos_previstos": dados.get("dias_letivos_previstos") or 0,
+        "dias_letivos_por_mes": _normalizar_resumo_meses(dados.get("dias_letivos_por_mes")),
+        "feriados": _normalizar_feriados(dados.get("feriados")),
+        "eventos": _normalizar_eventos(dados.get("eventos")),
+        "provedor": dados.get("provedor"),
+        "completar_sabados": dados.get("completar_sabados"),
+    }
+    if exigir_local and (not entrada["cidade"] or not entrada["estado"]):
+        return entrada, JsonResponse(
+            {"ok": False, "erros": ["Informe a cidade e o estado (UF) da unidade."]},
+            status=400,
+        )
+    if not (dados.get("data_inicio") or "").strip() or not (dados.get("data_fim") or "").strip():
+        return entrada, JsonResponse(
+            {
+                "ok": False,
+                "erros": [
+                    "Informe o início e o término do período letivo (bloco 1.2) "
+                    "antes de usar a IA."
+                ],
+            },
+            status=400,
+        )
+    return entrada, None
+
+
+@require_POST
+def api_ia_verificar(request):
+    """Audita os eventos lançados contra a norma da modalidade (Art. 38/39/40).
+
+    Combina a conferência determinística com a análise da LLM. **Nada é gravado**:
+    as sugestões voltam para o modal e só entram no editor quando o usuário marca
+    os itens e clica em “Aplicar selecionados” (a gravação é o “Salvar versão”).
+
+    POST ``{modalidade, data_inicio, data_fim, eventos?, feriados?,
+    dias_letivos_previstos?, cidade?, estado?, pais?, provedor?}``
+    → ``{ok, norma, requisitos, observacoes, avisos}``.
+    """
+    dados = _payload(request)
+    entrada, erro = _entrada_ia(dados, exigir_local=False)
+    if erro is not None:
+        return erro
+
+    try:
+        resultado = llm.verificar_eventos(entrada)
+    except llm.LlmConfigError as exc:
+        return JsonResponse({"ok": False, "erros": [str(exc)]}, status=400)
+    except llm.LlmProviderError as exc:
+        return JsonResponse({"ok": False, "erros": [str(exc)]}, status=502)
+    except llm.LlmError as exc:  # salvaguarda
+        return JsonResponse({"ok": False, "erros": [str(exc)]}, status=400)
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "provedor": resultado["provedor"],
+            "provedor_label": resultado["provedor_label"],
+            "modelo": resultado["modelo"],
+            "norma": resultado["norma"],
+            "requisitos": resultado["requisitos"],
+            "observacoes": resultado["observacoes"],
+            "avisos": resultado["avisos"],
         }
     )
 

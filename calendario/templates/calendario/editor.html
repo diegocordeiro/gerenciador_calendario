@@ -162,6 +162,13 @@
         <em>Editar</em> para carregar um evento no formulário e <em>Excluir</em> para
         removê-lo.
       </p>
+      <div class="editor-actions">
+        <button id="btnIA" class="button button-primary" type="button">Preencher com IA</button>
+        <button id="btnIAVerificar" class="button" type="button">Verificar com IA</button>
+        <span id="iaPendente" class="ia-pendente" role="status" hidden>
+          Há itens da IA ainda <strong>não salvos</strong> — revise e clique em <em>Salvar versão</em>.
+        </span>
+      </div>
       <div class="editor-events">
         <div class="field-row">
           <label class="field">Título
@@ -252,6 +259,134 @@
       <div id="calPreview" class="cal-preview">Carregando…</div>
     </section>
   </div>
+
+  <dialog id="iaModal" class="ia-modal" aria-labelledby="iaTitulo">
+    <div class="ia-modal-head">
+      <h2 id="iaTitulo">Preencher eventos com IA</h2>
+      <button type="button" class="ia-fechar" id="iaFechar" aria-label="Fechar">&times;</button>
+    </div>
+
+    <section class="ia-step" id="iaStepEntrada">
+      <p class="editor-help">
+        Informe <strong>onde fica a unidade</strong>. A IA consulta os feriados
+        municipais, estaduais e federais do período e sugere os eventos acadêmicos; os
+        <strong>sábados letivos</strong> são distribuídos pelo próprio sistema para
+        fechar a carga horária de cada dia da semana. Nada é gravado nesta etapa.
+      </p>
+      <p class="field-hint" id="iaNorma"></p>
+      <div class="field-row">
+        <label class="field">Cidade
+          <input type="text" id="iaCidade" autocomplete="off" placeholder="Barras">
+        </label>
+        <label class="field">Estado (UF)
+          <input type="text" id="iaEstado" autocomplete="off" placeholder="PI">
+        </label>
+        <label class="field">País
+          <input type="text" id="iaPais" autocomplete="off" placeholder="Brasil">
+        </label>
+      </div>
+      <div class="field-row">
+        <label class="field">Provedor
+          <select id="iaProvedor"></select>
+          <small class="field-hint">Somente provedores com chave de API configurada.</small>
+        </label>
+        <label class="field">Modelo (opcional)
+          <input type="text" id="iaModelo" autocomplete="off">
+          <small class="field-hint">Em branco usa o modelo padrão do provedor.</small>
+        </label>
+      </div>
+      <div class="field-row" id="iaCamposGerar">
+        <label class="field field-inline">
+          <input type="checkbox" id="iaCompletarSabados" checked>
+          Distribuir sábados letivos para fechar a carga horária
+        </label>
+        <label class="field">Como aplicar no editor
+          <select id="iaModo">
+            <option value="adicionar">Adicionar aos itens existentes</option>
+            <option value="substituir">Substituir eventos e feriados</option>
+          </select>
+        </label>
+      </div>
+      <p class="field-hint" id="iaAjudaVerificar" hidden>
+        A verificação usa os eventos <strong>já lançados no editor</strong> e confronta
+        com a norma da modalidade. Nada é alterado até você marcar os itens e aplicar.
+      </p>
+      <div class="editor-actions">
+        <button id="iaGerar" class="button button-primary" type="button">Gerar prévia</button>
+        <button id="iaCancelar" class="button" type="button">Cancelar</button>
+      </div>
+      <div id="iaMsg" class="editor-msg" role="status"></div>
+    </section>
+
+    <section class="ia-step" id="iaStepPrevia" hidden>
+      <div id="iaResumo" class="ia-resumo"></div>
+      <div id="iaDiasSemana" class="ia-dias"></div>
+      <div class="ia-blocos" id="iaBlocoEventos">
+        <h3>Eventos sugeridos</h3>
+        <div class="field-row">
+          <label class="field">Título
+            <input type="text" id="iaEvTitulo" autocomplete="off">
+          </label>
+          <label class="field">Tipo
+            <select id="iaEvTipo"></select>
+          </label>
+        </div>
+        <div class="field-row">
+          <label class="field">Data inicial
+            <input type="date" id="iaEvInicio">
+          </label>
+          <label class="field">Data final (opcional)
+            <input type="date" id="iaEvFim">
+          </label>
+          <label class="field">Dia da semana referenciado
+            <select id="iaEvReferencia"></select>
+          </label>
+        </div>
+        <label class="field field-inline">
+          <input type="checkbox" id="iaEvDestaque"> Destacar na grade mensal
+        </label>
+        <div class="editor-actions">
+          <button id="iaAddEvento" class="button" type="button">Adicionar evento</button>
+          <button id="iaCancelarEvento" class="button" type="button" hidden>Cancelar edição</button>
+        </div>
+        <table class="doc-table" id="iaEventosTable">
+          <thead>
+            <tr>
+              <th>Início</th><th>Fim</th><th>Título</th><th>Tipo</th><th>Referência</th><th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="iaEventosBody"></tbody>
+        </table>
+      </div>
+      <div class="ia-blocos" id="iaBlocoFeriados">
+        <h3>Feriados e pontos facultativos sugeridos</h3>
+        <ul id="iaFeriadosList" class="chip-list"></ul>
+      </div>
+      <div class="ia-blocos" id="iaBlocoRequisitos">
+        <h3 id="iaRequisitosTitulo">Requisitos da norma</h3>
+        <p class="field-hint">
+          Conferência automática dos arts. 38/39/40 + análise da IA. Nos itens
+          <strong>faltantes</strong> com sugestão, marque o que deve ir para o editor.
+        </p>
+        <div id="iaRequisitos" class="ia-req"></div>
+      </div>
+      <div id="iaObservacoes" class="ia-avisos"></div>
+      <div id="iaAvisos" class="ia-avisos"></div>
+      <div class="editor-actions">
+        <button id="iaAplicar" class="button button-primary" type="button">Aplicar ao editor</button>
+        <button id="iaAplicarSelecionados" class="button button-primary" type="button" hidden>
+          Aplicar selecionados ao editor
+        </button>
+        <button id="iaMarcarTodos" class="button" type="button" hidden>Marcar todos os sugeridos</button>
+        <button id="iaRegerar" class="button" type="button">Gerar novamente</button>
+        <button id="iaVoltar" class="button" type="button">Voltar</button>
+      </div>
+      <p class="ia-alerta">
+        <strong>Nada foi salvo ainda.</strong> Ao aplicar, os itens entram no editor; a
+        gravação acontece somente quando você clicar em <em>Salvar versão</em>.
+      </p>
+    </section>
+  </dialog>
 
   {{ inicial|json_script:"inicial-data" }}
 {% endblock %}

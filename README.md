@@ -143,6 +143,11 @@ divergência é exibida na página como conferência).
   institucionais e manuais;
 - **Eventos acadêmicos** com intervalo de datas, tipo (categoria da legenda) e
   dia da semana referenciado (sábados letivos/de reposição);
+- **Preenchimento e verificação por IA** (DeepSeek, ChatGPT, Gemini e Claude) a
+  partir da cidade/UF/país da unidade: sugere feriados municipais/estaduais, os
+  eventos exigidos pela **norma da modalidade** (arts. 38/39/40) e **distribui os
+  sábados letivos** para fechar a carga horária — sempre com prévia, edição e
+  confirmação antes de gravar (veja a seção específica);
 - **Versionamento de cada etapa** (`2026.1.etapa1`, `2026.1.etapa2`, …) — **todas as
   versões** cadastradas são publicadas no build;
 - **Interface no mesmo padrão visual** do painel de horários (tema claro/escuro,
@@ -200,6 +205,88 @@ python manage.py runserver
 python manage.py seed_feriados                 # todos os calendários existentes
 python manage.py seed_feriados --versao 2026.1.final
 ```
+
+## Preenchimento e verificação por IA (LLM)
+
+O quadro de **Eventos** do editor tem dois botões que usam um provedor de LLM para
+acelerar a montagem **sem gravar nada por conta própria**:
+
+| Botão | O que faz |
+| --- | --- |
+| **Preencher com IA** | a partir da **cidade/UF/país** da unidade, sugere **feriados municipais/estaduais** e os eventos exigidos pela norma da modalidade, e **distribui os sábados letivos** para fechar a carga horária de cada dia da semana |
+| **Verificar com IA** | audita os eventos **já lançados** (preenchimento manual) contra a norma e lista o que falta, com evidências, motivo e um evento sugerido por item |
+
+### Modalidade → norma (arts. 38, 39 e 40)
+
+| Modalidade | Norma | Itens |
+| --- | --- | --- |
+| `integrado_medio` — Cursos técnicos integrados ao nível médio | **Art. 38** | 22 |
+| `concomitante_subsequente` — Cursos técnicos concomitantes/subsequentes | **Art. 39** | 21 |
+| `graduacao` — Graduação | **Art. 40** | 23 |
+
+O checklist é **determinístico** (regras em `calendario/requisitos.py`, casando o tipo do
+evento, palavras-chave e cálculos da agenda). A IA só **sugere** e interpreta; a regra
+local nunca é rebaixada por ela — quando a IA vê uma evidência que a regra não viu, o item
+vira **“a conferir”**, nunca “atendido” sem prova. Itens não automatizáveis (ex.: “temas
+transversais obrigatórios por lei”) aparecem sempre como **a conferir**.
+
+### Carga horária e sábados letivos
+
+A meta por dia é `ceil(dias_letivos_previstos / 5)` e quem **fecha** essa conta é o
+cálculo do projeto, não o modelo: `calendario/llm.py::completar_sabados` escolhe sábados
+livres (dentro do período, sem feriado/ponto facultativo e sem reutilizar sábados já
+lançados), gravando sempre em **Dia da semana referenciado** o dia com maior déficit. Se
+não houver sábados suficientes, o editor avisa o que falta em cada dia.
+
+### Configuração (chaves por variável de ambiente)
+
+As chaves **nunca** ficam no banco, no build estático nem no HTML do editor.
+
+| Provedor | Chave (env) | Modelo padrão (env) |
+| --- | --- | --- |
+| DeepSeek *(padrão)* | `DEEPSEEK_API_KEY` | `deepseek-chat` (`DEEPSEEK_MODEL`) |
+| ChatGPT (OpenAI) | `OPENAI_API_KEY` | `gpt-4o-mini` (`OPENAI_MODEL`) |
+| Gemini (Google) | `GEMINI_API_KEY` | `gemini-2.0-flash` (`GEMINI_MODEL`) |
+| Claude (Anthropic) | `ANTHROPIC_API_KEY` | `claude-sonnet-4-5` (`ANTHROPIC_MODEL`) |
+
+```bash
+export DEEPSEEK_API_KEY="sk-..."   # ou OPENAI_API_KEY / GEMINI_API_KEY / ANTHROPIC_API_KEY
+export LLM_PROVIDER="deepseek"     # padrão do modal (aceita chatgpt, claude, claudecode, google)
+export LLM_TIMEOUT=120             # segundos
+make rodar                         # reinicie o servidor após definir as variáveis
+```
+
+Outras variáveis: `LLM_ENABLED` (`0` desliga), `LLM_MAX_TOKENS`, `LLM_TEMPERATURE`,
+`LLM_CIDADE_PADRAO`/`LLM_ESTADO_PADRAO`/`LLM_PAIS_PADRAO` e os overrides de URL/modelo
+(`DEEPSEEK_API_URL`, `OPENAI_MODEL`, …). Veja o `.env.example`.
+
+### Fluxo (nada é gravado antes da sua confirmação)
+
+1. **Preencher/Verificar**: a chamada é síncrona e o modal mostra “Consultando …”;
+2. o modal devolve a **prévia**: métricas, tabela **Dias letivos por dia da semana**,
+   eventos editáveis, feriados em chips e o **checklist da norma**;
+3. **Aplicar ao editor** (modo *preencher*) ou **Aplicar selecionados ao editor** (modo
+   *verificar*, marcando os itens faltantes) leva os itens para o editor — **nada foi
+   salvo ainda** (o editor avisa isso em destaque);
+4. só o botão **Salvar versão** grava no banco.
+
+### Endpoints
+
+| Rota | Método | Descrição |
+| --- | --- | --- |
+| `/api/ia/eventos/` | POST | prévia de feriados/eventos/sábados + checklist — **não grava** |
+| `/api/ia/verificar/` | POST | auditoria da norma sobre os eventos lançados — **não grava** |
+| `/api/preview/` | POST | recalcula a carga horária no servidor (usado pelas prévias) |
+
+Erros: **400** para uso/configuração inválida (faltou cidade/UF ou período, provedor sem
+chave) e **502** quando o provedor falha (HTTP, timeout ou resposta ilegível).
+
+### Limitações
+
+- Feriados **municipais/estaduais** sugeridos pela IA podem estar errados: confira na
+  legislação (o checklist marca “confiança baixa”);
+- **Custo e privacidade**: o texto do calendário é enviado ao provedor escolhido;
+- A chamada é **síncrona** (pode levar até `LLM_TIMEOUT`); não há streaming.
 
 ## Versionamento
 
@@ -263,6 +350,14 @@ validação de 100 dias), os **feriados nacionais** (Páscoa e feriados móveis)
 parâmetros, feriados e eventos; nome único), o **índice/redirect** de versões, o
 **seed 2026.2**, as **views** e o **build estático versionado**.
 
+A IA tem cobertura própria, **sem nenhuma chamada de rede** (o provedor é
+simulado): **requisitos** (as 3 normas, detecção por tipo/palavra/cálculo, merge
+conservador com a IA, calendário oficial 2026.2), **configuração** de provedores e
+apelidos, **leitura/normalização** da resposta (JSON puro, com cerca, inválido),
+**carga horária** (`completar_sabados`) e os **endpoints** `/api/ia/eventos/` e
+`/api/ia/verificar/` — inclusive o teste que garante que **nada é gravado** antes
+do “Salvar versão”.
+
 ## Observações
 
 - O `db.sqlite3` é **local** (ignorado pelo git): é a sua fonte de trabalho no
@@ -271,5 +366,9 @@ parâmetros, feriados e eventos; nome único), o **índice/redirect** de versõe
   demonstração de 2026.1 e `make oficial` recria o calendário oficial 2026.2 do
   documento (Administração Integrado PROEJA).
 - O link **Editor** aparece apenas no `runserver`; ele **não** é publicado no
-  site estático.
+  site estático (por isso as chaves de IA ficam fora do que vai para o Pages).
+- As **modalidades** do calendário são apenas três — `integrado_medio`,
+  `concomitante_subsequente` e `graduacao` — e cada uma aponta para a norma
+  correspondente (arts. 38, 39 e 40). A migração `0005` converte automaticamente os
+  valores antigos (`integrado`, `integrado_proeja`, `subsequente`, `superior`, `outro`).
 

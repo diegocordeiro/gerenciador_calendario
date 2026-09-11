@@ -21,4 +21,6 @@ urlpatterns = [
         views.api_feriados_nacionais,
         name="api_feriados_nacionais",
     ),
+    path("api/ia/eventos/", views.api_ia_eventos, name="api_ia_eventos"),
+    path("api/ia/verificar/", views.api_ia_verificar, name="api_ia_verificar"),
 ]
