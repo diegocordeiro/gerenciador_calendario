@@ -1,7 +1,7 @@
 .venv/
 __pycache__/
 *.py[cod]
-db.sqlite3
+*.sqlite3
 staticfiles/
 # Chaves de API da IA — NUNCA versionar (use variáveis de ambiente)
 .env
