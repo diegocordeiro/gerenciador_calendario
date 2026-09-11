@@ -1806,6 +1806,233 @@ class IaVerificarApiTests(IaApiTestsBase):
         self.assertEqual(resp.status_code, 502)
 
 
+class SabadosLetivosTests(TestCase):
+    """Sábado letivo conta; sábado de reposição **não** conta na carga horária."""
+
+    INICIO = dt.date(2026, 9, 14)
+    FIM = dt.date(2027, 2, 12)
+
+    def _agenda(self, eventos, feriados=(), previsto=100):
+        return build_agenda(
+            data_inicio=self.INICIO,
+            data_fim=self.FIM,
+            feriados=list(feriados),
+            eventos=list(eventos),
+            dias_letivos_previstos=previsto,
+        )
+
+    def _celula(self, agenda, iso):
+        for mes in agenda["meses"]:
+            for semana in mes["semanas"]:
+                for c in semana:
+                    if not c.get("vazio") and c["date"] == iso:
+                        return c
+        raise AssertionError(f"célula {iso} não encontrada")
+
+    def _invariantes(self, agenda):
+        """O rodapé da tabela precisa ser, sempre, a soma das colunas."""
+        t = agenda["totais_tabela"]
+        self.assertEqual(t["seg_sex"], sum(d["seg_sex"] for d in agenda["dias_por_dia"]))
+        self.assertEqual(t["sabados"], sum(d["sabados"] for d in agenda["dias_por_dia"]))
+        self.assertEqual(t["total"], sum(d["letivos"] for d in agenda["dias_por_dia"]))
+        self.assertEqual(
+            agenda["sabados_contabilizados"],
+            sum(d["sabados"] for d in agenda["dias_por_dia"]),
+        )
+        self.assertEqual(
+            agenda["total_letivos"], agenda["letivos_seg_sex"] + agenda["sabados_total"]
+        )
+        self.assertEqual(
+            t["total"] + agenda["sabados_sem_referencia"], agenda["total_letivos"]
+        )
+
+    def test_reposicao_nao_conta_na_carga_horaria(self):
+        eventos = [
+            {"titulo": "Sábado letivo", "tipo": "sabado_letivo",
+             "data_inicio": "2026-09-19", "dia_semana_referencia": 0},
+            {"titulo": "Sábado de reposição", "tipo": "sabado_reposicao",
+             "data_inicio": "2026-09-26", "dia_semana_referencia": 2},
+        ]
+        com = self._agenda(eventos)
+        sem = self._agenda([e for e in eventos if e["tipo"] != "sabado_reposicao"])
+
+        self.assertEqual(com["total_letivos"], sem["total_letivos"])
+        self.assertEqual(com["sabados_total"], sem["sabados_total"])
+        self.assertEqual(com["letivos_por_dia"], sem["letivos_por_dia"])
+        self.assertEqual(com["letivos_seg_sex"], sem["letivos_seg_sex"])
+        self._invariantes(com)
+
+        self.assertEqual(com["reposicoes_total"], 1)
+        self.assertEqual([r["date"] for r in com["dias_reposicao"]], ["2026-09-26"])
+        self.assertFalse(com["dias_reposicao"][0]["conta"])
+        celula = self._celula(com, "2026-09-26")
+        self.assertEqual(celula["status"], "reposicao")
+        self.assertFalse(celula["letivo"])
+        self.assertTrue(any("reposição" in n for n in com["notas"]))
+
+    def test_sabado_letivo_sem_referencia_nao_quebra_o_rodape(self):
+        eventos = [
+            {"titulo": "Sábado letivo", "tipo": "sabado_letivo",
+             "data_inicio": "2026-09-19", "dia_semana_referencia": 0},
+            {"titulo": "Sábado letivo sem referência", "tipo": "sabado_letivo",
+             "data_inicio": "2026-09-26", "dia_semana_referencia": None},
+        ]
+        agenda = self._agenda(eventos)
+        self._invariantes(agenda)
+        self.assertEqual(agenda["sabados_sem_referencia"], 1)
+        self.assertEqual(agenda["sabados_total"], 2)
+        self.assertEqual(agenda["totais_tabela"]["sabados"], 1)
+        self.assertTrue(
+            any("sem dia da semana" in a for a in agenda["validacao"]["avisos"])
+        )
+
+    def test_sabado_letivo_em_dia_util_nao_rouba_o_dia(self):
+        # 15/09/2026 é uma terça-feira
+        com = self._agenda(
+            [{"titulo": "Sábado letivo", "tipo": "sabado_letivo",
+              "data_inicio": "2026-09-15", "dia_semana_referencia": 2}]
+        )
+        sem = self._agenda([])
+        self.assertEqual(com["total_letivos"], sem["total_letivos"])
+        self.assertEqual(com["sabados_total"], 0)
+        self.assertEqual(self._celula(com, "2026-09-15")["status"], "letivo")
+        self.assertTrue(any("fora do sábado" in a for a in com["validacao"]["avisos"]))
+
+    def test_sabado_letivo_com_intervalo_conta_os_sabados(self):
+        # 19/09 a 26/09: dois sábados (os dias úteis do meio são ignorados)
+        agenda = self._agenda(
+            [{"titulo": "Sábado letivo", "tipo": "sabado_letivo",
+              "data_inicio": "2026-09-19", "data_fim": "2026-09-26",
+              "dia_semana_referencia": 0}]
+        )
+        self.assertEqual(agenda["sabados_total"], 2)
+        self.assertEqual(agenda["sabados_por_dia"][0], 2)
+        self.assertEqual(
+            [s["date"] for s in agenda["sabados_letivos"]],
+            ["2026-09-19", "2026-09-26"],
+        )
+        self.assertEqual(self._celula(agenda, "2026-09-22")["status"], "letivo")
+        self._invariantes(agenda)
+        self.assertTrue(any("intervalo" in a for a in agenda["validacao"]["avisos"]))
+
+    def test_sabado_letivo_que_cai_em_feriado_nao_conta(self):
+        agenda = self._agenda(
+            [{"titulo": "Sábado letivo", "tipo": "sabado_letivo",
+              "data_inicio": "2026-09-19", "dia_semana_referencia": 0}],
+            feriados=[
+                {"data": "2026-09-19", "tipo": "feriado", "descricao": "Municipal"}
+            ],
+        )
+        self.assertEqual(agenda["sabados_total"], 0)
+        self.assertEqual(self._celula(agenda, "2026-09-19")["status"], "feriado")
+        self.assertEqual(len(agenda["sabados_letivos"]), 1)
+        self.assertFalse(agenda["sabados_letivos"][0]["conta"])
+        self._invariantes(agenda)
+        self.assertTrue(
+            any("caíram em feriado" in a for a in agenda["validacao"]["avisos"])
+        )
+
+    def test_calendario_oficial_mantem_as_invariantes(self):
+        call_command("seed_calendario_2026_2")
+        cal = Calendario.objects.get(versao="2026.2.final")
+        agenda = cal.agenda()
+        self._invariantes(agenda)
+        self.assertEqual(agenda["total_letivos"], 100)
+        self.assertEqual(agenda["reposicoes_total"], 0)
+
+
+class AtribuirReferenciasTests(TestCase):
+    """Sábado letivo sem Referência recebe o dia de maior déficit automaticamente."""
+
+    def test_atribui_por_deficit(self):
+        eventos = [
+            {"titulo": "Sábado letivo", "tipo": "sabado_letivo",
+             "data_inicio": "2026-09-19", "dia_semana_referencia": None},
+            {"titulo": "Sábado letivo", "tipo": "sabado_letivo",
+             "data_inicio": "2026-09-26", "dia_semana_referencia": None},
+        ]
+        preenchidos = llm._atribuir_referencias_faltantes(
+            eventos, [], dt.date(2026, 9, 14), dt.date(2027, 2, 12), 120
+        )
+        self.assertEqual(preenchidos, 2)
+        for e in eventos:
+            self.assertIsNotNone(e["dia_semana_referencia"])
+            self.assertTrue(0 <= e["dia_semana_referencia"] <= 4)
+
+    def test_nao_mexe_em_sabado_de_reposicao(self):
+        eventos = [
+            {"titulo": "Sábado de reposição", "tipo": "sabado_reposicao",
+             "data_inicio": "2026-09-19", "dia_semana_referencia": None}
+        ]
+        self.assertEqual(
+            llm._atribuir_referencias_faltantes(
+                eventos, [], dt.date(2026, 9, 14), dt.date(2027, 2, 12), 100
+            ),
+            0,
+        )
+        self.assertIsNone(eventos[0]["dia_semana_referencia"])
+
+    def test_sem_previsto_nao_atribui(self):
+        eventos = [
+            {"titulo": "Sábado letivo", "tipo": "sabado_letivo",
+             "data_inicio": "2026-09-19", "dia_semana_referencia": None}
+        ]
+        self.assertEqual(
+            llm._atribuir_referencias_faltantes(
+                eventos, [], dt.date(2026, 9, 14), dt.date(2027, 2, 12), 0
+            ),
+            0,
+        )
+
+    def test_gerar_eventos_atribui_referencia_e_ignora_reposicao(self):
+        resposta = {
+            "feriados": [],
+            "eventos": [
+                {"titulo": "Sábado letivo", "tipo": "sabado_letivo",
+                 "data_inicio": "2026-09-19", "dia_semana_referencia": None},
+                {"titulo": "Sábado de reposição", "tipo": "sabado_reposicao",
+                 "data_inicio": "2026-09-26", "dia_semana_referencia": None},
+            ],
+        }
+
+        def transporte(url, corpo, headers, timeout):
+            return {
+                "choices": [
+                    {"message": {"content": json.dumps(resposta, ensure_ascii=False)}}
+                ]
+            }
+
+        with override_settings(LLM_PROVIDERS=PROVEDOR_FAKE, LLM_ENABLED=True):
+            resultado = llm.gerar_eventos(
+                {
+                    "modalidade": "integrado_medio",
+                    "data_inicio": "2026-09-14",
+                    "data_fim": "2027-02-12",
+                    "dias_letivos_previstos": 120,
+                    "provedor": "deepseek",
+                    "completar_sabados": False,
+                },
+                transporte=transporte,
+            )
+
+        letivos = [e for e in resultado["eventos"] if e["tipo"] == "sabado_letivo"]
+        reposicao = [e for e in resultado["eventos"] if e["tipo"] == "sabado_reposicao"]
+        self.assertEqual(len(letivos), 1)
+        self.assertIsNotNone(letivos[0]["dia_semana_referencia"])
+        self.assertEqual(len(reposicao), 1)
+        self.assertIsNone(reposicao[0]["dia_semana_referencia"])
+        self.assertEqual(resultado["estatisticas"]["referencias_atribuidas"], 1)
+        self.assertTrue(
+            any("Referência" in a for a in resultado["avisos"])
+        )
+        agenda = resultado["agenda"]
+        self.assertEqual(agenda["reposicoes_total"], 1)
+        self.assertEqual(
+            agenda["totais_tabela"]["total"],
+            sum(d["letivos"] for d in agenda["dias_por_dia"]),
+        )
+
+
 @override_settings(LLM_PROVIDERS=PROVEDOR_FAKE, LLM_ENABLED=True)
 class IaEditorTests(TestCase):
     """O editor expõe o preenchimento/verificação por IA sem vazar chaves."""

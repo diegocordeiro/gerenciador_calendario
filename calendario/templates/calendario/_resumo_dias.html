@@ -35,24 +35,36 @@
     <tfoot>
       <tr>
         <th scope="row">Total</th>
+        {% if agenda.totais_tabela %}
+        <td>{{ agenda.totais_tabela.seg_sex }}</td>
+        <td>{{ agenda.totais_tabela.sabados }}</td>
+        <td>{{ agenda.totais_tabela.total }}</td>
+        <td>{% if agenda.totais_tabela.minimo_semestre %}{{ agenda.totais_tabela.minimo_semestre }}{% else %}—{% endif %}</td>
+        {% else %}
         <td>{{ agenda.letivos_seg_sex }}</td>
-        <td>{{ agenda.sabados_total }}</td>
+        <td>{{ agenda.sabados_contabilizados|default:agenda.sabados_total }}</td>
         <td>{{ agenda.total_letivos }}</td>
         <td>{% if agenda.validacao.previsto %}{{ agenda.validacao.previsto }}{% else %}—{% endif %}</td>
+        {% endif %}
         <td>{% if agenda.validacao.por_dia_ok %}OK{% else %}Abaixo da meta{% endif %}</td>
       </tr>
     </tfoot>
   </table>
   <p class="muted">
-    Total geral do documento: <strong>{{ agenda.total_letivos }}</strong> dias
+    Total do documento: <strong>{{ agenda.total_letivos }}</strong> dias letivos
     ({{ agenda.letivos_seg_sex }} seg–sex + {{ agenda.sabados_total }} sábados letivos).
     {% if not agenda.validacao.por_dia_ok %}
     <strong>Há dias da semana abaixo do mínimo de {{ agenda.meta_por_dia }}
     ({{ agenda.validacao.previsto }}/5).</strong>
     {% endif %}
-    {% if agenda.sabados_sem_referencia %}
+  </p>
+  {% if agenda.sabados_sem_referencia %}
+  <p class="muted">
     <strong>{{ agenda.sabados_sem_referencia }} sábado(s) letivo(s) sem Referência —
     não contabilizados por dia.</strong>
-    {% endif %}
   </p>
+  {% endif %}
+  {% for nota in agenda.notas %}
+  <p class="muted">{{ nota }}</p>
+  {% endfor %}
 </section>

@@ -603,9 +603,14 @@ def _agenda_resumida(agenda: dict) -> dict:
         "letivos_seg_sex_por_dia": agenda["letivos_seg_sex_por_dia"],
         "sabados_por_dia": agenda["sabados_por_dia"],
         "sabados_total": agenda["sabados_total"],
+        "sabados_contabilizados": agenda["sabados_contabilizados"],
         "sabados_letivos": agenda["sabados_letivos"],
+        "dias_reposicao": agenda["dias_reposicao"],
+        "reposicoes_total": agenda["reposicoes_total"],
         "total_letivos": agenda["total_letivos"],
         "letivos_seg_sex": agenda["letivos_seg_sex"],
+        "totais_tabela": agenda["totais_tabela"],
+        "notas": agenda["notas"],
         "validacao": agenda["validacao"],
     }
 

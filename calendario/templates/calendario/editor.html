@@ -165,10 +165,17 @@
       <div class="editor-actions">
         <button id="btnIA" class="button button-primary" type="button">Preencher com IA</button>
         <button id="btnIAVerificar" class="button" type="button">Verificar com IA</button>
+        <button id="btnRefSabados" class="button" type="button">Corrigir Referência dos sábados</button>
         <span id="iaPendente" class="ia-pendente" role="status" hidden>
           Há itens da IA ainda <strong>não salvos</strong> — revise e clique em <em>Salvar versão</em>.
         </span>
       </div>
+      <p class="field-hint">
+        “Corrigir Referência dos sábados” preenche a Referência dos <strong>sábados
+        letivos</strong> que estão sem dia da semana (usando o dia com maior déficit).
+        Sábados de <strong>reposição</strong> não entram na carga horária e não precisam
+        de Referência.
+      </p>
       <div class="editor-events">
         <div class="field-row">
           <label class="field">Título

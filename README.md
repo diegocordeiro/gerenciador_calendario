@@ -1,16 +1,7 @@
 # Calendário Acadêmico — IFPI Campus Barras
 
 Sistema em **Python + Django** para **montar, versionar e publicar** o calendário
-acadêmico do campus. Reaproveita a metodologia de publicação do projeto de
-horários (`barras_horarios`): interface de montagem → banco de dados → **build
-estático** → **GitHub Pages**.
-
-A lógica de cálculo é um **port fiel** do app original
-[`academic-callendar-scheduler`](https://github.com/rsusik/academic-callendar-scheduler)
-(Quasar/Vue), reimplementado em Python (`calendario/scheduling.py`). A partir da
-data de início do semestre, do total de semanas e das semanas da 1ª parte, o
-sistema distribui os dias letivos e **reposiciona os feriados** nas semanas de
-reposição.
+acadêmico.
 
 ## Como funciona
 
@@ -28,11 +19,6 @@ Editor (/editor/) → banco (db.sqlite3) → render_static_site → build/ → G
    cadastradas são publicadas.
 4. **Publicação** — a pasta `build/` é **commitada** e o workflow do GitHub
    Actions apenas a publica no **GitHub Pages**.
-
-> Diferente do painel de horários (onde o banco é recriado a partir de CSVs), aqui
-> **o banco é a fonte da verdade** e **o que é versionado no git é o `build/`
-> renderizado**. Assim cada etapa fica registrada no histórico de commits da
-> pasta `build/`.
 
 ## Estrutura
 
@@ -102,10 +88,31 @@ Além do total, os dias letivos são contados **por dia da semana, em separado**
 (segunda, terça, quarta, quinta, sexta). A meta de dias letivos do semestre é
 dividida pelos 5 dias úteis — **`100/5 = 20`** — e cada dia da semana deve
 atingir esse mínimo; os dias abaixo da meta são destacados na tabela e nos avisos
-de conferência. Os **sábados letivos/de reposição** são somados ao **dia da
-semana informado no campo “Referência”** do evento (ex.: um sábado referente à
-quarta-feira conta como uma quarta letiva), de modo que
+de conferência. Os **sábados letivos** são somados ao **dia da semana informado no
+campo “Referência”** do evento (ex.: um sábado referente à quarta-feira conta como
+uma quarta letiva), de modo que
 `Σ(seg–sex + sábados) = total de dias letivos`.
+
+O tipo **“Sábado de reposição” NÃO entra na carga horária**: ele aparece na grade
+mensal e na legenda (em cor própria), mas não conta como dia letivo, não soma no
+total de sábados letivos e não precisa de Referência. Regras dos sábados:
+
+- evento de sábado só vale **no sábado** — se for cadastrado em dia útil, o dia
+  segue a regra normal (letivo) e o editor avisa;
+- se o evento tiver **intervalo** (ex.: 19/09 a 26/09), cada **sábado** do intervalo
+  conta e os dias úteis do meio são ignorados;
+- se o sábado letivo cair em **feriado/ponto facultativo**, o feriado prevalece e o
+  dia não entra na contagem (com aviso);
+- **sábado letivo sem Referência** aparece no documento, mas não entra na coluna de
+  nenhum dia — nesse caso o rodapé mostra a soma das colunas e o texto explica a
+  diferença para o total do documento. O editor oferece o botão **Corrigir
+  Referência dos sábados** (no quadro *Eventos*) e a IA já preenche a Referência
+  automaticamente ao gerar os eventos.
+
+> O rodapé da tabela **“Dias letivos por dia da semana”** é sempre a **soma das
+> colunas** (`agenda.totais_tabela`), então a conta fecha linha a linha; a coluna
+> “Mínimo” mostra a meta **por dia** e o rodapé dela o mínimo do semestre
+> (`meta × 5`).
 
 > O código-fonte da regra e dos cálculos está em `calendario/agenda.py`
 > (`build_agenda`) e é coberto por testes.
@@ -213,8 +220,9 @@ acelerar a montagem **sem gravar nada por conta própria**:
 
 | Botão | O que faz |
 | --- | --- |
-| **Preencher com IA** | a partir da **cidade/UF/país** da unidade, sugere **feriados municipais/estaduais** e os eventos exigidos pela norma da modalidade, e **distribui os sábados letivos** para fechar a carga horária de cada dia da semana |
+| **Preencher com IA** | a partir da **cidade/UF/país** da unidade, sugere **feriados municipais/estaduais** e os eventos exigidos pela norma da modalidade, e **distribui os sábados letivos** para fechar a carga horária de cada dia da semana (sábados letivos sem Referência recebem o dia de maior déficit automaticamente) |
 | **Verificar com IA** | audita os eventos **já lançados** (preenchimento manual) contra a norma e lista o que falta, com evidências, motivo e um evento sugerido por item |
+| **Corrigir Referência dos sábados** | preenche a Referência dos **sábados letivos** sem dia da semana (pelo maior déficit). Não se aplica a *sábados de reposição*, que **não entram na carga horária** |
 
 ### Modalidade → norma (arts. 38, 39 e 40)
 
@@ -285,7 +293,6 @@ chave) e **502** quando o provedor falha (HTTP, timeout ou resposta ilegível).
 
 - Feriados **municipais/estaduais** sugeridos pela IA podem estar errados: confira na
   legislação (o checklist marca “confiança baixa”);
-- **Custo e privacidade**: o texto do calendário é enviado ao provedor escolhido;
 - A chamada é **síncrona** (pode levar até `LLM_TIMEOUT`); não há streaming.
 
 ## Versionamento

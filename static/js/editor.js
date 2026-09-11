@@ -471,7 +471,7 @@
           }
           var rotulo = fmtData(c.date);
           var clicavel =
-            ["fora", "nao_letivo", "letivo_sabado"].indexOf(c.status) === -1;
+            ["fora", "nao_letivo", "letivo_sabado", "reposicao"].indexOf(c.status) === -1;
           var titulo = rotulo + " — " + (c.status_label || "");
           if (c.eventos && c.eventos.length) titulo += " — " + c.eventos.join("; ");
           if (clicavel) titulo += " · Clique para marcar/desmarcar feriado";
@@ -498,6 +498,7 @@
         esc(mes.letivos) +
         "</strong>" +
         (mes.sabados ? " • Sábados letivos: " + esc(mes.sabados) : "") +
+        (mes.reposicoes ? " • Sábados de reposição: " + esc(mes.reposicoes) : "") +
         "</p></div>";
     });
     return html + "</div>";
@@ -576,36 +577,63 @@
       })
       .join("");
     var porDiaOk = !agenda.validacao || agenda.validacao.por_dia_ok !== false;
+    // Rodapé = soma das colunas (quando o servidor manda `totais_tabela`), para a
+    // conta sempre fechar com as linhas. O "Mínimo" é por dia na linha e o mínimo
+    // do semestre (mínimo × 5) no rodapé.
+    var tot = agenda.totais_tabela || {};
+    var segSexTotal = tot.seg_sex !== undefined ? tot.seg_sex : agenda.letivos_seg_sex;
+    var sabadosTotal =
+      tot.sabados !== undefined
+        ? tot.sabados
+        : agenda.sabados_contabilizados !== undefined
+        ? agenda.sabados_contabilizados
+        : agenda.sabados_total;
+    var letivosTotal = tot.total !== undefined ? tot.total : agenda.total_letivos;
+    var minimoSemestre =
+      tot.minimo_semestre !== undefined
+        ? tot.minimo_semestre
+        : agenda.meta_por_dia
+        ? agenda.meta_por_dia * 5
+        : previsto;
     return (
       "<h3>Dias letivos por dia da semana</h3>" +
       '<p class="muted">Contagem de <strong>segunda a sexta, em separado</strong>. Os ' +
-      "<strong>sábados letivos/de reposição</strong> entram somados ao " +
+      "<strong>sábados letivos</strong> entram somados ao " +
       "<strong>dia da semana do campo “Referência”</strong> do evento. A meta é " +
-      "distribuída pelos 5 dias úteis (ex.: 100/5 = 20 por dia).</p>" +
+      "distribuída pelos 5 dias úteis (ex.: 100/5 = 20 por dia). O tipo " +
+      "<strong>“Sábado de reposição” não entra na carga horária</strong>.</p>" +
       '<table class="doc-table doc-table-dias"><thead><tr>' +
       "<th>Dia da semana</th><th>Seg–sex</th><th>Sábados</th><th>Total</th><th>Mínimo" +
       (previsto ? " (" + esc(previsto) + "/5)" : "") +
       "</th><th>Situação</th></tr></thead><tbody>" +
       linhas +
       '</tbody><tfoot><tr><th>Total</th><td>' +
-      esc(agenda.letivos_seg_sex) +
+      esc(segSexTotal) +
       "</td><td>" +
-      esc(agenda.sabados_total) +
+      esc(sabadosTotal) +
       "</td><td>" +
-      esc(agenda.total_letivos) +
+      esc(letivosTotal) +
       "</td><td>" +
-      (previsto ? esc(previsto) : "—") +
+      (minimoSemestre ? esc(minimoSemestre) : "—") +
       "</td><td>" +
       (porDiaOk ? "OK" : "Abaixo da meta") +
       "</td></tr></tfoot></table>" +
       (agenda.sabados_sem_referencia
         ? '<p class="muted"><strong>' +
           esc(agenda.sabados_sem_referencia) +
-          " sábado(s) letivo(s) sem Referência — não contabilizados por dia.</strong></p>"
+          " sábado(s) letivo(s) sem Referência — não contabilizados por dia. O total " +
+          "do documento (" +
+          esc(agenda.total_letivos) +
+          " dias) inclui esse(s) dia(s).</strong></p>"
         : "") +
-      '<p class="muted">Total geral do documento: <strong>' +
+      (agenda.notas || [])
+        .map(function (n) {
+          return '<p class="muted">' + esc(n) + "</p>";
+        })
+        .join("") +
+      '<p class="muted">Total do documento: <strong>' +
       esc(agenda.total_letivos) +
-      "</strong> dias (" +
+      "</strong> dias letivos (" +
       esc(agenda.letivos_seg_sex) +
       " seg–sex + " +
       esc(agenda.sabados_total) +
@@ -670,7 +698,18 @@
       alvo.innerHTML = '<p class="muted">Informe a data de início para ver o documento.</p>';
       return;
     }
+    var avisos = (agenda.validacao && agenda.validacao.avisos) || [];
+    var alerta = avisos.length
+      ? '<div class="cal-alert"><strong>Atenção na carga horária:</strong><ul>' +
+        avisos
+          .map(function (a) {
+            return "<li>" + esc(a) + "</li>";
+          })
+          .join("") +
+        "</ul></div>"
+      : "";
     alvo.innerHTML =
+      alerta +
       renderMensalAgenda(agenda) +
       '<div class="doc-section">' +
       renderResumoDoc(agenda) +
@@ -701,9 +740,14 @@
     );
   }
 
+  // Última agenda calculada pelo servidor (usada para corrigir Referências e mostrar
+  // os avisos da carga horária).
+  var ultimaAgenda = null;
+
   function renderPreview(d) {
     var html = "";
     var ag = d.agenda || {};
+    ultimaAgenda = d.agenda || null;
     var sabados = ag.sabados_total;
     if (typeof sabados !== "number") sabados = (ag.sabados_letivos || []).length;
     var totalDoc = ag.total_letivos || 0;
@@ -772,10 +816,14 @@
     }
 
     var evPorData = eventosPorData(d.agenda);
-    // Sábado de cada semana (eventos de sábado letivo/reposição), casado por data.
+    // Sábado de cada semana (sábado letivo x sábado de reposição), casado por data.
     var sabPorData = {};
     ((d.agenda && d.agenda.sabados_letivos) || []).forEach(function (s) {
       sabPorData[s.date] = s;
+    });
+    var repPorData = {};
+    ((d.agenda && d.agenda.dias_reposicao) || []).forEach(function (s) {
+      repPorData[s.date] = s;
     });
 
     html += '<table class="cal-table"><thead><tr><th class="cal-corner">Semana</th>';
@@ -832,19 +880,22 @@
           "</span></td>";
       });
       var sab = sabPorData[linha.sabado];
+      var rep = repPorData[linha.sabado];
       var sabDica = sab
         ? sab.titulo + (sab.referencia ? " — " + sab.referencia : "")
+        : rep
+        ? rep.titulo + " — não entra na carga horária"
         : "Sábado sem aula";
       html +=
         '<td class="cal-cell cal-sabado' +
-        (sab ? " cal-sabado-letivo" : "") +
+        (sab ? " cal-sabado-letivo" : rep ? " cal-sabado-reposicao" : "") +
         '" data-tip="' +
         esc(sabDica) +
         '" aria-label="' +
         esc(sabDica) +
         '"><span class="cal-date">' +
-        (sab
-          ? esc(sab.label)
+        (sab || rep
+          ? esc((sab || rep).label)
           : '<span class="cal-date-vazio">' +
             esc(linha.sabado_label || "") +
             "</span>") +
@@ -951,6 +1002,77 @@
     atualizarNormaIA();
     preview();
     msg("Novo formulário pronto para uma nova versão.", "ok");
+  }
+
+  // ---- Sábados sem Referência --------------------------------------------
+  // A Referência de um "sábado letivo" é o dia da semana que ele repõe: o dia com
+  // maior déficit em relação à meta (previsto/5). Sábado de REPOSIÇÃO não entra na
+  // carga horária, então não precisa de Referência.
+  function corrigirReferenciasSabados() {
+    var sabados = state.eventos.filter(function (e) {
+      return (
+        e.tipo === "sabado_letivo" &&
+        (e.dia_semana_referencia === null || e.dia_semana_referencia === undefined)
+      );
+    });
+    if (!sabados.length) {
+      msg("Nenhum sábado letivo sem Referência.", "erro");
+      return;
+    }
+    var ag = ultimaAgenda || {};
+    var meta =
+      (ag.totais_tabela && ag.totais_tabela.minimo_por_dia) || ag.meta_por_dia || 0;
+    if (!meta) {
+      msg(
+        "Informe os “Dias letivos previstos” (bloco 1.2) para calcular o déficit de cada dia.",
+        "erro"
+      );
+      return;
+    }
+    var contagem = (ag.letivos_por_dia || [0, 0, 0, 0, 0]).slice();
+    var ordem = [];
+    var preenchidos = 0;
+    sabados.forEach(function (e) {
+      var elegiveis = [];
+      for (var k = 0; k < 5; k += 1) {
+        if (meta - contagem[k] > 0) elegiveis.push(k);
+      }
+      if (!elegiveis.length) return;
+      elegiveis.sort(function (a, b) {
+        var da = meta - contagem[a];
+        var db = meta - contagem[b];
+        if (db !== da) return db - da;
+        var oa = ordem.filter(function (x) {
+          return x === a;
+        }).length;
+        var ob = ordem.filter(function (x) {
+          return x === b;
+        }).length;
+        if (oa !== ob) return oa - ob;
+        return a - b;
+      });
+      var escolhido = elegiveis[0];
+      e.dia_semana_referencia = escolhido;
+      contagem[escolhido] += 1;
+      ordem.push(escolhido);
+      preenchidos += 1;
+    });
+    if (!preenchidos) {
+      msg(
+        "A meta de cada dia da semana já está atingida — nenhuma Referência foi alterada.",
+        "erro"
+      );
+      return;
+    }
+    renderEventos();
+    preview();
+    marcarPendenteIA(true);
+    msg(
+      preenchidos +
+        " sábado(s) letivo(s) receberam o dia com maior déficit em “Referência”. " +
+        "NADA foi salvo ainda — clique em “Salvar versão”.",
+      "ok"
+    );
   }
 
   // ---- Preenchimento com IA (LLM) ----------------------------------------
@@ -1667,7 +1789,12 @@
       letivos_seg_sex_por_dia: ag.letivos_seg_sex_por_dia,
       sabados_por_dia: ag.sabados_por_dia,
       sabados_total: ag.sabados_total,
+      sabados_contabilizados: ag.sabados_contabilizados,
       sabados_sem_referencia: ag.sabados_sem_referencia,
+      dias_reposicao: ag.dias_reposicao,
+      reposicoes_total: ag.reposicoes_total,
+      totais_tabela: ag.totais_tabela,
+      notas: ag.notas,
       total_letivos: ag.total_letivos,
       letivos_seg_sex: ag.letivos_seg_sex,
       validacao: ag.validacao
@@ -1870,6 +1997,9 @@
 
   // ---- Preenchimento/verificação por IA ----------------------------------
   if ($("btnIA")) $("btnIA").addEventListener("click", abrirIA);
+  if ($("btnRefSabados")) {
+    $("btnRefSabados").addEventListener("click", corrigirReferenciasSabados);
+  }
   if ($("btnIAVerificar")) {
     $("btnIAVerificar").addEventListener("click", function () {
       abrirIAComo("verificar");

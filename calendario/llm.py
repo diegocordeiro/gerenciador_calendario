@@ -353,6 +353,13 @@ def montar_prompt(entrada: dict, inicio: dt.date, fim: dt.date) -> str:
 # Tipos de evento permitidos (use exatamente esta string em "tipo")
 {tipos}
 
+Observação importante sobre sábados:
+- "sabado_letivo" É um dia letivo: entra na carga horária somado ao dia da semana
+  informado em "dia_semana_referencia" (0 = segunda … 4 = sexta).
+- "sabado_reposicao" aparece no documento mas **não** entra na carga horária.
+- Nos dois casos use **uma data só** ("data_fim": null) e **sempre** informe
+  "dia_semana_referencia".
+
 # Atividades exigidas pela norma {norma} — {norma_titulo}
 # O calendário DEVE contemplar TODAS as atividades abaixo:
 {itens_norma}
@@ -736,6 +743,53 @@ def _sabados_usados(eventos: list[dict]) -> set[str]:
     }
 
 
+def _atribuir_referencias_faltantes(
+    eventos: list[dict], feriados: list[dict], inicio: dt.date, fim: dt.date, previsto: int
+) -> int:
+    """Preenche a Referência dos **sábados letivos** que vieram sem ``dia_semana_referencia``.
+
+    Usa o dia da semana com maior déficit (``meta - letivos``), na mesma heurística
+    do :func:`completar_sabados`, e altera a lista **in place**. Devolve quantos
+    foram preenchidos. Sábados de reposição ficam de fora: eles não entram na
+    carga horária, então não precisam de Referência.
+    """
+    from .agenda import build_agenda
+
+    pendentes = [
+        e
+        for e in eventos
+        if e.get("tipo") == "sabado_letivo" and e.get("dia_semana_referencia") is None
+    ]
+    if not pendentes:
+        return 0
+
+    meta = math.ceil(int(previsto) / 5) if previsto else 0
+    if meta <= 0:
+        return 0
+
+    agenda = build_agenda(
+        data_inicio=inicio,
+        data_fim=fim,
+        feriados=feriados,
+        eventos=eventos,
+        dias_letivos_previstos=previsto,
+    )
+    contagem = list(agenda.get("letivos_por_dia") or [0, 0, 0, 0, 0])
+    ordem: list[int] = []
+    preenchidos = 0
+    for e in pendentes:
+        deficit = [max(meta - contagem[k], 0) for k in range(5)]
+        if sum(deficit) == 0:
+            break
+        elegiveis = [k for k in range(5) if deficit[k] > 0]
+        escolhido = min(elegiveis, key=lambda k: (-deficit[k], ordem.count(k), k))
+        e["dia_semana_referencia"] = escolhido
+        contagem[escolhido] += 1
+        ordem.append(escolhido)
+        preenchidos += 1
+    return preenchidos
+
+
 def completar_sabados(
     eventos: list[dict],
     feriados: list[dict],
@@ -941,6 +995,21 @@ def verificar_eventos(entrada: dict, transporte=None) -> dict:
         transporte=transporte,
     )
     extras, observacoes = _ler_requisitos_ia(parse_resposta(texto), inicio, fim)
+
+    # Sábados letivos sugeridos sem Referência recebem o dia de maior déficit, para
+    # que o item aplicado no editor já nasça contabilizável.
+    sugeridos = [
+        ex["evento_sugerido"] for ex in extras.values() if ex.get("evento_sugerido")
+    ]
+    if sugeridos:
+        _atribuir_referencias_faltantes(
+            eventos + sugeridos,
+            feriados,
+            inicio,
+            fim,
+            int(entrada.get("dias_letivos_previstos") or 0),
+        )
+
     final = requisitos.verificar_requisitos(
         entrada.get("modalidade"),
         eventos=eventos,
@@ -1017,7 +1086,19 @@ def gerar_eventos(entrada: dict, transporte=None) -> dict:
     completar = entrada.get("completar_sabados")
     completar = True if completar is None else bool(completar)
     eventos = normalizado["eventos"]
-    estatisticas = {"sabados_criados": 0, "sabados_disponiveis": 0}
+
+    # Sábado letivo sem Referência não entra na contagem por dia: aqui ele recebe
+    # automaticamente o dia da semana com maior déficit.
+    atribuidos = _atribuir_referencias_faltantes(
+        eventos, feriados, inicio, fim, contexto["dias_letivos_previstos"]
+    )
+    if atribuidos:
+        avisos.append(
+            f"{atribuidos} sábado(s) letivo(s) sem Referência receberam automaticamente "
+            "o dia da semana com maior déficit."
+        )
+
+    estatisticas = {"sabados_criados": 0, "sabados_disponiveis": 0, "referencias_atribuidas": atribuidos}
     if completar:
         resultado = completar_sabados(
             eventos, feriados, inicio, fim, contexto["dias_letivos_previstos"]
