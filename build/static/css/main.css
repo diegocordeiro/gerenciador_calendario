@@ -1819,6 +1819,17 @@ blockquote {
   font-weight: 700;
 }
 
+/* Sábado de REPOSIÇÃO: aparece na grade, mas não entra na carga horária */
+.cal-cell.cal-sabado-reposicao {
+  background: #fde8d7 !important;
+  font-style: italic;
+}
+
+.cal-cell.cal-sabado-reposicao .cal-date {
+  font-weight: 700;
+  color: #9a3412;
+}
+
 .cal-date-vazio {
   color: var(--muted);
   font-weight: 400;
@@ -2331,6 +2342,12 @@ blockquote {
 
 .doc-dia-letivo_sabado {
   background: rgba(37, 99, 235, 0.22);
+  font-style: italic;
+}
+
+/* Sábado de reposição: atividade de reposição, fora da carga horária */
+.doc-dia-reposicao {
+  background: rgba(234, 88, 12, 0.24);
   font-style: italic;
 }
 
