@@ -264,6 +264,39 @@ class ViewsTests(TestCase):
         self.assertContains(resp, "Calendário acadêmico")
         self.assertContains(resp, self.cal.versao)
 
+    def test_indice_tem_busca_e_coluna_modalidade(self):
+        resp = self.client.get(reverse("indice"))
+        # Controles de busca/filtro (filtragem local, feita pelo main.js).
+        self.assertContains(resp, 'id="versionsToolbar"')
+        self.assertContains(resp, 'id="versionSearch"')
+        self.assertContains(resp, 'id="versionModality"')
+        self.assertContains(resp, 'id="versionCount"')
+        # A coluna Modalidade substituiu a antiga coluna Curso.
+        self.assertContains(resp, 'data-label="Modalidade"')
+        self.assertContains(resp, "badge-modalidade")
+        self.assertContains(resp, "Cursos técnicos integrados ao nível médio")
+        self.assertNotContains(resp, 'data-label="Curso"')
+        # Cada linha traz os dados que o JS usa para filtrar.
+        self.assertContains(resp, 'data-modalidade="integrado_medio"')
+        self.assertContains(resp, "data-search=")
+
+    def test_indice_ids_da_busca_batem_com_o_js(self):
+        """Contrato template ↔ main.js: todo ID procurado pelo JS existe na página."""
+        html = self.client.get(reverse("indice")).content.decode()
+        js = (Path(__file__).resolve().parents[1] / "static" / "js" / "main.js").read_text(
+            encoding="utf-8"
+        )
+        for alvo in (
+            "versionsToolbar",
+            "versionSearch",
+            "versionModality",
+            "versionClear",
+            "versionCount",
+            "versionsTable",
+        ):
+            self.assertIn(f'id="{alvo}"', html)
+            self.assertIn(f"getElementById('{alvo}')", js)
+
     def test_versoes_redireciona_para_indice(self):
         self.assertRedirects(self.client.get(reverse("versoes")), reverse("indice"))
 
@@ -407,6 +440,15 @@ class BuildTests(TestCase):
         html = self._html("calendario", "index.html")
         self.assertIn("2026.1.final", html)
         self.assertIn("2026.1.etapa1", html)
+
+    def test_indice_do_build_tem_busca_e_modalidade(self):
+        html = self._html("calendario", "index.html")
+        # A busca precisa existir no build estático (é lá que ela roda no navegador).
+        self.assertIn('id="versionSearch"', html)
+        self.assertIn('id="versionModality"', html)
+        self.assertIn("badge-modalidade", html)
+        self.assertIn("data-search=", html)
+        self.assertNotIn('data-label="Curso"', html)
 
     def test_versoes_redireciona_no_build(self):
         html = self._html("versoes", "index.html")

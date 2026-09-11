@@ -21,7 +21,7 @@ from .agenda import build_agenda
 from .data.feriados import feriados_nacionais
 from .models import Calendario, Evento, Feriado
 from .scheduling import build_calendario
-from .static_site import print_ctx
+from .static_site import context_indice, print_ctx
 
 
 def _versoes():
@@ -52,17 +52,11 @@ def versoes(request):
 
 
 def indice(request):
-    """Índice do calendário: lista todas as versões cadastradas."""
+    """Índice do calendário: lista todas as versões cadastradas (com busca)."""
     return render(
         request,
         "calendario/indice.html",
-        {
-            "versoes": _versoes(),
-            "modalidades": [
-                {"valor": v, "label": lbl} for v, lbl in Calendario.MODALIDADE_CHOICES
-            ],
-            "active": "calendario",
-        },
+        {**context_indice(_versoes()), "active": "calendario"},
     )
 
 

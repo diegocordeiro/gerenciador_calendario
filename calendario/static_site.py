@@ -40,6 +40,39 @@ def print_ctx(title, meta=None) -> dict:
     return {"pdf_export": True, "print_title": title, "print_meta": meta}
 
 
+def context_indice(versoes) -> dict:
+    """Contexto do índice ``/calendario/`` (versões, filtro e chips de resumo).
+
+    Compartilhado pela view dinâmica (``views.indice``) e pelo build estático
+    (``StaticSite.render_indice``): a busca/filtro por modalidade roda no
+    navegador, mas precisa da lista de modalidades já renderizada no HTML para
+    funcionar também no GitHub Pages (que não tem API nem banco).
+    """
+    from .models import Calendario
+
+    versoes = list(versoes)
+    modalidades = [
+        {"valor": valor, "label": label} for valor, label in Calendario.MODALIDADE_CHOICES
+    ]
+    periodos, rotulos = [], []
+    for cal in versoes:
+        periodo = (cal.periodo or "").strip()
+        if periodo and periodo not in periodos:
+            periodos.append(periodo)
+        rotulo = cal.get_modalidade_display() if cal.modalidade else ""
+        if rotulo and rotulo not in rotulos:
+            rotulos.append(rotulo)
+    return {
+        "versoes": versoes,
+        "modalidades": modalidades,
+        "resumo": {
+            "total": len(versoes),
+            "periodos": periodos,
+            "modalidades": rotulos,
+        },
+    }
+
+
 class StaticSite:
     """Ponto de entrada para gerar todas as páginas estáticas."""
 
@@ -89,7 +122,7 @@ class StaticSite:
         self._write(
             "calendario/index.html",
             "calendario/indice.html",
-            self._ctx(versoes=versoes, active="calendario"),
+            self._ctx(active="calendario", **context_indice(versoes)),
         )
 
     def render_redirect_versoes(self):

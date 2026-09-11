@@ -82,6 +82,87 @@
   // Impressão pelo atalho do navegador (Ctrl+P) também ganha a data no cabeçalho.
   window.addEventListener('beforeprint', stampPrintDate);
 
+  // Busca e filtro do índice de versões (/calendario/).
+  // O site publicado no GitHub Pages é estático, então a filtragem roda no
+  // navegador sobre os atributos data-* que o template já renderiza.
+  (function () {
+    var input = document.getElementById('versionSearch');
+    var select = document.getElementById('versionModality');
+    var clear = document.getElementById('versionClear');
+    var count = document.getElementById('versionCount');
+    var toolbar = document.getElementById('versionsToolbar');
+    var table = document.getElementById('versionsTable');
+    if (!input || !table) return;
+
+    var linhas = Array.prototype.slice.call(
+      table.querySelectorAll('tbody tr[data-search]')
+    );
+    var vazio = table.querySelector('.versions-empty');
+
+    // Remove acentos para que "graduacao" encontre "Graduação".
+    function normalizar(texto) {
+      var t = String(texto || '').toLowerCase().trim();
+      if (typeof t.normalize === 'function') {
+        t = t.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      }
+      return t;
+    }
+
+    Array.prototype.forEach.call(linhas, function (linha) {
+      linha.setAttribute('data-busca', normalizar(linha.getAttribute('data-search')));
+    });
+
+    function filtrar() {
+      var termo = normalizar(input.value);
+      var modalidade = select ? select.value : '';
+      var visiveis = 0;
+      Array.prototype.forEach.call(linhas, function (linha) {
+        var achou = linha.getAttribute('data-busca').indexOf(termo) !== -1;
+        var mesmaModalidade = !modalidade || linha.getAttribute('data-modalidade') === modalidade;
+        var mostrar = achou && mesmaModalidade;
+        linha.hidden = !mostrar;
+        if (mostrar) visiveis += 1;
+      });
+      if (vazio) vazio.hidden = visiveis !== 0 || linhas.length === 0;
+      if (count) {
+        count.textContent = linhas.length
+          ? visiveis + ' de ' + linhas.length + ' ' + (linhas.length === 1 ? 'versão' : 'versões')
+          : '';
+      }
+    }
+
+    function limpar() {
+      input.value = '';
+      if (select) select.value = '';
+      filtrar();
+      input.focus();
+    }
+
+    input.addEventListener('input', filtrar);
+    input.addEventListener('search', filtrar);
+    if (select) select.addEventListener('change', filtrar);
+    if (clear) clear.addEventListener('click', limpar);
+    if (toolbar) {
+      // Enter no campo não deve recarregar a página (o filtro é local).
+      toolbar.addEventListener('submit', function (ev) { ev.preventDefault(); });
+    }
+
+    // Atalhos: "/" foca a busca e Esc limpa (sem atrapalhar quem já digita).
+    document.addEventListener('keydown', function (ev) {
+      var alvo = ev.target || {};
+      var tag = alvo.tagName || '';
+      var digitando = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
+      if (ev.key === '/' && !digitando) {
+        ev.preventDefault();
+        input.focus();
+      } else if (ev.key === 'Escape' && alvo === input) {
+        limpar();
+      }
+    });
+
+    filtrar();
+  })();
+
   // Modos de visualização da grade
   var table = document.getElementById('timetable');
   if (!table) return;

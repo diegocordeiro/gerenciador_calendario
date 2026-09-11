@@ -31,59 +31,158 @@
   <main class="site-main container">
     
     
-  <h1>Calendário acadêmico</h1>
-  <p>
-    Todas as versões cadastradas são publicadas com o documento completo. Escolha
-    uma abaixo para abrir.
-  </p>
+  <section class="versions-hero">
+    <div class="versions-hero-text">
+      <h1>Calendário acadêmico</h1>
+      <p>
+        Todas as versões cadastradas são publicadas com o documento completo.
+        Busque por versão, período, início ou modalidade e abra a que precisar.
+      </p>
+    </div>
+    
+    <ul class="versions-summary">
+      <li class="versions-summary-chip">
+        <strong>4</strong>
+        <span>versões</span>
+      </li>
+      
+      <li class="versions-summary-chip">
+        <strong>2027 · 2026.2</strong>
+        <span>períodos</span>
+      </li>
+      
+      <li class="versions-summary-chip">
+        <strong>3</strong>
+        <span>modalidades</span>
+      </li>
+    </ul>
+    
+  </section>
+
   
-  <table class="versions-table">
-    <thead>
-      <tr>
-        <th>Versão</th><th>Período</th><th>Curso</th><th>Início</th><th>Etapa</th>
+  <form class="versions-toolbar" id="versionsToolbar" role="search">
+    <div class="version-search-field">
+      <label class="sr-only" for="versionSearch">Buscar versões do calendário</label>
+      <input type="search" id="versionSearch" class="version-search" name="q"
+             placeholder="Buscar por versão, período, início ou modalidade…"
+             autocomplete="off">
+    </div>
+    <div class="version-filter-field">
+      <label class="sr-only" for="versionModality">Filtrar por modalidade</label>
+      <select id="versionModality" class="version-filter" name="modalidade">
+        <option value="">Todas as modalidades</option>
         
-      </tr>
-    </thead>
-    <tbody>
-      
+          <option value="integrado_medio">Cursos técnicos integrados ao nível médio</option>
+        
+          <option value="concomitante_subsequente">Cursos técnicos concomitantes/subsequentes</option>
+        
+          <option value="graduacao">Graduação</option>
+        
+      </select>
+    </div>
+    <button type="button" id="versionClear" class="version-clear">Limpar</button>
+    <p class="version-count" id="versionCount" role="status" aria-live="polite"></p>
+  </form>
+
+  <div class="versions-table-wrap">
+    <table class="versions-table" id="versionsTable">
+      <thead>
         <tr>
-          <td><a href="/gerenciador_calendario/versoes/2027/">2027</a></td>
-          <td>2027</td>
-          <td>—</td>
-          <td>01/03/2027</td>
-          <td>1</td>
+          <th scope="col">Versão</th>
+          <th scope="col">Período</th>
+          <th scope="col">Início</th>
+          <th scope="col">Modalidade</th>
           
         </tr>
-      
-        <tr>
-          <td><a href="/gerenciador_calendario/versoes/2026.2.integrado/">2026.2.integrado</a></td>
-          <td>2026.2</td>
-          <td>—</td>
-          <td>14/09/2026</td>
-          <td>1</td>
+      </thead>
+      <tbody>
+        
           
-        </tr>
-      
-        <tr>
-          <td><a href="/gerenciador_calendario/versoes/2026.2.subsequente/">2026.2.subsequente</a></td>
-          <td>2026.2</td>
-          <td>—</td>
-          <td>14/09/2026</td>
-          <td>1</td>
+          <tr data-modalidade="integrado_medio"
+              data-search="2027 2027 1º Semestre Calendário Acadêmico Cursos Integrados Cursos técnicos integrados ao nível médio 01/03/2027">
+            <td data-label="Versão" class="cell-versao">
+              <a class="version-link" href="/gerenciador_calendario/versoes/2027/">2027</a>
+            </td>
+            <td data-label="Período">
+              
+                <span class="badge badge-periodo">2027</span>
+              
+            </td>
+            <td data-label="Início" class="cell-data">01/03/2027</td>
+            <td data-label="Modalidade">
+              
+                <span class="badge badge-modalidade" data-modalidade="integrado_medio">Cursos técnicos integrados ao nível médio</span>
+              
+            </td>
+            
+          </tr>
+        
           
-        </tr>
-      
-        <tr>
-          <td><a href="/gerenciador_calendario/versoes/2026.2.superior/">2026.2.superior</a></td>
-          <td>2026.2</td>
-          <td>—</td>
-          <td>14/09/2026</td>
-          <td>1</td>
+          <tr data-modalidade="integrado_medio"
+              data-search="2026.2.integrado 2026.2 1º Semestre CALENDÁRIO ACADÊMICO 2026.2 - CURSOS INTEGRADO Cursos técnicos integrados ao nível médio 14/09/2026">
+            <td data-label="Versão" class="cell-versao">
+              <a class="version-link" href="/gerenciador_calendario/versoes/2026.2.integrado/">2026.2.integrado</a>
+            </td>
+            <td data-label="Período">
+              
+                <span class="badge badge-periodo">2026.2</span>
+              
+            </td>
+            <td data-label="Início" class="cell-data">14/09/2026</td>
+            <td data-label="Modalidade">
+              
+                <span class="badge badge-modalidade" data-modalidade="integrado_medio">Cursos técnicos integrados ao nível médio</span>
+              
+            </td>
+            
+          </tr>
+        
           
-        </tr>
-      
-    </tbody>
-  </table>
+          <tr data-modalidade="concomitante_subsequente"
+              data-search="2026.2.subsequente 2026.2 1º Semestre CALENDÁRIO ACADÊMICO 2026.2 - CURSOS INTEGRADO Cursos técnicos concomitantes/subsequentes 14/09/2026">
+            <td data-label="Versão" class="cell-versao">
+              <a class="version-link" href="/gerenciador_calendario/versoes/2026.2.subsequente/">2026.2.subsequente</a>
+            </td>
+            <td data-label="Período">
+              
+                <span class="badge badge-periodo">2026.2</span>
+              
+            </td>
+            <td data-label="Início" class="cell-data">14/09/2026</td>
+            <td data-label="Modalidade">
+              
+                <span class="badge badge-modalidade" data-modalidade="concomitante_subsequente">Cursos técnicos concomitantes/subsequentes</span>
+              
+            </td>
+            
+          </tr>
+        
+          
+          <tr data-modalidade="graduacao"
+              data-search="2026.2.superior 2026.2 1º Semestre CALENDÁRIO ACADÊMICO 2026.2 - CURSOS SUPERIORES Graduação 14/09/2026">
+            <td data-label="Versão" class="cell-versao">
+              <a class="version-link" href="/gerenciador_calendario/versoes/2026.2.superior/">2026.2.superior</a>
+            </td>
+            <td data-label="Período">
+              
+                <span class="badge badge-periodo">2026.2</span>
+              
+            </td>
+            <td data-label="Início" class="cell-data">14/09/2026</td>
+            <td data-label="Modalidade">
+              
+                <span class="badge badge-modalidade" data-modalidade="graduacao">Graduação</span>
+              
+            </td>
+            
+          </tr>
+        
+          <tr class="versions-empty hidden">
+            <td colspan="4">Nenhum resultado para a busca. Tente outro termo ou limpe os filtros.</td>
+          </tr>
+      </tbody>
+    </table>
+  </div>
 
   
 

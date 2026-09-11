@@ -348,6 +348,13 @@ Os itens com sugestão vêm marcados: **Aplicar selecionados ao editor** leva ao
 - A raiz **`/calendario/` é o índice** — lista todas as versões. Cada versão tem sua
   página em **`/versoes/<slug>/`** com o documento completo. O path legado
   **`/versoes/` redireciona** para o índice (`/calendario/`).
+- **Tabela do índice** — colunas **Versão**, **Período**, **Início** e **Modalidade**
+  (chips com cor própria por modalidade), precedidas de um resumo no topo (total de
+  versões, períodos e modalidades cadastradas). Há **busca** por versão, período, data
+  ou modalidade, **filtro por modalidade**, contador de resultados (`N de M versões`)
+  e botão *Limpar* — tudo no **navegador** (`static/js/main.js`), porque o GitHub Pages
+  é estático e não tem API/banco; sem JavaScript a tabela continua íntegra. No mobile as
+  linhas viram cartões. Atalhos: `/` foca a busca e `Esc` limpa os filtros.
 - **Excluir versões** — no índice `/calendario/` (coluna *Ações*) e na lista **Etapas
   salvas** do `/editor/` há o botão **Excluir** para cada versão, com confirmação. É um
   **POST de formulário** para `/versoes/excluir/` (funciona sem JavaScript) que remove a

@@ -1,47 +1,112 @@
 {% extends "calendario/base.html" %}
 {% block title %}Calendário acadêmico — versões — {{ site_title }}{% endblock %}
 {% block content %}
-  <h1>Calendário acadêmico</h1>
-  <p>
-    Todas as versões cadastradas são publicadas com o documento completo. Escolha
-    uma abaixo para abrir.
-  </p>
+  <section class="versions-hero">
+    <div class="versions-hero-text">
+      <h1>Calendário acadêmico</h1>
+      <p>
+        Todas as versões cadastradas são publicadas com o documento completo.
+        Busque por versão, período, início ou modalidade e abra a que precisar.
+      </p>
+    </div>
+    {% if resumo.total %}
+    <ul class="versions-summary">
+      <li class="versions-summary-chip">
+        <strong>{{ resumo.total }}</strong>
+        <span>{% if resumo.total == 1 %}versão{% else %}versões{% endif %}</span>
+      </li>
+      <li class="versions-summary-chip">
+        <strong>{{ resumo.modalidades|length }}</strong>
+        <span>modalidade{{ resumo.modalidades|length|pluralize:"s" }}</span>
+      </li>
+    </ul>
+    {% endif %}
+  </section>
+
   {% comment %}
-    As ações são POST de formulário (funcionam até sem JavaScript). No site
-    estático não há API nem banco, então estes controles não são publicados.
+    Busca e filtro rodam no navegador (JS), porque o build publicado no GitHub
+    Pages é estático. Sem JavaScript a tabela continua íntegra e navegável.
   {% endcomment %}
-  <table class="versions-table">
-    <thead>
-      <tr>
-        <th>Versão</th><th>Período</th><th>Curso</th><th>Início</th><th>Etapa</th>
-        {% if not static_build %}<th>Ações</th>{% endif %}
-      </tr>
-    </thead>
-    <tbody>
-      {% for v in versoes %}
+  <form class="versions-toolbar" id="versionsToolbar" role="search">
+    <div class="version-search-field">
+      <label class="sr-only" for="versionSearch">Buscar versões do calendário</label>
+      <input type="search" id="versionSearch" class="version-search" name="q"
+             placeholder="Buscar por versão, período, início ou modalidade…"
+             autocomplete="off">
+    </div>
+    <div class="version-filter-field">
+      <label class="sr-only" for="versionModality">Filtrar por modalidade</label>
+      <select id="versionModality" class="version-filter" name="modalidade">
+        <option value="">Todas as modalidades</option>
+        {% for m in modalidades %}
+          <option value="{{ m.valor }}">{{ m.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="button" id="versionClear" class="version-clear">Limpar</button>
+    <p class="version-count" id="versionCount" role="status" aria-live="polite"></p>
+  </form>
+
+  <div class="versions-table-wrap">
+    <table class="versions-table" id="versionsTable">
+      <thead>
         <tr>
-          <td><a href="{{ base }}versoes/{{ v.slug }}/">{{ v.versao }}</a></td>
-          <td>{{ v.periodo|default:"—" }}</td>
-          <td>{{ v.curso|default:"—" }}</td>
-          <td>{{ v.data_inicio|date:"d/m/Y" }}</td>
-          <td>{{ v.etapa }}</td>
-          {% if not static_build %}
-          <td class="actions-cell">
-            <form class="inline-form" method="post" action="{{ base }}versoes/excluir/"
-                  onsubmit="return confirm('Excluir a versão {{ v.versao|escapejs }}? Esta ação não pode ser desfeita.');">
-              {% csrf_token %}
-              <input type="hidden" name="versao" value="{{ v.versao }}">
-              <input type="hidden" name="destino" value="calendario">
-              <button type="submit" class="btn-excluir">Excluir</button>
-            </form>
-          </td>
-          {% endif %}
+          <th scope="col">Versão</th>
+          <th scope="col">Período</th>
+          <th scope="col">Início</th>
+          <th scope="col">Modalidade</th>
+          {% if not static_build %}<th scope="col">Ações</th>{% endif %}
         </tr>
-      {% empty %}
-        <tr><td colspan="{% if static_build %}5{% else %}6{% endif %}">Nenhuma versão cadastrada.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        {% for v in versoes %}
+          {% comment %}
+            ``data-search`` concentra os campos pesquisáveis da linha (inclui o
+            semestre e o título, que não têm coluna própria) e ``data-modalidade``
+            sustenta o filtro por modalidade — os dois são lidos pelo main.js.
+            ``data-label`` vira o rótulo de cada campo no modo cartão (mobile).
+          {% endcomment %}
+          <tr data-modalidade="{{ v.modalidade }}"
+              data-search="{{ v.versao }} {{ v.periodo }} {{ v.semestre }} {{ v.titulo }} {{ v.get_modalidade_display }} {{ v.data_inicio|date:"d/m/Y" }}">
+            <td data-label="Versão" class="cell-versao">
+              <a class="version-link" href="{{ base }}versoes/{{ v.slug }}/">{{ v.versao }}</a>
+            </td>
+            <td data-label="Período">
+              {% if v.periodo %}
+                <span class="badge badge-periodo">{{ v.periodo }}</span>
+              {% else %}
+                <span class="muted">—</span>
+              {% endif %}
+            </td>
+            <td data-label="Início" class="cell-data">{{ v.data_inicio|date:"d/m/Y" }}</td>
+            <td data-label="Modalidade">
+              {% if v.modalidade %}
+                <span class="badge badge-modalidade" data-modalidade="{{ v.modalidade }}">{{ v.get_modalidade_display }}</span>
+              {% else %}
+                <span class="muted">—</span>
+              {% endif %}
+            </td>
+            {% if not static_build %}
+            <td class="actions-cell" data-label="Ações">
+              <form class="inline-form" method="post" action="{{ base }}versoes/excluir/"
+                    onsubmit="return confirm('Excluir a versão {{ v.versao|escapejs }}? Esta ação não pode ser desfeita.');">
+                {% csrf_token %}
+                <input type="hidden" name="versao" value="{{ v.versao }}">
+                <input type="hidden" name="destino" value="calendario">
+                <button type="submit" class="btn-excluir">Excluir</button>
+              </form>
+            </td>
+            {% endif %}
+          </tr>
+        {% empty %}
+          <tr class="versions-empty-row"><td colspan="{% if static_build %}4{% else %}5{% endif %}">Nenhuma versão cadastrada.</td></tr>
+        {% endfor %}
+          <tr class="versions-empty hidden">
+            <td colspan="{% if static_build %}4{% else %}5{% endif %}">Nenhum resultado para a busca. Tente outro termo ou limpe os filtros.</td>
+          </tr>
+      </tbody>
+    </table>
+  </div>
 
   {% if not static_build %}
   <section class="panel clone-panel">
