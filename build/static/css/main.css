@@ -2722,3 +2722,176 @@ blockquote {
   }
 }
 
+/* ==========================================================================
+   Preenchimento/verificação por IA (LLM) — modal, prévia e checklist
+   ========================================================================== */
+
+.ia-pendente {
+  display: inline-block;
+  margin-left: .6rem;
+  padding: .25rem .6rem;
+  border-radius: 999px;
+  font-size: .78rem;
+  background: color-mix(in srgb, #d97706 16%, var(--surface));
+  border: 1px solid #d97706;
+  color: var(--text);
+}
+
+.ia-modal {
+  width: min(1100px, 96vw);
+  max-height: 92vh;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  overflow: auto;
+}
+
+.ia-modal::backdrop {
+  background: rgba(15, 23, 42, .55);
+}
+
+.ia-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 2;
+}
+
+.ia-modal-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.ia-fechar {
+  border: 1px solid var(--border);
+  background: var(--accent);
+  color: var(--text);
+  border-radius: 8px;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: .35rem .6rem;
+  cursor: pointer;
+}
+
+.ia-step {
+  padding: 1.1rem 1.2rem 1.4rem;
+}
+
+.ia-step[hidden] {
+  display: none;
+}
+
+.ia-resumo .cal-metrics {
+  margin-top: .4rem;
+}
+
+.ia-blocos {
+  border-top: 1px solid var(--border);
+  padding-top: .9rem;
+  margin-top: 1rem;
+}
+
+.ia-blocos h3,
+.ia-req h3 {
+  margin: .2rem 0 .6rem;
+  font-size: .98rem;
+}
+
+.ia-alerta {
+  margin-top: 1rem;
+  padding: .6rem .9rem;
+  border-radius: 10px;
+  border: 1px dashed #d97706;
+  background: color-mix(in srgb, #d97706 8%, var(--surface));
+  font-size: .85rem;
+}
+
+.ia-avisos:empty {
+  display: none;
+}
+
+.ia-conf-baixa {
+  color: var(--danger);
+  font-style: normal;
+  font-size: .78rem;
+}
+
+.ia-req {
+  display: flex;
+  flex-direction: column;
+  gap: .45rem;
+}
+
+.ia-req-item {
+  display: flex;
+  gap: .6rem;
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-left-width: 5px;
+  border-radius: 10px;
+  padding: .5rem .7rem;
+  background: var(--card-bg);
+  font-size: .86rem;
+}
+
+.ia-req-item.ia-req-atendido { border-left-color: #15803d; }
+.ia-req-item.ia-req-faltando { border-left-color: var(--danger); }
+.ia-req-item.ia-req-conferir { border-left-color: #d97706; }
+
+.ia-req-item .ia-req-check {
+  margin-top: .2rem;
+}
+
+.ia-req-texto {
+  flex: 1;
+}
+
+.ia-req-badge {
+  display: inline-block;
+  min-width: 1.9rem;
+  text-align: center;
+  font-weight: 700;
+  border-radius: 6px;
+  background: var(--accent);
+  border: 1px solid var(--border);
+  padding: 0 .35rem;
+  margin-right: .3rem;
+}
+
+.ia-req-status {
+  font-style: normal;
+  font-weight: 600;
+  font-size: .78rem;
+  margin-left: .3rem;
+}
+
+.ia-req-atendido .ia-req-status { color: #15803d; }
+.ia-req-faltando .ia-req-status { color: var(--danger); }
+.ia-req-conferir .ia-req-status { color: #b45309; }
+
+.ia-req-ev {
+  margin: .25rem 0 0 1.1rem;
+  padding: 0;
+  color: var(--muted);
+  font-size: .8rem;
+}
+
+.ia-req-sugestao {
+  margin: .3rem 0 0;
+  font-size: .82rem;
+  color: var(--primary);
+}
+
+.ia-req-texto p.muted {
+  margin: .25rem 0 0;
+  font-size: .8rem;
+}
+
