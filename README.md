@@ -239,6 +239,10 @@ python manage.py seed_feriados --versao 2026.1.final
    `.github/workflows/deploy.yml` publica a pasta `build/` no GitHub Pages.
    Habilite em **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 
+> O CI **valida a base do build** antes de publicar: se o `build/` estiver com links
+> a partir da raiz (`/static/...`, típico de `make gerar`), o deploy falha com erro
+> claro em vez de publicar um site sem CSS/imagens. Publique sempre com `make publicar`.
+>
 > Como o `build/` é commitado com caminhos absolutos, se o nome do repositório
 > mudar rode `make publicar PAGES_BASE=/novo-nome/` para regerar com a base certa.
 >

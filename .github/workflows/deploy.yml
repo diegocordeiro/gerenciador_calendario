@@ -33,6 +33,22 @@ jobs:
         with:
           enablement: true
 
+      # Guardrail: o build/ é gerado localmente com os links prefixados pela base do
+      # Pages (project pages → /<repo>/). Se alguém commitar um build gerado com a
+      # raiz ("/static/...", como em 'make gerar'), o site sobe sem CSS/imagens.
+      # Aqui a publicação falha antes de dar deploy num build quebrado.
+      - name: Verificar base do build (project pages)
+        run: |
+          BASE="/${GITHUB_REPOSITORY#*/}/"
+          if ! grep -qF "href=\"${BASE}static/css/main.css\"" build/index.html; then
+            echo "::error::build/index.html não aponta para ${BASE}. Rode 'make publicar' e commite o build/ antes do push."
+            exit 1
+          fi
+          if grep -rlE '(href|src)="/static/' build --include='*.html'; then
+            echo "::error::build/ contém links a partir da raiz ('/static/...') que dão 404 em project pages. Rode 'make publicar'."
+            exit 1
+          fi
+
       - name: Publicar artefato (build/ commitado)
         uses: actions/upload-pages-artifact@v3
         with:
