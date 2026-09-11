@@ -18,10 +18,10 @@ Regra de dia letivo (documentada e coberta por testes):
   :data:`TIPOS_QUE_CONTAM`);
 * **removem** o dia letivo — mesmo caindo num dia útil dentro do período — os tipos
   de feriado, ponto facultativo, recesso, férias coletivas, avaliação final,
-  **jornada pedagógica**, **conselho de classe** e sábado de reposição (ver
-  :data:`TIPOS_QUE_REMOVEM`);
-* *matrícula* e *administrativo* são **marcadores/avisos** (:data:`TIPOS_NEUTROS`):
-  não criam dia letivo nem o removem — o dia segue a regra normal;
+  **conselho de classe** e sábado de reposição (ver :data:`TIPOS_QUE_REMOVEM`);
+* *matrícula*, *administrativo* e **jornada pedagógica** são **marcadores/avisos**
+  (:data:`TIPOS_NEUTROS`): não criam dia letivo nem o removem — o dia segue a regra
+  normal (útil dentro do período = letivo e contabilizado);
 * **sábado** conta somente com evento do tipo *sábado letivo*; *sábado de
   reposição* aparece na grade (e na legenda) mas **não** conta (nem entra no total
   de sábados letivos). **domingo** nunca conta;
@@ -66,7 +66,6 @@ STATUS_FERIADO = "feriado"
 STATUS_PONTO = "ponto_facultativo"
 STATUS_RECESSO = "recesso"
 STATUS_FERIAS = "ferias"
-STATUS_JORNADA = "jornada"
 STATUS_AVALIACAO_FINAL = "avaliacao_final"
 STATUS_CONSELHO = "conselho"
 STATUS_NAO_LETIVO = "nao_letivo"
@@ -102,7 +101,6 @@ TIPOS_QUE_REMOVEM = (
     "recesso",
     "ferias_coletivas",
     "avaliacao_final",
-    "jornada_pedagogica",
     "conselho_classe",
     "sabado_reposicao",
 )
@@ -112,6 +110,7 @@ TIPOS_QUE_REMOVEM = (
 TIPOS_NEUTROS = (
     "matricula",
     "administrativo",
+    "jornada_pedagogica",
 )
 
 #: tipos de evento que só valem quando caem no sábado (nos demais dias o dia é
@@ -126,14 +125,16 @@ STATUS_LABEL = {
     STATUS_PONTO: "Ponto facultativo",
     STATUS_RECESSO: "Recesso escolar",
     STATUS_FERIAS: "Férias coletivas",
-    STATUS_JORNADA: "Jornada pedagógica",
     STATUS_AVALIACAO_FINAL: "Avaliação final",
     STATUS_CONSELHO: "Conselho de classe",
     STATUS_NAO_LETIVO: "Não letivo",
     STATUS_FORA: "Fora do período",
 }
 
-#: prioridade dos eventos por tipo (o primeiro que casar define o status do dia)
+#: prioridade dos eventos por tipo (o primeiro que casar define o status do dia).
+#: Tipos ausentes daqui são **neutros** (marcadores/avisos): ``matricula``,
+#: ``administrativo`` e ``jornada_pedagogica`` — o dia segue a regra normal
+#: (útil dentro do período = letivo) e continua contando.
 PRIORIDADE_TIPOS = [
     ("feriado", STATUS_FERIADO),
     ("ponto_facultativo", STATUS_PONTO),
@@ -141,7 +142,6 @@ PRIORIDADE_TIPOS = [
     ("ferias_coletivas", STATUS_FERIAS),
     ("avaliacao_final", STATUS_AVALIACAO_FINAL),
     ("conselho_classe", STATUS_CONSELHO),
-    ("jornada_pedagogica", STATUS_JORNADA),
     ("sabado_reposicao", STATUS_REPOSICAO),
     ("sabado_letivo", STATUS_LETIVO_SABADO),
 ]
@@ -324,8 +324,8 @@ def _mes(primeiro: dt.date, ini: dt.date, fim: dt.date, feriados_map, eventos_po
                     else:
                         sabados_por_dia[ref] += 1
                 else:
-                    # Dias úteis que contam (letivo, jornada, conselho, avaliação,
-                    # recuperação, evento institucional).
+                    # Dias úteis que contam (letivo, avaliação, recuperação,
+                    # evento institucional).
                     letivos_seg_sex += 1
                     letivos_por_dia[d.weekday()] += 1
             if status == STATUS_REPOSICAO:

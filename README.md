@@ -89,12 +89,15 @@ de aviso no documento).
 
 | Contam | Removem o dia letivo (`TIPOS_QUE_REMOVEM`) | Neutros (`TIPOS_NEUTROS`) |
 | --- | --- | --- |
-| Dia letivo, Sábado letivo, Avaliação, Recuperação paralela, Evento institucional | Feriado, Ponto facultativo, Recesso escolar, Férias coletivas, Avaliação final, **Jornada pedagógica**, **Conselho de classe**, **Sábado de reposição** | Matrícula, Administrativo — *não criam dia letivo nem o removem*: o dia segue a regra normal (útil dentro do período = letivo) |
+| Dia letivo, Sábado letivo, Avaliação, Recuperação paralela, Evento institucional | Feriado, Ponto facultativo, Recesso escolar, Férias coletivas, Avaliação final, **Conselho de classe**, **Sábado de reposição** | Matrícula, Administrativo e **Jornada pedagógica** — *não criam dia letivo nem o removem*: o dia segue a regra normal (útil dentro do período = letivo **e contabilizado**) |
 
 - **segunda a sexta**, dentro da faixa, é *letivo* — os tipos da primeira coluna
-  mantêm o dia contabilizado; os da segunda **removem** o dia letivo, inclusive
-  **jornada pedagógica** e **conselho de classe** (aparecem na grade com cor e
-  legenda próprias, mas o dia sai da conta);
+  mantêm o dia contabilizado; os da segunda **removem** o dia letivo (inclusive
+  **conselho de classe**, que aparece na grade com cor e legenda próprias, mas o dia
+  sai da conta);
+- **matrícula**, **administrativo** e **jornada pedagógica** são avisos: o dia
+  continua sendo “Dia letivo”, com a faixa verde e contando na carga horária (o
+  evento aparece no tooltip/tabela de eventos);
 - **sábado** conta somente com evento *sábado letivo*; **domingo** nunca conta;
 - os tipos que contam somam **apenas em dia útil** — uma avaliação em sábado/domingo
   aparece na grade, mas não entra na carga horária;

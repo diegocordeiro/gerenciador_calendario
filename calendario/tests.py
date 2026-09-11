@@ -1866,20 +1866,25 @@ class ContagemDiasLetivosTests(TestCase):
                 self.assertEqual(ag["total_letivos"], 10, tipo)
                 self.assertTrue(self._celula(ag, self.QUARTA)["letivo"], tipo)
 
-    def test_jornada_e_conselho_removem_o_dia_letivo(self):
-        # Jornada pedagógica e conselho de classe NÃO contam: o dia útil deixa de
-        # ser letivo (fica com o status do tipo, em cor e legenda).
-        for tipo, status in (
-            ("jornada_pedagogica", "jornada"),
-            ("conselho_classe", "conselho"),
-        ):
-            with self.subTest(tipo=tipo):
-                ag = self._agenda([self._evento(tipo)])
-                celula = self._celula(ag, self.QUARTA)
-                self.assertEqual(celula["status"], status)
-                self.assertFalse(celula["letivo"])
-                self.assertEqual(ag["total_letivos"], 9)
-                self.assertEqual(ag["letivos_seg_sex"], 9)
+    def test_conselho_remove_o_dia_letivo(self):
+        # Conselho de classe NÃO conta: o dia útil deixa de ser letivo (fica com o
+        # status do tipo, em cor e legenda).
+        ag = self._agenda([self._evento("conselho_classe")])
+        celula = self._celula(ag, self.QUARTA)
+        self.assertEqual(celula["status"], "conselho")
+        self.assertFalse(celula["letivo"])
+        self.assertEqual(ag["total_letivos"], 9)
+        self.assertEqual(ag["letivos_seg_sex"], 9)
+
+    def test_jornada_pedagogica_e_neutra(self):
+        # Jornada pedagógica é marcador (como administrativo): o dia continua sendo
+        # "Dia letivo" e entra na carga horária.
+        ag = self._agenda([self._evento("jornada_pedagogica")])
+        celula = self._celula(ag, self.QUARTA)
+        self.assertEqual(celula["status"], "letivo")
+        self.assertTrue(celula["letivo"])
+        self.assertEqual(ag["total_letivos"], 10)
+        self.assertEqual(ag["letivos_seg_sex"], 10)
 
     def test_tipos_que_nao_contam(self):
         for tipo in (
@@ -1888,7 +1893,6 @@ class ContagemDiasLetivosTests(TestCase):
             "recesso",
             "ferias_coletivas",
             "avaliacao_final",
-            "jornada_pedagogica",
             "conselho_classe",
         ):
             with self.subTest(tipo=tipo):
@@ -1897,8 +1901,9 @@ class ContagemDiasLetivosTests(TestCase):
                 self.assertFalse(self._celula(ag, self.QUARTA)["letivo"], tipo)
 
     def test_marcadores_sao_neutros(self):
-        # Matrícula e administrativo são avisos: o dia continua sendo "Dia letivo".
-        for tipo in ("matricula", "administrativo"):
+        # Matrícula, administrativo e jornada pedagógica são avisos: o dia continua
+        # sendo "Dia letivo" e conta.
+        for tipo in ("matricula", "administrativo", "jornada_pedagogica"):
             with self.subTest(tipo=tipo):
                 ag = self._agenda([self._evento(tipo)])
                 self.assertEqual(ag["total_letivos"], 10, tipo)
@@ -1948,14 +1953,15 @@ class ContagemDiasLetivosTests(TestCase):
         self.assertTrue(any("estimada" in n for n in ag["notas"]))
 
     def test_legenda_traz_quem_conta(self):
-        ag = self._agenda([self._evento("jornada_pedagogica")])
+        ag = self._agenda([self._evento("conselho_classe")])
         conta = {l["status"]: l["conta"] for l in ag["legenda"]}
-        self.assertFalse(conta["jornada"])  # jornada não conta
+        self.assertFalse(conta["conselho"])  # conselho não conta
         self.assertTrue(ag["status_conta"]["letivo"])
         self.assertFalse(ag["status_conta"]["reposicao"])
         self.assertIn("avaliacao", ag["tipos_que_contam"])
         self.assertNotIn("conselho_classe", ag["tipos_que_contam"])
         self.assertIn("conselho_classe", ag["tipos_que_removem"])
+        self.assertIn("jornada_pedagogica", ag["tipos_neutros"])
         self.assertIn("matricula", ag["tipos_neutros"])
 
 
