@@ -478,6 +478,7 @@
           html +=
             '<td class="doc-dia doc-dia-' +
             esc(c.status) +
+            (c.letivo ? " doc-dia-conta" : "") +
             (c.destaque ? " doc-dia-destaque" : "") +
             (c.eventos && c.eventos.length ? " doc-dia-com-evento" : "") +
             '" data-tip="' +
@@ -683,6 +684,7 @@
             esc(l.status) +
             '"></span> ' +
             esc(l.label) +
+            (l.conta ? " — <em>conta na carga horária</em>" : " — não conta") +
             "</li>"
           );
         })
