@@ -23,4 +23,5 @@ urlpatterns = [
     ),
     path("api/ia/eventos/", views.api_ia_eventos, name="api_ia_eventos"),
     path("api/ia/verificar/", views.api_ia_verificar, name="api_ia_verificar"),
+    path("api/ia/feriados/", views.api_ia_feriados, name="api_ia_feriados"),
 ]

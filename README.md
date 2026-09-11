@@ -243,6 +243,7 @@ acelerar a montagem **sem gravar nada por conta própria**:
 | **Preencher com IA** | a partir da **cidade/UF/país** da unidade, sugere **feriados municipais/estaduais** e os eventos exigidos pela norma da modalidade, e **distribui os sábados letivos** para fechar a carga horária de cada dia da semana (sábados letivos sem Referência recebem o dia de maior déficit automaticamente) |
 | **Verificar com IA** | audita os eventos **já lançados** (preenchimento manual) contra a norma e lista o que falta, com evidências, motivo e um evento sugerido por item |
 | **Corrigir Referência dos sábados** | preenche a Referência dos **sábados letivos** sem dia da semana (pelo maior déficit). Não se aplica a *sábados de reposição*, que **não entram na carga horária** |
+| **Verificar feriados com IA** (quadro *1.3 Feriados*) | confere a **lista de feriados colada** contra os feriados da versão: mostra o que está **mapeado (✅)**, **faltando (➡️)** e **divergente (⚠)** — veja abaixo |
 
 ### Modalidade → norma (arts. 38, 39 e 40)
 
@@ -304,10 +305,34 @@ Outras variáveis: `LLM_ENABLED` (`0` desliga), `LLM_MAX_TOKENS`, `LLM_TEMPERATU
 | --- | --- | --- |
 | `/api/ia/eventos/` | POST | prévia de feriados/eventos/sábados + checklist — **não grava** |
 | `/api/ia/verificar/` | POST | auditoria da norma sobre os eventos lançados — **não grava** |
+| `/api/ia/feriados/` | POST | confere a **lista de feriados colada** contra os feriados da versão — **não grava** |
 | `/api/preview/` | POST | recalcula a carga horária no servidor (usado pelas prévias) |
 
 Erros: **400** para uso/configuração inválida (faltou cidade/UF ou período, provedor sem
 chave) e **502** quando o provedor falha (HTTP, timeout ou resposta ilegível).
+
+### Verificação dos feriados (lista colada)
+
+O botão **Verificar feriados com IA** (quadro 1.3, modal) recebe a **lista de feriados**
+em texto livre — do jeito que ela chega (meses por extenso, dia da semana entre
+parênteses, emojis ✅/➡️ como marcadores). A divisão de trabalho é a mesma da auditoria da
+norma:
+
+- a **IA só extrai**: converte cada linha em `data`, `descricao`, `tipo`
+  (`feriado`/`ponto_facultativo`) e `esfera`, preservando o texto e o marcador originais;
+- o **servidor decide** o veredito, comparando com os feriados já cadastrados:
+  - **✅ mapeado** — existe na data, com o mesmo tipo;
+  - **➡️ faltando** — não existe (a sugestão é adicionar);
+  - **⚠ divergente** — existe com **tipo diferente** (sugestão: ajustar o tipo) ou o
+    **mesmo feriado aparece em outra data** (casamento por nome, tolerante a acentos e
+    variações do texto);
+  - itens de meses **fora do período** aparecem como “fora do período” (não afetam a
+    carga horária, mas continuam no documento); e a lista mostra também os feriados
+    **cadastrados que não estão na lista**.
+
+Os itens com sugestão vêm marcados: **Aplicar selecionados ao editor** leva ao quadro 1.3
+(chips) — **nada é gravado** até o *Salvar versão*. A lista colada **não é persistida**
+(fica apenas na página), então a conferência é feita a cada uso.
 
 ### Limitações
 
@@ -381,9 +406,10 @@ A IA tem cobertura própria, **sem nenhuma chamada de rede** (o provedor é
 simulado): **requisitos** (as 3 normas, detecção por tipo/palavra/cálculo, merge
 conservador com a IA, calendário oficial 2026.2), **configuração** de provedores e
 apelidos, **leitura/normalização** da resposta (JSON puro, com cerca, inválido),
-**carga horária** (`completar_sabados`) e os **endpoints** `/api/ia/eventos/` e
-`/api/ia/verificar/` — inclusive o teste que garante que **nada é gravado** antes
-do “Salvar versão”.
+**carga horária** (`completar_sabados`), **feriados** (extração da lista colada com
+emojis, casamento por nome, veredito mapeado/faltando/divergente, `fora_do_período`)
+e os **endpoints** `/api/ia/eventos/`, `/api/ia/verificar/` e `/api/ia/feriados/` —
+inclusive o teste que garante que **nada é gravado** antes do “Salvar versão”.
 
 ## Observações
 

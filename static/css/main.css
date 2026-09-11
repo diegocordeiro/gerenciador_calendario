@@ -2915,3 +2915,47 @@ blockquote {
   font-size: .8rem;
 }
 
+/* ---- Verificação de feriados por IA (modal) ----------------------------- */
+.ia-fer-tabela {
+  font-size: .8rem;
+  width: 100%;
+}
+
+.ia-fer-tabela th,
+.ia-fer-tabela td {
+  vertical-align: top;
+}
+
+.ia-fer-tabela .ia-fer-original {
+  color: var(--muted);
+  font-size: .74rem;
+  max-width: 220px;
+}
+
+.ia-fer-check {
+  margin-right: .25rem;
+}
+
+tr.ia-fer-mapeado td:first-child { color: #15803d; font-weight: 600; }
+tr.ia-fer-faltando td:first-child { color: var(--danger); font-weight: 600; }
+tr.ia-fer-divergente td:first-child { color: #b45309; font-weight: 600; }
+
+tr.ia-fer-motivo td {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.ia-modal textarea {
+  width: 100%;
+  min-height: 180px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .84rem;
+  line-height: 1.45;
+  padding: .6rem .7rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  resize: vertical;
+}
+

@@ -2193,6 +2193,241 @@ class AtribuirReferenciasTests(TestCase):
         )
 
 
+class LlmFeriadosTests(TestCase):
+    """Extração da lista colada + veredito determinístico dos feriados."""
+
+    INICIO = dt.date(2027, 3, 1)
+    FIM = dt.date(2027, 7, 2)
+
+    def _cadastrados(self):
+        return [
+            {"data": "2027-03-26", "descricao": "Sexta-feira Santa", "tipo": "feriado",
+             "origem": "nacional"},
+            {"data": "2027-04-21", "descricao": "Tiradentes", "tipo": "feriado",
+             "origem": "nacional"},
+            {"data": "2027-05-01", "descricao": "Dia do Trabalho",
+             "tipo": "ponto_facultativo", "origem": "nacional"},
+            {"data": "2027-06-13", "descricao": "Aniversário do Município de Barras",
+             "tipo": "feriado", "origem": "municipal"},
+        ]
+
+    def test_normaliza_linhas_da_lista(self):
+        dados = {
+            "feriados": [
+                {"original": "➡️24(sexta-feira)- Aniversário de Barras-PI", "marcador": "➡️",
+                 "data": "2027-09-24", "descricao": "Aniversário de Barras-PI",
+                 "tipo": "feriado", "esfera": "municipal"},
+                {"original": "➡️19( terça-feira)- Dia do Piauí", "data": "2027-10-19",
+                 "descricao": "Dia do Piauí", "tipo": "ponto facultativo", "esfera": "estadual"},
+                {"original": "duplicado", "data": "2027-09-24", "descricao": "Outro"},
+                {"original": "ano errado", "data": "2019-09-24", "descricao": "Antigo"},
+            ]
+        }
+        itens, avisos = llm._ler_itens_feriados(dados, {2027})
+        self.assertEqual(len(itens), 2)
+        self.assertEqual(itens[0]["data"], "2027-09-24")
+        self.assertEqual(itens[0]["origem"], "municipal")
+        self.assertEqual(itens[0]["marcador"], "➡️")
+        self.assertEqual(itens[1]["tipo"], "ponto_facultativo")
+        self.assertEqual(itens[1]["tipo_label"], "Ponto facultativo")
+        self.assertEqual(itens[1]["origem"], "estadual")
+        self.assertTrue(any("lidas" in a for a in avisos))
+
+    def test_mesmo_feriado_por_nome(self):
+        # Nomes diferentes do mesmo feriado casam; nomes que só compartilham uma
+        # palavra genérica não casam.
+        self.assertTrue(
+            llm._mesmo_feriado("Aniversário de Barras-PI", "Aniversário do Município de Barras")
+        )
+        self.assertTrue(llm._mesmo_feriado("Finados", "Finados"))
+        self.assertFalse(llm._mesmo_feriado("Dia do Piauí", "Padroeira do Piauí"))
+        self.assertFalse(llm._mesmo_feriado("Dia do Professor", "Dia do Trabalho"))
+
+    def test_veredito_mapeado_faltando_divergente(self):
+        atuais = llm._feriados_atuais_normalizados(self._cadastrados())
+        por_data = {a["data"]: a for a in atuais}
+
+        def avaliar(data, descricao, tipo="feriado", origem="nacional"):
+            return llm._avaliar_item_feriado(
+                {"data": data, "descricao": descricao, "tipo": tipo, "origem": origem},
+                por_data, atuais, self.INICIO, self.FIM,
+            )
+
+        mapeado = avaliar("2027-04-21", "Tiradentes")
+        self.assertEqual(mapeado["situacao"], "mapeado")
+        self.assertIsNone(mapeado["sugestao"])
+        self.assertIn("Tiradentes", mapeado["registro"])
+
+        divergente_tipo = avaliar("2027-05-01", "Dia Mundial do Trabalho")
+        self.assertEqual(divergente_tipo["situacao"], "divergente")
+        self.assertEqual(divergente_tipo["sugestao"]["acao"], "ajustar_tipo")
+        self.assertIn("Ponto facultativo", divergente_tipo["motivo"])
+
+        divergente_data = avaliar("2027-09-24", "Aniversário de Barras-PI", origem="municipal")
+        self.assertEqual(divergente_data["situacao"], "divergente")
+        self.assertEqual(divergente_data["sugestao"]["acao"], "adicionar")
+        self.assertIn("13/06/2027", divergente_data["motivo"])
+        self.assertTrue(divergente_data["fora_do_periodo"])
+
+        faltando = avaliar("2027-05-27", "Corpus Christi")
+        self.assertEqual(faltando["situacao"], "faltando")
+        self.assertEqual(faltando["sugestao"]["acao"], "adicionar")
+        self.assertFalse(faltando["fora_do_periodo"])
+
+    def test_prompt_tem_a_lista_o_ano_e_os_cadastrados(self):
+        lista = "➡️27(quinta) - Corpus Christi"
+        prompt = llm.montar_prompt_feriados(
+            {"lista": lista}, self.INICIO, self.FIM, self._cadastrados()
+        )
+        self.assertIn(lista, prompt)
+        self.assertIn("2027", prompt)
+        self.assertIn("Sexta-feira Santa", prompt)
+        self.assertIn("Ano(s) de referência", prompt)
+
+
+@override_settings(LLM_PROVIDERS=PROVEDOR_FAKE, LLM_ENABLED=True)
+class IaFeriadosFluxoTests(TestCase):
+    """Fluxo completo de ``verificar_feriados`` (provedor simulado)."""
+
+    CADASTRADOS = [
+        {"data": "2027-03-26", "descricao": "Sexta-feira Santa", "tipo": "feriado",
+         "origem": "nacional"},
+        {"data": "2027-05-01", "descricao": "Dia do Trabalho", "tipo": "ponto_facultativo",
+         "origem": "nacional"},
+        {"data": "2027-06-13", "descricao": "Aniversário do Município de Barras",
+         "tipo": "feriado", "origem": "municipal"},
+    ]
+
+    EXTRAIDO = {
+        "feriados": [
+            {"original": "✅março - 26 de março: Paixão de Cristo", "data": "2027-03-26",
+             "descricao": "Paixão de Cristo", "tipo": "feriado", "esfera": "federal"},
+            {"original": "➡️27(quinta) - Corpus Christi", "marcador": "➡️",
+             "data": "2027-05-27", "descricao": "Corpus Christi", "tipo": "feriado"},
+            {"original": "➡️24(sexta-feira)- Aniversário de Barras-PI", "marcador": "➡️",
+             "data": "2027-09-24", "descricao": "Aniversário de Barras-PI",
+             "tipo": "feriado", "esfera": "municipal"},
+        ]
+    }
+
+    def _transporte(self, url, corpo, headers, timeout):
+        return {
+            "choices": [
+                {"message": {"content": json.dumps(self.EXTRAIDO, ensure_ascii=False)}}
+            ]
+        }
+
+    def _verificar(self, **extra):
+        entrada = {
+            "lista": "lista qualquer",
+            "provedor": "deepseek",
+            "data_inicio": "2027-03-01",
+            "data_fim": "2027-07-02",
+            "feriados": self.CADASTRADOS,
+        }
+        entrada.update(extra)
+        return llm.verificar_feriados(entrada, transporte=self._transporte)
+
+    def test_fluxo_completo(self):
+        resultado = self._verificar()
+        situacoes = {i["data"]: i["situacao"] for i in resultado["itens"]}
+        self.assertEqual(situacoes["2027-03-26"], "mapeado")
+        self.assertEqual(situacoes["2027-05-27"], "faltando")
+        self.assertEqual(situacoes["2027-09-24"], "divergente")
+        self.assertEqual(resultado["resumo"]["mapeados"], 1)
+        self.assertEqual(resultado["resumo"]["faltando"], 1)
+        self.assertEqual(resultado["resumo"]["divergentes"], 1)
+        self.assertEqual(resultado["resumo"]["fora_do_periodo"], 1)
+        self.assertFalse(resultado["resumo"]["ok"])
+        extras = {e["data"] for e in resultado["extras_no_calendario"]}
+        self.assertIn("2027-05-01", extras)
+
+    def test_exige_lista(self):
+        with self.assertRaises(llm.LlmConfigError):
+            self._verificar(lista="   ")
+
+    def test_exige_periodo(self):
+        with self.assertRaises(llm.LlmConfigError):
+            self._verificar(data_inicio="", data_fim="")
+
+
+@override_settings(LLM_PROVIDERS=PROVEDOR_FAKE, LLM_ENABLED=True)
+class IaFeriadosApiTests(IaApiTestsBase):
+    """``POST /api/ia/feriados/`` — confere a lista e **não grava nada**."""
+
+    def test_confere_a_lista_sem_persistir(self):
+        resposta = {
+            "feriados": [
+                {"original": "➡️27(quinta) - Corpus Christi", "data": "2027-05-27",
+                 "descricao": "Corpus Christi", "tipo": "feriado"},
+                {"original": "➡️15(sexta-feira)- Dia do Professor", "data": "2027-10-15",
+                 "descricao": "Dia do Professor", "tipo": "ponto_facultativo"},
+            ]
+        }
+        with mock.patch.object(
+            llm, "chamar_provedor", lambda *a, **k: json.dumps(resposta, ensure_ascii=False)
+        ):
+            resp = self._post(
+                "api_ia_feriados",
+                self._payload(
+                    lista="➡️27(quinta) - Corpus Christi\n➡️15 - Dia do Professor",
+                    data_inicio="2027-03-01",
+                    data_fim="2027-07-02",
+                ),
+            )
+        self.assertEqual(resp.status_code, 200)
+        dados = resp.json()
+        self.assertTrue(dados["ok"])
+        self.assertEqual(len(dados["itens"]), 2)
+        self.assertEqual(dados["resumo"]["faltando"], 2)
+        self.assertEqual(dados["resumo"]["fora_do_periodo"], 1)
+        self.assertEqual(dados["anos"], [2027])
+        # Nada foi gravado
+        self.assertEqual(Feriado.objects.count(), 0)
+        self.assertEqual(Evento.objects.count(), 0)
+
+    def test_divergente_quando_o_tipo_difere(self):
+        resposta = {
+            "feriados": [{"data": "2027-05-01", "descricao": "Dia do Trabalho",
+                          "tipo": "feriado"}]
+        }
+        with mock.patch.object(
+            llm, "chamar_provedor", lambda *a, **k: json.dumps(resposta)
+        ):
+            resp = self._post(
+                "api_ia_feriados",
+                self._payload(
+                    lista="01/05 - Dia do Trabalho",
+                    data_inicio="2027-03-01",
+                    data_fim="2027-07-02",
+                    feriados=[
+                        {"data": "2027-05-01", "descricao": "Dia do Trabalho",
+                         "tipo": "ponto_facultativo", "origem": "nacional"}
+                    ],
+                ),
+            )
+        self.assertEqual(resp.status_code, 200)
+        item = resp.json()["itens"][0]
+        self.assertEqual(item["situacao"], "divergente")
+        self.assertEqual(item["sugestao"]["acao"], "ajustar_tipo")
+
+    def test_exige_lista(self):
+        resp = self._post("api_ia_feriados", self._payload(lista="  "))
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("lista", resp.json()["erros"][0].lower())
+
+    def test_exige_periodo(self):
+        resp = self._post("api_ia_feriados", self._payload(lista="x", data_fim=""))
+        self.assertEqual(resp.status_code, 400)
+
+    def test_falha_do_provedor_retorna_502(self):
+        with mock.patch.object(
+            llm, "chamar_provedor", side_effect=llm.LlmProviderError("timeout")
+        ):
+            resp = self._post("api_ia_feriados", self._payload(lista="x"))
+        self.assertEqual(resp.status_code, 502)
+
+
 @override_settings(LLM_PROVIDERS=PROVEDOR_FAKE, LLM_ENABLED=True)
 class IaEditorTests(TestCase):
     """O editor expõe o preenchimento/verificação por IA sem vazar chaves."""

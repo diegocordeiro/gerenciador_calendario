@@ -148,6 +148,7 @@
         </label>
         <button id="btnAddFeriado" class="button" type="button">Adicionar</button>
         <button id="btnNacionais" class="button" type="button">Feriados nacionais do período</button>
+        <button id="btnIAFeriados" class="button button-primary" type="button">Verificar feriados com IA</button>
       </div>
       <ul id="holidayChips" class="chip-list"></ul>
     </section>
@@ -391,6 +392,70 @@
       <p class="ia-alerta">
         <strong>Nada foi salvo ainda.</strong> Ao aplicar, os itens entram no editor; a
         gravação acontece somente quando você clicar em <em>Salvar versão</em>.
+      </p>
+    </section>
+  </dialog>
+
+  <dialog id="iaFeriados" class="ia-modal" aria-labelledby="iaFerTitulo">
+    <div class="ia-modal-head">
+      <h2 id="iaFerTitulo">Verificar feriados com IA</h2>
+      <button type="button" class="ia-fechar" id="iaFerFechar" aria-label="Fechar">&times;</button>
+    </div>
+
+    <section class="ia-step" id="iaFerEntrada">
+      <p class="editor-help">
+        Cole a <strong>lista de feriados</strong> (uma linha por item — emojis como ✅ ou ➡️
+        são só marcadores). A IA converte cada linha em data/nome/tipo e o sistema
+        <strong>confere contra os feriados deste calendário</strong>. Nada é gravado: você
+        aplica no editor e salva a versão depois.
+      </p>
+      <label class="field">Lista de feriados
+        <textarea id="iaFerLista" rows="10" autocomplete="off"
+          placeholder="Feriados&#10;✅março - 26 de março (sexta-feira): Paixão de Cristo&#10;✅ Abril: 21 (quarta-feira) - Tiradentes&#10;➡️01(sábado) - Dia Mundial do Trabalho&#10;➡️27(quinta) - Corpus Christi"></textarea>
+        <small class="field-hint">Ano base: <span id="iaFerAno">—</span> (período informado em 1.2).</small>
+      </label>
+      <div class="field-row">
+        <label class="field">Provedor
+          <select id="iaFerProvedor"></select>
+        </label>
+        <label class="field">Modelo (opcional)
+          <input type="text" id="iaFerModelo" autocomplete="off">
+        </label>
+      </div>
+      <div class="editor-actions">
+        <button id="iaFerGerar" class="button button-primary" type="button">Verificar feriados</button>
+        <button id="iaFerCancelar" class="button" type="button">Cancelar</button>
+      </div>
+      <div id="iaFerMsg" class="editor-msg" role="status"></div>
+    </section>
+
+    <section class="ia-step" id="iaFerPrevia" hidden>
+      <div id="iaFerResumo" class="ia-resumo"></div>
+      <table class="doc-table ia-fer-tabela">
+        <thead>
+          <tr>
+            <th>Situação</th>
+            <th>Item da lista</th>
+            <th>Data</th>
+            <th>Feriado</th>
+            <th>Tipo</th>
+            <th>No calendário</th>
+            <th>Sugestão</th>
+          </tr>
+        </thead>
+        <tbody id="iaFerBody"></tbody>
+      </table>
+      <div id="iaFerExtras" class="ia-avisos"></div>
+      <div id="iaFerAvisos" class="ia-avisos"></div>
+      <div class="editor-actions">
+        <button id="iaFerAplicar" class="button button-primary" type="button">Aplicar selecionados ao editor</button>
+        <button id="iaFerMarcarTodos" class="button" type="button">Marcar todos os pendentes</button>
+        <button id="iaFerRegerar" class="button" type="button">Verificar novamente</button>
+        <button id="iaFerVoltar" class="button" type="button">Voltar</button>
+      </div>
+      <p class="ia-alerta">
+        <strong>Nada foi salvo ainda.</strong> Ao aplicar, os feriados entram no editor
+        (quadro 1.3); a gravação acontece no <em>Salvar versão</em>.
       </p>
     </section>
   </dialog>

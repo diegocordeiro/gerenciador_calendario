@@ -698,6 +698,42 @@ def _entrada_ia(dados: dict, *, exigir_local: bool) -> tuple[dict, JsonResponse 
 
 
 @require_POST
+def api_ia_feriados(request):
+    """Confere a **lista de feriados colada** contra o calendário (Art. 38–40 não; só feriados).
+
+    A IA converte cada linha da lista em data/nome/tipo; o veredito
+    (mapeado / faltando / divergente) é calculado no servidor. **Nada é gravado** —
+    as sugestões voltam para o modal e só entram no editor quando o usuário marca os
+    itens e aplica (a gravação é o “Salvar versão”).
+
+    POST ``{lista, data_inicio, data_fim, feriados?, modalidade?, cidade?, estado?,
+    pais?, provedor?, modelo?}`` → ``{ok, itens, resumo, extras_no_calendario, avisos}``.
+    """
+    dados = _payload(request)
+    lista = (dados.get("lista") or "").strip()
+    if not lista:
+        return JsonResponse(
+            {"ok": False, "erros": ["Cole a lista de feriados para conferir."]}, status=400
+        )
+
+    entrada, erro = _entrada_ia(dados, exigir_local=False)
+    if erro is not None:
+        return erro
+    entrada["lista"] = lista
+
+    try:
+        resultado = llm.verificar_feriados(entrada)
+    except llm.LlmConfigError as exc:
+        return JsonResponse({"ok": False, "erros": [str(exc)]}, status=400)
+    except llm.LlmProviderError as exc:
+        return JsonResponse({"ok": False, "erros": [str(exc)]}, status=502)
+    except llm.LlmError as exc:  # salvaguarda
+        return JsonResponse({"ok": False, "erros": [str(exc)]}, status=400)
+
+    return JsonResponse({"ok": True, **resultado})
+
+
+@require_POST
 def api_ia_verificar(request):
     """Audita os eventos lançados contra a norma da modalidade (Art. 38/39/40).
 

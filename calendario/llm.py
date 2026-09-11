@@ -589,9 +589,15 @@ def normalizar_tipo(valor) -> str:
     if bruto in TIPOS_EVENTO:
         return bruto
     chave = _sem_acento(bruto).replace("-", "_")
-    if chave in TIPOS_EVENTO:
-        return chave
-    return _ALIASES_TIPO_NORM.get(chave, "evento")
+    # aceita a forma escrita com espaços (ex.: "ponto facultativo")
+    variantes = [chave, chave.replace(" ", "_").replace("  ", "_")]
+    for variante in variantes:
+        if variante in TIPOS_EVENTO:
+            return variante
+    for variante in variantes:
+        if variante in _ALIASES_TIPO_NORM:
+            return _ALIASES_TIPO_NORM[variante]
+    return "evento"
 
 
 def normalizar_feriado_origem(valor, esfera) -> str:
@@ -1155,5 +1161,364 @@ def gerar_eventos(entrada: dict, transporte=None) -> dict:
 
 
 
+
+
+
+
+
+# ---------------------------------------------------------------------------
+# Verificação da lista de feriados (texto colado × calendário)
+# ---------------------------------------------------------------------------
+
+SITUACAO_FERIADO_LABEL = {
+    "mapeado": "Mapeado",
+    "faltando": "Faltando",
+    "divergente": "Divergente",
+}
+SITUACAO_FERIADO_ICONE = {"mapeado": "✅", "faltando": "➡️", "divergente": "⚠"}
+
+
+def prompt_sistema_feriados() -> str:
+    return (
+        "Você extrai listas de feriados em texto livre e responde sempre com um único "
+        "objeto JSON válido, sem comentários e sem texto fora do JSON. Você não "
+        "inventa feriados: converte apenas as linhas recebidas."
+    )
+
+
+def _marcador_linha(original: str) -> str:
+    """Marcador opcional no início da linha (``✅``, ``➡️``, ``⚠️``…)."""
+    achado = re.match(r"^([^\w\s(]+)", (original or "").strip())
+    return achado.group(1) if achado else ""
+
+
+def _sem_marcador(texto: str) -> str:
+    """Remove o marcador do início da linha (mantém o resto)."""
+    return re.sub(r"^[^\w(]+", "", (texto or "").strip()).strip()
+
+
+def _chave_nome(texto: str) -> str:
+    """Chave de comparação de nomes (sem acento, só letras/números/espaços)."""
+    limpo = re.sub(r"[^a-z0-9 ]+", " ", _sem_acento(texto or ""))
+    return " ".join(limpo.split())
+
+
+#: palavras que não distinguem um feriado de outro (usadas no casamento por nome)
+_STOPWORDS_NOME = {
+    "a", "as", "o", "os", "e", "de", "da", "das", "do", "dos",
+    "dia", "nacional", "municipal", "municipio", "estadual", "federal",
+    "feriado", "ponto", "facultativo", "santo", "santa", "sao",
+    "senhor", "senhora", "n", "s",
+}
+
+
+def _radicais_nome(texto: str) -> set:
+    """Palavras significativas do nome do feriado (sem conectivos)."""
+    return {p for p in _chave_nome(texto).split() if p not in _STOPWORDS_NOME}
+
+
+def _mesmo_feriado(descricao_a: str, descricao_b: str) -> bool:
+    """Dois nomes se referem ao mesmo feriado?
+
+    Regra conservadora: se o nome mais curto tem **uma só** palavra significativa,
+    ele só casa com outro de uma palavra (``Finados`` × ``Finados``); caso contrário,
+    todas as palavras do menor precisam estar presentes no outro. Assim
+    ``Aniversário do Município de Barras`` casa com ``Aniversário de Barras-PI``,
+    mas ``Dia do Piauí`` **não** casa com ``Padroeira do Piauí``.
+    """
+    ra, rb = _radicais_nome(descricao_a), _radicais_nome(descricao_b)
+    if not ra or not rb:
+        return False
+    comuns = ra & rb
+    if not comuns:
+        return False
+    menor, maior = (ra, rb) if len(ra) <= len(rb) else (rb, ra)
+    if len(menor) == 1:
+        return len(maior) == 1
+    return len(comuns) >= len(menor)
+
+
+def _mesmo_feriado_em_outra_data(descricao: str, atuais, data_iso: str):
+    """Procura o mesmo feriado cadastrado em outra data."""
+    for a in atuais:
+        if a["data"] != data_iso and _mesmo_feriado(descricao, a["descricao"]):
+            return a
+    return None
+
+
+def montar_prompt_feriados(entrada: dict, inicio: dt.date, fim: dt.date, cadastrados) -> str:
+    """Monta o pedido de extração/conferência da lista de feriados."""
+    anos = ", ".join(str(a) for a in sorted({inicio.year, fim.year}))
+    nacionais = _feriados_nacionais_iso(inicio, fim)
+    return f"""Você vai converter a LISTA DE FERIADOS abaixo (texto livre, possivelmente com
+emojis, meses por extenso e o dia da semana entre parênteses) em itens estruturados
+para conferência contra o calendário acadêmico.
+
+# Contexto
+- Instituição: {entrada.get('instituicao') or '-'} | Curso: {entrada.get('curso') or '-'}
+- Cidade: {entrada.get('cidade') or '-'} | Estado (UF): {entrada.get('estado') or '-'} | País: {entrada.get('pais') or 'Brasil'}
+- Período do calendário: {inicio.isoformat()} a {fim.isoformat()}
+- Ano(s) de referência: {anos} — use este ano quando a linha não tiver ano
+
+# Feriados FEDERAIS do período (referência confiável — use para conferir nomes/datas)
+{_json_dump(nacionais)}
+
+# Feriados já cadastrados no calendário (use para eu conferir o que já existe)
+{_json_dump(cadastrados)}
+
+# LISTA DE FERIADOS (uma linha por item; ✅/➡️/etc. são apenas marcadores)
+<<<LISTA
+{entrada.get('lista')}
+LISTA
+
+# Tarefas
+1. Converta CADA linha de feriado em um item com "data" (YYYY-MM-DD), "descricao" e
+   "tipo" ("feriado" ou "ponto_facultativo" — use ponto facultativo apenas quando a
+   linha indicar ponto facultativo; "Dia do Professor", "Dia do Piauí" e
+   "Dia do Servidor Público" costumam ser ponto facultativo).
+2. Em "esfera" informe "municipal", "estadual" ou "federal" quando der para inferir
+   (ex.: aniversário da cidade/padroeira = municipal; datas nacionais = federal).
+3. Preserve em "original" o texto da linha e em "marcador" o emoji inicial (se houver).
+4. Use o dia da semana entre parênteses (ex.: "(terça-feira)") para confirmar a data
+   no ano de referência.
+5. NÃO crie itens que não estejam na lista e ignore cabeçalhos soltos
+   (ex.: "Feriados", "março:", "✅ setembro:").
+
+# Formato da resposta
+{{
+  "feriados": [
+    {{"original": "➡️24(sexta-feira)- Aniversário de Barras-PI", "marcador": "➡️",
+      "data": "YYYY-MM-DD", "descricao": "Aniversário de Barras-PI",
+      "tipo": "feriado", "esfera": "municipal", "confianca": "alta"}}
+  ]
+}}
+"""
+
+
+def _ler_itens_feriados(dados: dict, anos_validos: set) -> tuple[list[dict], list[str]]:
+    """Normaliza as linhas da lista que a IA devolveu (``(itens, avisos)``)."""
+    itens: list[dict] = []
+    avisos: list[str] = []
+    vistos = set()
+    descartados = 0
+
+    for bruto in dados.get("feriados") or []:
+        if not isinstance(bruto, dict):
+            continue
+        data = _data(bruto.get("data") or bruto.get("data_inicio"))
+        if data is None or data.year not in anos_validos:
+            descartados += 1
+            continue
+        iso = data.isoformat()
+        if iso in vistos:
+            avisos.append(
+                f"A lista tem mais de um item em {data:%d/%m/%Y} — mantido apenas o primeiro."
+            )
+            continue
+        vistos.add(iso)
+
+        tipo = normalizar_tipo(bruto.get("tipo"))
+        if tipo not in ("feriado", "ponto_facultativo"):
+            tipo = "feriado"
+        original = _texto(bruto.get("original"), 300)
+        descricao = _texto(
+            bruto.get("descricao") or bruto.get("titulo") or _sem_marcador(original), 200
+        )
+        itens.append(
+            {
+                "data": iso,
+                "data_label": f"{data.day:02d}/{data.month:02d}/{data.year}",
+                "descricao": descricao,
+                "tipo": tipo,
+                "tipo_label": "Ponto facultativo" if tipo == "ponto_facultativo" else "Feriado",
+                "origem": normalizar_feriado_origem(bruto.get("origem"), bruto.get("esfera")),
+                "esfera": _texto(bruto.get("esfera") or "", 20).lower(),
+                "confianca": _texto(bruto.get("confianca") or "", 20).lower(),
+                "marcador": _texto(bruto.get("marcador"), 4) or _marcador_linha(original),
+                "original": original,
+            }
+        )
+
+    itens.sort(key=lambda i: i["data"])
+    if descartados:
+        avisos.append(
+            f"{descartados} linha(s) da lista não puderam ser lidas (sem data válida ou "
+            "fora do ano de referência)."
+        )
+    return itens, avisos
+
+
+def _feriados_atuais_normalizados(feriados) -> list[dict]:
+    """Normaliza os feriados já cadastrados (modelo ou dict) para a conferência."""
+    itens = []
+    for f in feriados or []:
+        if isinstance(f, dict):
+            data, descricao = f.get("data"), f.get("descricao")
+            tipo, origem = f.get("tipo"), f.get("origem")
+        else:
+            data, descricao = getattr(f, "data", None), getattr(f, "descricao", "")
+            tipo, origem = getattr(f, "tipo", None), getattr(f, "origem", None)
+        d = _data(data)
+        if d is None:
+            continue
+        tipo_norm = tipo if tipo in ("feriado", "ponto_facultativo") else "feriado"
+        itens.append(
+            {
+                "data": d.isoformat(),
+                "data_label": f"{d.day:02d}/{d.month:02d}/{d.year}",
+                "descricao": _texto(descricao, 200),
+                "tipo": tipo_norm,
+                "tipo_label": "Ponto facultativo" if tipo_norm == "ponto_facultativo" else "Feriado",
+                "origem": origem or "manual",
+            }
+        )
+    itens.sort(key=lambda i: i["data"])
+    return itens
+
+
+def _avaliar_item_feriado(item, atuais_por_data, atuais, inicio, fim) -> dict:
+    """Veredito **determinístico** de um item da lista contra o calendário."""
+    item.setdefault(
+        "tipo_label",
+        "Ponto facultativo" if item.get("tipo") == "ponto_facultativo" else "Feriado",
+    )
+    registro = atuais_por_data.get(item["data"])
+    situacao = "faltando"
+    motivo = "Não há feriado/ponto facultativo cadastrado nesta data."
+    acao = "adicionar"
+
+    if registro is not None:
+        if registro["tipo"] == item["tipo"]:
+            situacao = "mapeado"
+            motivo = "Já cadastrado com o mesmo tipo."
+            acao = ""
+        else:
+            situacao = "divergente"
+            motivo = (
+                f"No calendário está como “{registro['tipo_label']}”; a lista indica "
+                f"“{item['tipo_label']}”."
+            )
+            acao = "ajustar_tipo"
+    else:
+        antigo = _mesmo_feriado_em_outra_data(item["descricao"], atuais, item["data"])
+        if antigo is not None:
+            situacao = "divergente"
+            motivo = (
+                f"O mesmo feriado parece cadastrado em outra data: "
+                f"{antigo['data_label']} — {antigo['descricao']}."
+            )
+            acao = "adicionar"
+
+    data = dt.date.fromisoformat(item["data"])
+    item.update(
+        {
+            "situacao": situacao,
+            "situacao_label": SITUACAO_FERIADO_LABEL[situacao],
+            "situacao_icone": SITUACAO_FERIADO_ICONE[situacao],
+            "motivo": motivo,
+            "fora_do_periodo": not (inicio <= data <= fim),
+            "registro": (
+                f"{registro['data_label']} — {registro['descricao']} ({registro['tipo_label']})"
+                if registro
+                else ""
+            ),
+            "sugestao": (
+                {
+                    "acao": acao,
+                    "data": item["data"],
+                    "descricao": item["descricao"],
+                    "tipo": item["tipo"],
+                    "origem": item["origem"],
+                }
+                if acao
+                else None
+            ),
+        }
+    )
+    return item
+
+
+def verificar_feriados(entrada: dict, transporte=None) -> dict:
+    """Confere a **lista de feriados colada** contra o calendário.
+
+    A LLM apenas converte o texto em itens (data/nome/tipo/esfera); o veredito
+    (``mapeado`` / ``faltando`` / ``divergente``) é calculado aqui, comparando com os
+    feriados já cadastrados. **Nada é gravado.**
+    """
+    if not settings.LLM_ENABLED:
+        raise LlmConfigError("O preenchimento por IA está desativado (LLM_ENABLED=0).")
+    if not tem_provedor_configurado():
+        raise LlmConfigError(
+            "Nenhum provedor de IA está configurado. Defina a chave de API numa "
+            "variável de ambiente (ex.: DEEPSEEK_API_KEY, OPENAI_API_KEY, "
+            "GEMINI_API_KEY ou ANTHROPIC_API_KEY)."
+        )
+
+    cfg = config_provedor(entrada.get("provedor"))
+    lista = (entrada.get("lista") or "").strip()
+    if not lista:
+        raise LlmConfigError("Cole a lista de feriados para conferir.")
+
+    inicio = _data(entrada.get("data_inicio"))
+    fim = _data(entrada.get("data_fim"))
+    if inicio is None or fim is None:
+        raise LlmConfigError(
+            "Informe o período (início e término) antes de conferir os feriados."
+        )
+    if fim < inicio:
+        raise LlmConfigError("A data de término é anterior à data de início.")
+
+    anos_validos = {inicio.year, fim.year}
+    atuais = _feriados_atuais_normalizados(entrada.get("feriados"))
+    atuais_por_data = {a["data"]: a for a in atuais}
+
+    contexto = {
+        "cidade": _texto(entrada.get("cidade"), 120),
+        "estado": _texto(entrada.get("estado"), 60),
+        "pais": _texto(entrada.get("pais"), 60) or "Brasil",
+        "instituicao": _texto(entrada.get("instituicao"), 200),
+        "curso": _texto(entrada.get("curso"), 200),
+        "lista": lista,
+        "feriados": atuais,
+    }
+
+    texto = chamar_provedor(
+        montar_prompt_feriados(contexto, inicio, fim, atuais),
+        prompt_sistema_feriados(),
+        cfg,
+        transporte=transporte,
+    )
+    itens, avisos = _ler_itens_feriados(parse_resposta(texto), anos_validos)
+    if not itens:
+        avisos.append("A IA não conseguiu extrair nenhuma linha da lista de feriados.")
+
+    avaliados = [
+        _avaliar_item_feriado(dict(i), atuais_por_data, atuais, inicio, fim)
+        for i in itens
+    ]
+    datas_lista = {i["data"] for i in avaliados}
+    extras = [a for a in atuais if a["data"] not in datas_lista]
+
+    resumo = {
+        "total": len(avaliados),
+        "mapeados": sum(1 for i in avaliados if i["situacao"] == "mapeado"),
+        "faltando": sum(1 for i in avaliados if i["situacao"] == "faltando"),
+        "divergentes": sum(1 for i in avaliados if i["situacao"] == "divergente"),
+        "fora_do_periodo": sum(1 for i in avaliados if i["fora_do_periodo"]),
+        "extras_no_calendario": len(extras),
+    }
+    resumo["ok"] = resumo["faltando"] == 0 and resumo["divergentes"] == 0
+
+    return {
+        "provedor": cfg["chave"],
+        "provedor_label": cfg.get("label") or cfg["chave"],
+        "modelo": cfg.get("model") or "",
+        "anos": sorted(anos_validos),
+        "periodo": {"data_inicio": inicio.isoformat(), "data_fim": fim.isoformat()},
+        "itens": avaliados,
+        "resumo": resumo,
+        "extras_no_calendario": extras,
+        "avisos": avisos,
+    }
 
 
