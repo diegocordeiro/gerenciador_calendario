@@ -1159,34 +1159,46 @@
     return achado ? achado.label : valor;
   }
 
-  function preencherSelectsIA() {
+  function opcoesProvedoresIA() {
+    return (IA.provedores || [])
+      .map(function (p) {
+        var rotulo =
+          p.label + (p.modelo ? " — " + p.modelo : "") + (p.disponivel ? "" : " (sem chave)");
+        return (
+          '<option value="' +
+          esc(p.valor) +
+          '"' +
+          (p.disponivel ? "" : " disabled") +
+          ">" +
+          esc(rotulo) +
+          "</option>"
+        );
+      })
+      .join("");
+  }
+
+  function provedorPadraoIA() {
     var lista = IA.provedores || [];
-    var sel = $("iaProvedor");
-    if (sel) {
-      sel.innerHTML = lista
-        .map(function (p) {
-          var rotulo =
-            p.label + (p.modelo ? " — " + p.modelo : "") + (p.disponivel ? "" : " (sem chave)");
-          return (
-            '<option value="' +
-            esc(p.valor) +
-            '"' +
-            (p.disponivel ? "" : " disabled") +
-            ">" +
-            esc(rotulo) +
-            "</option>"
-          );
-        })
-        .join("");
-      var escolhido =
-        lista.filter(function (p) {
-          return p.disponivel && p.valor === IA.padrao;
-        })[0] ||
-        lista.filter(function (p) {
-          return p.disponivel;
-        })[0];
-      if (escolhido) sel.value = escolhido.valor;
-    }
+    var escolhido =
+      lista.filter(function (p) {
+        return p.disponivel && p.valor === IA.padrao;
+      })[0] ||
+      lista.filter(function (p) {
+        return p.disponivel;
+      })[0];
+    return escolhido ? escolhido.valor : "";
+  }
+
+  function preencherSelectProvedorIA(sel) {
+    if (!sel) return;
+    sel.innerHTML = opcoesProvedoresIA();
+    var padrao = provedorPadraoIA();
+    if (padrao) sel.value = padrao;
+  }
+
+  function preencherSelectsIA() {
+    preencherSelectProvedorIA($("iaProvedor"));
+    preencherSelectProvedorIA($("iaFerProvedor"));
     var tipos = $("iaEvTipo");
     if (tipos && !tipos.options.length) {
       tipos.innerHTML += Object.keys(TIPOS_EVENTO)
@@ -1902,6 +1914,317 @@
     );
   }
 
+  // ---- Verificação de feriados por IA ------------------------------------
+  // A lista colada fica apenas na memória da página (não é persistida). A IA só
+  // converte as linhas em data/nome/tipo; o veredito vem do servidor.
+  var iaFerState = {
+    itens: [],
+    resumo: null,
+    extras: [],
+    avisos: [],
+    selecionados: {},
+    gerado: false
+  };
+  var iaFerTexto = "";
+
+  function msgFer(texto, tipo) {
+    var el = $("iaFerMsg");
+    if (!el) return;
+    el.textContent = texto;
+    el.className =
+      "editor-msg" +
+      (tipo === "ok" ? " editor-msg-ok" : tipo === "erro" ? " editor-msg-erro" : "");
+  }
+
+  function mostrarPassoFer(passo) {
+    if ($("iaFerEntrada")) $("iaFerEntrada").hidden = passo !== "entrada";
+    if ($("iaFerPrevia")) $("iaFerPrevia").hidden = passo !== "previa";
+  }
+
+  function anoBaseFer() {
+    var inicio = $("fInicio") ? $("fInicio").value : "";
+    var fim = $("fDataFim") ? $("fDataFim").value : "";
+    if (!inicio) return "";
+    var a = inicio.split("-")[0];
+    var b = fim ? fim.split("-")[0] : a;
+    return a === b ? a : a + "–" + b;
+  }
+
+  function labelProvedorFer() {
+    var sel = $("iaFerProvedor");
+    var valor = sel ? sel.value : "";
+    var achado = (IA.provedores || []).filter(function (p) {
+      return p.valor === valor;
+    })[0];
+    return achado ? achado.label : valor;
+  }
+
+  function abrirIAFeriados() {
+    var modal = $("iaFeriados");
+    if (!modal) return;
+    if (!IA.habilitado) {
+      msg(
+        "Nenhum provedor de IA está configurado. Defina a chave de API em uma variável " +
+          "de ambiente (DEEPSEEK_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY ou " +
+          "ANTHROPIC_API_KEY), reinicie o servidor e recarregue esta página.",
+        "erro"
+      );
+      return;
+    }
+    preencherSelectsIA();
+    if ($("iaFerLista") && iaFerTexto) $("iaFerLista").value = iaFerTexto;
+    if ($("iaFerAno")) $("iaFerAno").textContent = anoBaseFer() || "—";
+    mostrarPassoFer("entrada");
+    msgFer("", "");
+    if (typeof modal.showModal === "function") modal.showModal();
+    else modal.setAttribute("open", "open");
+    if ($("iaFerLista")) $("iaFerLista").focus();
+  }
+
+  function fecharIAFeriados() {
+    var modal = $("iaFeriados");
+    if (!modal) return;
+    if (typeof modal.close === "function" && modal.open) modal.close();
+    else modal.removeAttribute("open");
+  }
+
+  function verificarFeriadosIA() {
+    var lista = ($("iaFerLista") ? $("iaFerLista").value : "").trim();
+    if (!lista) {
+      msgFer("Cole a lista de feriados para conferir.", "erro");
+      return;
+    }
+    var p = payload();
+    if (!p.data_inicio || !p.data_fim) {
+      msgFer("Informe o início e o término do período (bloco 1.2) antes de conferir.", "erro");
+      return;
+    }
+    iaFerTexto = lista;
+
+    var botao = $("iaFerGerar");
+    var rotulo = botao.textContent;
+    var iniciadoEm = Date.now();
+    botao.disabled = true;
+    botao.textContent = "Conferindo…";
+    msgFer(
+      "Conferindo a lista com " +
+        labelProvedorFer() +
+        "… aguarde (pode levar até " +
+        (IA.timeout || 120) +
+        "s).",
+      ""
+    );
+
+    postJSON(BASE + "api/ia/feriados/", {
+      lista: lista,
+      provedor: $("iaFerProvedor") ? $("iaFerProvedor").value : "",
+      modelo: $("iaFerModelo") ? $("iaFerModelo").value.trim() : "",
+      modalidade: p.modalidade,
+      instituicao: p.instituicao,
+      curso: p.curso,
+      data_inicio: p.data_inicio,
+      data_fim: p.data_fim,
+      feriados: p.feriados
+    })
+      .then(function (d) {
+        botao.disabled = false;
+        botao.textContent = rotulo;
+        if (!d || !d.ok) {
+          msgFer(((d && d.erros) || ["Não foi possível conferir a lista."]).join(" "), "erro");
+          return;
+        }
+        iaFerState.itens = d.itens || [];
+        iaFerState.resumo = d.resumo || null;
+        iaFerState.extras = d.extras_no_calendario || [];
+        iaFerState.avisos = d.avisos || [];
+        iaFerState.selecionados = {};
+        iaFerState.itens.forEach(function (it) {
+          if (it.sugestao) iaFerState.selecionados[it.data] = true;
+        });
+        iaFerState.gerado = true;
+        renderFeriadosIA();
+        mostrarPassoFer("previa");
+        var segundos = Math.max(1, Math.round((Date.now() - iniciadoEm) / 1000));
+        var r = iaFerState.resumo || {};
+        msgFer(
+          "Conferência concluída por " +
+            (d.provedor_label || d.provedor) +
+            (d.modelo ? " (" + d.modelo + ")" : "") +
+            " em " +
+            segundos +
+            "s — " +
+            (r.mapeados || 0) +
+            " mapeado(s), " +
+            (r.faltando || 0) +
+            " faltando, " +
+            (r.divergentes || 0) +
+            " divergente(s).",
+          r.ok ? "ok" : ""
+        );
+      })
+      .catch(function () {
+        botao.disabled = false;
+        botao.textContent = rotulo;
+        msgFer("Não foi possível falar com o servidor.", "erro");
+      });
+  }
+
+  function renderFeriadosIA() {
+    var resumo = $("iaFerResumo");
+    if (resumo) {
+      var r = iaFerState.resumo || {};
+      resumo.innerHTML =
+        '<div class="cal-metrics">' +
+        metric("Itens na lista", r.total || 0, (r.fora_do_periodo || 0) + " fora do período") +
+        metric("✅ Mapeados", r.mapeados || 0, "já cadastrados") +
+        metric("➡️ Faltando", r.faltando || 0, "para adicionar") +
+        metric("⚠ Divergentes", r.divergentes || 0, "data ou tipo diferente") +
+        metric("Fora da sua lista", r.extras_no_calendario || 0, "cadastrados no calendário") +
+        "</div>";
+    }
+
+    var tbody = $("iaFerBody");
+    if (tbody) {
+      tbody.innerHTML = iaFerState.itens
+        .map(function (it) {
+          var marca = it.sugestao
+            ? '<input type="checkbox" class="ia-fer-check" data-data="' +
+              esc(it.data) +
+              '"' +
+              (iaFerState.selecionados[it.data] ? " checked" : "") +
+              ">"
+            : "";
+          var sugestao = "—";
+          if (it.sugestao) {
+            sugestao =
+              it.sugestao.acao === "ajustar_tipo"
+                ? "Ajustar para " + esc(it.tipo_label)
+                : "Adicionar " +
+                  esc(it.tipo_label) +
+                  " em " +
+                  esc(it.sugestao.data.split("-").reverse().join("/"));
+          }
+          return (
+            '<tr class="ia-fer-' +
+            esc(it.situacao) +
+            '"><td>' +
+            marca +
+            " " +
+            esc(it.situacao_icone || "") +
+            " " +
+            esc(it.situacao_label) +
+            '</td><td class="ia-fer-original">' +
+            esc(it.original || "") +
+            "</td><td>" +
+            esc(it.data.split("-").reverse().join("/")) +
+            "</td><td>" +
+            esc(it.descricao) +
+            "</td><td>" +
+            esc(it.tipo_label) +
+            (it.fora_do_periodo ? ' <em class="muted">(fora do período)</em>' : "") +
+            "</td><td>" +
+            (it.registro ? esc(it.registro) : "—") +
+            "</td><td>" +
+            sugestao +
+            "</td></tr>" +
+            (it.motivo
+              ? '<tr class="ia-fer-motivo"><td colspan="7" class="muted">' +
+                esc(it.motivo) +
+                "</td></tr>"
+              : "")
+          );
+        })
+        .join("");
+
+      Array.prototype.forEach.call(tbody.querySelectorAll(".ia-fer-check"), function (chk) {
+        chk.addEventListener("change", function () {
+          var data = chk.getAttribute("data-data");
+          if (chk.checked) iaFerState.selecionados[data] = true;
+          else delete iaFerState.selecionados[data];
+        });
+      });
+    }
+
+    var extras = $("iaFerExtras");
+    if (extras) {
+      extras.innerHTML = (iaFerState.extras || []).length
+        ? '<div class="cal-alert"><strong>Cadastrados no calendário e fora da sua lista:</strong><ul>' +
+          iaFerState.extras
+            .map(function (e) {
+              return (
+                "<li>" +
+                esc(e.data_label) +
+                " — " +
+                esc(e.descricao || "(sem descrição)") +
+                " (" +
+                esc(e.tipo_label) +
+                ")</li>"
+              );
+            })
+            .join("") +
+          "</ul></div>"
+        : "";
+    }
+
+    var avisos = $("iaFerAvisos");
+    if (avisos) {
+      avisos.innerHTML = (iaFerState.avisos || []).length
+        ? '<div class="cal-alert"><strong>Atenção:</strong><ul>' +
+          iaFerState.avisos
+            .map(function (a) {
+              return "<li>" + esc(a) + "</li>";
+            })
+            .join("") +
+          "</ul></div>"
+        : "";
+    }
+  }
+
+  function marcarTodosFer() {
+    iaFerState.itens.forEach(function (it) {
+      if (it.sugestao) iaFerState.selecionados[it.data] = true;
+    });
+    renderFeriadosIA();
+    msgFer("Todos os itens com sugestão foram marcados.", "ok");
+  }
+
+  function aplicarFeriadosIA() {
+    var aplicados = 0;
+    iaFerState.itens.forEach(function (it) {
+      if (!it.sugestao || !iaFerState.selecionados[it.data]) return;
+      var existente = state.feriados.filter(function (f) {
+        return f.data === it.data;
+      })[0];
+      if (it.sugestao.acao === "ajustar_tipo" && existente) {
+        existente.tipo = it.tipo;
+        if (!existente.descricao) existente.descricao = it.descricao;
+        aplicados += 1;
+      } else if (!existente) {
+        state.feriados.push({
+          data: it.data,
+          descricao: it.descricao,
+          origem: it.origem || "manual",
+          tipo: it.tipo
+        });
+        aplicados += 1;
+      }
+    });
+    if (!aplicados) {
+      msgFer("Marque ao menos um item com sugestão para aplicar.", "erro");
+      return;
+    }
+    fecharIAFeriados();
+    renderChips();
+    preview();
+    marcarPendenteIA(true);
+    msg(
+      aplicados +
+        " feriado(s) da conferência aplicado(s) ao editor (NADA foi salvo ainda — " +
+        "clique em “Salvar versão”).",
+      "ok"
+    );
+  }
+
   // ---- Exibir/ocultar blocos (preenchimento e prévias) -------------------
   // Facilita a navegação: à medida que o calendário cresce, o usuário pode
   // esconder o preenchimento (para focar nas prévias) ou vice-versa. A escolha
@@ -2026,6 +2349,20 @@
   if ($("iaCancelarEvento")) {
     $("iaCancelarEvento").addEventListener("click", cancelarEdicaoEventoIA);
   }
+
+  // ---- Verificação de feriados por IA (modal) -----------------------------
+  if ($("btnIAFeriados")) $("btnIAFeriados").addEventListener("click", abrirIAFeriados);
+  if ($("iaFerGerar")) $("iaFerGerar").addEventListener("click", verificarFeriadosIA);
+  if ($("iaFerAplicar")) $("iaFerAplicar").addEventListener("click", aplicarFeriadosIA);
+  if ($("iaFerMarcarTodos")) $("iaFerMarcarTodos").addEventListener("click", marcarTodosFer);
+  if ($("iaFerRegerar")) $("iaFerRegerar").addEventListener("click", verificarFeriadosIA);
+  if ($("iaFerVoltar")) {
+    $("iaFerVoltar").addEventListener("click", function () {
+      mostrarPassoFer("entrada");
+    });
+  }
+  if ($("iaFerFechar")) $("iaFerFechar").addEventListener("click", fecharIAFeriados);
+  if ($("iaFerCancelar")) $("iaFerCancelar").addEventListener("click", fecharIAFeriados);
 
   if ($("fInicio").value) preview();
   else {
