@@ -95,6 +95,96 @@ def _item(codigo, descricao, *, modo="evento", tipos=(), palavras=(), calculado=
     }
 
 
+#: Referência normativa completa — vai para o prompt da IA, para a interface e para
+#: a documentação (RN CONSUP/IFPI 253/2025, Resolução CONSUP 078/2018, LDB 9.394/96
+#: e a atualização das normas com os itens acrescentados).
+REFERENCIA_NORMAS = (
+    "Normas aplicáveis: Resolução Normativa CONSUP/IFPI nº 253, de 22/12/2025 "
+    "(Organização Didática do IFPI — arts. 38, 39 e 40); Resolução CONSUP nº 078, de "
+    "14/11/2018 (elaboração do calendário acadêmico — art. 10); LDB (Lei nº 9.394/1996) "
+    "— art. 24 (carga horária mínima anual distribuída por, no mínimo, 200 dias de "
+    "efetivo trabalho escolar, excluído o tempo reservado aos exames finais) e art. 47 "
+    "(200 dias de trabalho acadêmico efetivo na educação superior). Atualização das "
+    "normas: o calendário deve atender 200 dias no ano letivo, com no mínimo 100 dias de "
+    "efetivo trabalho escolar por semestre; além dos arts. 38/39/40 e do art. 10 da "
+    "Resolução 078/2018, devem constar: mobilidade acadêmica (transferência interna), "
+    "Disciplinas Eletivas Livres, avaliação dos cursos (níveis médio e superior), 20/11 "
+    "como Dia Nacional de Zumbi e da Consciência Negra (feriado nacional — Lei nº "
+    "14.759/2023), Semana Escolar de Combate à Violência contra a Mulher (março — Lei nº "
+    "14.164/2021), Semana Nacional de Ciência e Tecnologia (SNCT — Decreto de 9/6/2004) "
+    "e os temas transversais obrigatórios: Educação dos Direitos Humanos (Decreto nº "
+    "7.037/2009 e Resolução CNE/CP nº 1/2012), Educação Ambiental (Resolução CNE/CP nº "
+    "2/2012) e Educação no Trânsito (Lei nº 9.503/1997) — essas atividades devem ser "
+    "descritas no calendário, cadastradas no Módulo Eventos do SUAP e registradas em "
+    "foto/vídeo (indicador 1.5 da avaliação externa dos cursos de graduação); férias "
+    "coletivas de no máximo 15 dias antes do início das aulas; ano letivo concluído em "
+    "no máximo 365 dias corridos."
+)
+
+
+def referencia_normas() -> str:
+    """Bloco normativo aplicável (prompt da IA, interface e documentação)."""
+    return REFERENCIA_NORMAS
+
+
+def _romano(numero: int) -> str:
+    """Converte 1 → ``I``, 23 → ``XXIII`` (numeração dos artigos)."""
+    valores = (
+        (1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"),
+        (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I"),
+    )
+    saida = ""
+    for valor, simbolo in valores:
+        while numero >= valor:
+            saida += simbolo
+            numero -= valor
+    return saida
+
+
+def _itens_atualizacao(primeiro: int) -> list[dict]:
+    """Itens acrescentados pela **atualização das normas** (iguais nas 3 modalidades).
+
+    ``primeiro`` é o número romano do primeiro item novo — a numeração continua a da
+    norma (arts. 38/39/40), como se os itens fossem apensados ao artigo.
+    """
+    codigos = [_romano(n) for n in range(primeiro, primeiro + 11)]
+    return [
+        _item(codigos[0], "Data para solicitação de mobilidade acadêmica (transferência interna)",
+              palavras=[r"mobilidade", r"transfer.{0,12}interna"],
+              dica="mobilidade acadêmica / transferência interna"),
+        _item(codigos[1], "Datas para solicitação de Disciplinas Eletivas Livres",
+              palavras=[r"eletiva"], dica="Disciplinas Eletivas Livres"),
+        _item(codigos[2], "Datas para avaliação dos cursos (níveis médio e superior)",
+              palavras=[r"avalia.{0,18}curso", r"avalia.{0,18}institucional", r"indicador 1\.5"],
+              dica="avaliação dos cursos — indicador 1.5 (instrumento de avaliação externa)"),
+        _item(codigos[3], "Dia Nacional de Zumbi e da Consciência Negra (20 de novembro)",
+              palavras=[r"consci.ncia negra", r"zumbi"],
+              dica="evento alusivo de 20/11 — feriado nacional desde 2024 (Lei nº 14.759/2023)"),
+        _item(codigos[4], "Semana Escolar de Combate à Violência contra a Mulher (março)",
+              palavras=[r"viol.ncia contra a mulher", r"combate.{0,20}viol.ncia"],
+              dica="semana de março — Lei nº 14.164/2021"),
+        _item(codigos[5], "Semana Nacional de Ciência e Tecnologia (SNCT)",
+              palavras=[r"snct", r"ci.ncia e tecnologia"],
+              dica="SNCT — Decreto de 9/6/2004"),
+        _item(codigos[6], "Temas transversais: Educação dos Direitos Humanos",
+              palavras=[r"direitos humanos", r"educa.{0,18}direitos humanos"],
+              dica="Decreto nº 7.037/2009 e Resolução CNE/CP nº 1/2012"),
+        _item(codigos[7], "Temas transversais: Educação Ambiental",
+              palavras=[r"educa.{0,18}ambiental", r"meio ambiente", r"sustentabilidade"],
+              dica="Resolução CNE/CP nº 2/2012"),
+        _item(codigos[8], "Temas transversais: Educação no Trânsito",
+              palavras=[r"tr.nsito", r"contran"],
+              dica="Lei nº 9.503/1997 — campanhas educativas do CONTRAN"),
+        _item(codigos[9], "Comprovação dos temas transversais (registro foto/vídeo e SUAP)",
+              modo="manual",
+              dica="descrever as atividades no calendário, cadastrar no Módulo Eventos do "
+                   "SUAP e registrar foto/vídeo (comprovação — indicador 1.5)"),
+        _item(codigos[10], "Carga horária mínima: 200 dias no ano letivo / 100 por semestre",
+              modo="calculado", calculado="carga_minima",
+              dica="LDB arts. 24 e 47 — excluído o tempo reservado aos exames finais"),
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Art. 38 — cursos técnicos integrados ao nível médio
 # ---------------------------------------------------------------------------
@@ -140,12 +230,10 @@ ITENS_ART38 = [
           palavras=[r"reuni.{0,15}pais", r"pais.{0,10}reuni"], dica="reunião de pais"),
     _item("XX", "Datas para realização do Conselho de Classe", tipos=["conselho_classe"],
           dica="conselho de classe"),
-    _item("XXI", "Temas transversais obrigatórios por lei", modo="manual",
-          dica="temas transversais (ex.: Setembro Amarelo, trânsito, meio ambiente)"),
-    _item("XXII", "Outros eventos de relevância cultural, científica e institucional",
+] + _itens_atualizacao(21) + [
+    _item("XXXII", "Outros eventos de relevância cultural, científica e institucional",
           tipos=["evento"], dica="eventos culturais/científicos/institucionais"),
 ]
-
 
 # ---------------------------------------------------------------------------
 # Art. 39 — cursos técnicos concomitantes/subsequentes
@@ -194,8 +282,9 @@ ITENS_ART39 = [
           dica="prazo de lançamento de notas no SUAP ao fim de cada bimestre/semestre"),
     _item("XX", "Datas para realização do Conselho de Classe", tipos=["conselho_classe"],
           dica="conselho de classe"),
-    _item("XXI", "Temas transversais obrigatórios por lei", modo="manual",
-          dica="temas transversais (ex.: Setembro Amarelo, trânsito, meio ambiente)"),
+] + _itens_atualizacao(21) + [
+    _item("XXXII", "Outros eventos de relevância cultural, científica e institucional",
+          tipos=["evento"], dica="eventos culturais/científicos/institucionais"),
 ]
 
 
@@ -247,9 +336,8 @@ ITENS_ART40 = [
     _item("XXI", "Validação de Atividades Complementares, PCCS e ATPA",
           palavras=[r"atpa", r"pccs", r"atividades complementares", r"praticas curriculares"],
           dica="validação de ACC/PCCS/ATPA"),
-    _item("XXII", "Temas transversais obrigatórios por lei", modo="manual",
-          dica="temas transversais (ex.: Setembro Amarelo, trânsito, meio ambiente)"),
-    _item("XXIII", "Outros eventos de relevância cultural, científica e institucional",
+] + _itens_atualizacao(22) + [
+    _item("XXXIII", "Outros eventos de relevância cultural, científica e institucional",
           tipos=["evento"], dica="eventos culturais/científicos/institucionais"),
 ]
 
@@ -290,6 +378,7 @@ def info_da_modalidade(modalidade) -> dict:
         "modalidade": valor,
         "norma": norma,
         "titulo": TITULOS[norma],
+        "referencia": REFERENCIA_NORMAS,
         "itens": [dict(i) for i in ITENS_POR_NORMA[norma]],
     }
 
@@ -345,6 +434,19 @@ def _checar_calculado(chave, agenda, dias_letivos_por_mes) -> tuple[str, str]:
         if total:
             return SITUACAO_ATENDIDO, f"{total} feriado(s)/ponto(s) facultativo(s) no documento"
         return SITUACAO_FALTANDO, "nenhum feriado/ponto facultativo lançado"
+    if chave == "carga_minima":
+        dados = ag.get("carga_minima") or {}
+        total = int(dados.get("total") if dados.get("total") is not None else ag.get("total_letivos") or 0)
+        aplicado = int(dados.get("aplicado") or 0)
+        if not aplicado:
+            return (
+                SITUACAO_CONFERIR,
+                "informe o período e os dias letivos previstos (bloco 1.2) para conferir "
+                "o mínimo legal",
+            )
+        unidade = "no ano letivo" if dados.get("ano") else "por semestre"
+        texto = f"{total} dias letivos (mínimo legal: {aplicado} {unidade})"
+        return (SITUACAO_ATENDIDO if total >= aplicado else SITUACAO_FALTANDO), texto
     if chave == "meses_declarados":
         if dias_letivos_por_mes:
             return (

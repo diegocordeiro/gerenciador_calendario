@@ -88,6 +88,8 @@ def _llm_contexto() -> dict:
             "norma": info["norma"],
             "titulo": info["titulo"],
             "total_itens": len(info["itens"]),
+            # Referência normativa completa (resoluções, LDB e a atualização das normas).
+            "referencia": info["referencia"],
         }
     return {
         "habilitado": llm.tem_provedor_configurado(),

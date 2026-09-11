@@ -279,21 +279,45 @@ acelerar a montagem **sem gravar nada por conta própria**:
 | **Corrigir Referência dos sábados** | preenche a Referência dos **sábados letivos** sem dia da semana (pelo maior déficit). Não se aplica a *sábados de reposição*, que **não entram na carga horária** |
 | **Verificar feriados com IA** (quadro *1.3 Feriados*) | confere a **lista de feriados colada** contra os feriados da versão: mostra o que está **mapeado (✅)**, **faltando (➡️)** e **divergente (⚠)** — veja abaixo |
 
-### Modalidade → norma (arts. 38, 39 e 40)
+### Modalidade → norma (arts. 38, 39 e 40 + atualização das normas)
 
 | Modalidade | Norma | Itens |
 | --- | --- | --- |
-| `integrado_medio` — Cursos técnicos integrados ao nível médio | **Art. 38** | 22 |
-| `concomitante_subsequente` — Cursos técnicos concomitantes/subsequentes | **Art. 39** | 21 |
-| `graduacao` — Graduação | **Art. 40** | 23 |
+| `integrado_medio` — Cursos técnicos integrados ao nível médio | **Art. 38** | 32 |
+| `concomitante_subsequente` — Cursos técnicos concomitantes/subsequentes | **Art. 39** | 32 |
+| `graduacao` — Graduação | **Art. 40** | 33 |
+
+**Normas aplicáveis** (`calendario/requisitos.py::referencia_normas` — vai para os prompts
+da IA e para a interface): Resolução Normativa **CONSUP/IFPI nº 253/2025** (Organização
+Didática — arts. 38, 39 e 40), Resolução **CONSUP nº 078/2018** (elaboração do calendário
+acadêmico — art. 10) e a **LDB 9.394/96** (arts. 24 e 47: no mínimo **200 dias de efetivo
+trabalho escolar** no ano letivo e **100 dias por semestre**, excluído o tempo reservado
+aos exames finais).
+
+Além dos itens dos arts. 38/39/40, o checklist cobra a **atualização das normas**:
+mobilidade acadêmica (transferência interna), Disciplinas Eletivas Livres, avaliação dos
+cursos, 20/11 (Dia Nacional de Zumbi e da Consciência Negra — feriado nacional desde 2024),
+Semana Escolar de Combate à Violência contra a Mulher (março), Semana Nacional de Ciência e
+Tecnologia (SNCT) e os **temas transversais** (Direitos Humanos, Educação Ambiental e
+Educação no Trânsito) — os três últimos verificáveis por palavra-chave, com um item próprio
+de **comprovação** (registro foto/vídeo e cadastro no Módulo Eventos do SUAP). O piso de
+carga horária entra como item **calculado** (`carga_minima`).
 
 O checklist é **determinístico** (regras em `calendario/requisitos.py`, casando o tipo do
 evento, palavras-chave e cálculos da agenda). A IA só **sugere** e interpreta; a regra
 local nunca é rebaixada por ela — quando a IA vê uma evidência que a regra não viu, o item
-vira **“a conferir”**, nunca “atendido” sem prova. Itens não automatizáveis (ex.: “temas
-transversais obrigatórios por lei”) aparecem sempre como **a conferir**.
+vira **“a conferir”**, nunca “atendido” sem prova. Itens não automatizáveis (ex.: a
+**comprovação** dos temas transversais, com registro foto/vídeo) aparecem sempre como
+**a conferir**.
 
 ### Carga horária e sábados letivos
+
+A agenda confere os **pisos e limites da atualização das normas** e avisa (na área de
+mensagens do editor e no documento) quando: o total de dias letivos fica **abaixo do
+mínimo legal** — **100 por semestre** ou **200 no ano letivo**, quando o período declarado
+cobre o ano (`calendario/agenda.py::CARGA_MINIMA_*`); há mais de **15 dias de férias
+coletivas** antes do início das aulas; ou o período passa de **365 dias corridos**
+(contando as férias coletivas).
 
 A meta por dia é `ceil(dias_letivos_previstos / 5)` e quem **fecha** essa conta é o
 cálculo do projeto, não o modelo: `calendario/llm.py::completar_sabados` escolhe sábados

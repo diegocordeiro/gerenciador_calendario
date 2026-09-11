@@ -610,6 +610,63 @@ class AgendaTests(TestCase):
         self.assertEqual(ag["total_letivos"], 0)
 
 
+    def test_carga_minima_do_semestre_e_do_ano(self):
+        # Piso legal: 100 dias por semestre e 200 quando o período cobre o ano letivo.
+        semestre = self._agenda()
+        self.assertEqual(semestre["carga_minima"]["aplicado"], 100)
+        self.assertFalse(semestre["carga_minima"]["atende"])
+        self.assertTrue(
+            any("mínimo legal" in a for a in semestre["validacao"]["avisos"])
+        )
+
+        ano = self._agenda(
+            data_inicio="2027-03-01",
+            data_fim="2027-12-20",
+            feriados=[],
+            eventos=[],
+            dias_letivos_previstos=200,
+        )
+        self.assertEqual(ano["carga_minima"]["aplicado"], 200)
+        self.assertEqual(ano["carga_minima"]["ano"], 200)
+        self.assertTrue(ano["carga_minima"]["atende"])
+
+    def test_aviso_de_ferias_coletivas_antes_do_inicio(self):
+        # A orientação pede no máximo 15 dias de férias coletivas antes das aulas.
+        agenda = self._agenda(
+            data_inicio="2027-03-01",
+            data_fim="2027-03-26",
+            feriados=[],
+            dias_letivos_previstos=20,
+            eventos=[
+                {
+                    "titulo": "Férias coletivas",
+                    "tipo": "ferias_coletivas",
+                    "data_inicio": "2027-02-01",
+                    "data_fim": "2027-02-28",
+                }
+            ],
+        )
+        self.assertTrue(
+            any(
+                "férias coletivas antes do início" in a
+                for a in agenda["validacao"]["avisos"]
+            )
+        )
+
+    def test_aviso_de_duracao_do_ano_letivo(self):
+        # O ano letivo deve ser concluído em no máximo 365 dias corridos.
+        agenda = self._agenda(
+            data_inicio="2027-03-01",
+            data_fim="2028-04-10",
+            feriados=[],
+            eventos=[],
+            dias_letivos_previstos=200,
+        )
+        self.assertTrue(
+            any("dias corridos" in a for a in agenda["validacao"]["avisos"])
+        )
+
+
 class Seed20262Tests(TestCase):
     """O seed recria o documento oficial 2026.2 (Administração Integrado PROEJA)."""
 
@@ -1549,14 +1606,136 @@ class RequisitosTests(TestCase):
         self.assertEqual(requisitos.norma_da_modalidade("inexistente"), "Art. 38")
 
     def test_quantidade_de_itens_por_norma(self):
-        self.assertEqual(len(requisitos.itens_da_modalidade("integrado_medio")), 22)
-        self.assertEqual(len(requisitos.itens_da_modalidade("concomitante_subsequente")), 21)
-        self.assertEqual(len(requisitos.itens_da_modalidade("graduacao")), 23)
+        # Itens dos arts. 38/39/40 + 11 itens da atualização das normas (2xx).
+        self.assertEqual(len(requisitos.itens_da_modalidade("integrado_medio")), 32)
+        self.assertEqual(len(requisitos.itens_da_modalidade("concomitante_subsequente")), 32)
+        self.assertEqual(len(requisitos.itens_da_modalidade("graduacao")), 33)
+
+    def test_referencia_normas_cita_as_resolucoes_e_a_ldb(self):
+        # A referência normativa (prompt/interface) identifica as normas aplicáveis.
+        texto = requisitos.referencia_normas()
+        for trecho in (
+            "253, de 22/12/2025",
+            "078, de 14/11/2018",
+            "9.394/1996",
+            "200 dias no ano letivo",
+            "100 dias de",
+            "14.759/2023",
+            "14.164/2021",
+            "SNCT",
+            "Direitos Humanos",
+            "Educação Ambiental",
+            "Educação no Trânsito",
+            "Módulo Eventos do SUAP",
+            "365 dias corridos",
+        ):
+            self.assertIn(trecho, texto)
+        self.assertIn("referencia", requisitos.info_da_modalidade("graduacao"))
+
+    def test_itens_da_atualizacao_sao_verificaveis(self):
+        # Cada item acrescentado pela atualização casa por palavra-chave nos eventos.
+        casos = {
+            "XXI": "Mobilidade acadêmica — transferência interna",
+            "XXII": "Solicitação de Disciplinas Eletivas Livres",
+            "XXIII": "Avaliação institucional dos cursos",
+            "XXIV": "Dia Nacional de Zumbi e da Consciência Negra",
+            "XXV": "Semana de Combate à Violência contra a Mulher",
+            "XXVI": "Semana Nacional de Ciência e Tecnologia (SNCT)",
+            "XXVII": "Educação dos Direitos Humanos",
+            "XXVIII": "Educação Ambiental e sustentabilidade",
+            "XXIX": "Educação no Trânsito",
+        }
+        for codigo, titulo in casos.items():
+            itens = self._itens(
+                "integrado_medio",
+                [{"titulo": titulo, "tipo": "evento", "data_inicio": "2026-10-01"}],
+            )
+            self.assertEqual(
+                itens[codigo]["situacao"], requisitos.SITUACAO_ATENDIDO, (codigo, titulo)
+            )
+        vazios = self._itens("integrado_medio", [])
+        self.assertEqual(vazios["XXX"]["modo"], "manual")       # comprovação
+        self.assertEqual(vazios["XXXI"]["modo"], "calculado")   # carga horária mínima
+
+    def test_carga_minima_no_checklist(self):
+        abaixo = {
+            "total_letivos": 90,
+            "carga_minima": {
+                "semestre": 100, "ano": None, "aplicado": 100, "total": 90, "atende": False,
+            },
+        }
+        itens = self._itens("integrado_medio", [], agenda=abaixo)
+        self.assertEqual(itens["XXXI"]["situacao"], requisitos.SITUACAO_FALTANDO)
+        texto = " ".join([itens["XXXI"]["motivo"]] + itens["XXXI"]["evidencias"])
+        self.assertIn("mínimo legal", texto)
+
+        acima = {
+            "total_letivos": 210,
+            "carga_minima": {
+                "semestre": 100, "ano": 200, "aplicado": 200, "total": 210, "atende": True,
+            },
+        }
+        self.assertEqual(
+            self._itens("integrado_medio", [], agenda=acima)["XXXI"]["situacao"],
+            requisitos.SITUACAO_ATENDIDO,
+        )
 
     def test_prompt_lista_os_itens_da_norma(self):
         texto = requisitos.formatar_para_prompt("graduacao")
         self.assertIn("I)", texto)
         self.assertIn("ATPA", texto)
+
+    def test_prompts_da_ia_citam_as_normas_atualizadas(self):
+        # Geração e auditoria citam as normas aplicáveis e a atualização.
+        inicio, fim = dt.date(2026, 9, 14), dt.date(2027, 2, 26)
+        entrada = {
+            "modalidade": "graduacao",
+            "cidade": "Barras",
+            "estado": "PI",
+            "pais": "Brasil",
+            "instituicao": "IFPI — Campus Barras",
+            "curso": "Tecnologia em Sistemas",
+            "data_inicio": inicio.isoformat(),
+            "data_fim": fim.isoformat(),
+            "total_semanas": 18,
+            "semanas_primeira_parte": 9,
+            "dias_letivos_previstos": 100,
+            "eventos": [],
+            "feriados": [],
+        }
+        geracao = llm.montar_prompt(entrada, inicio, fim)
+        for trecho in (
+            "253, de 22/12/2025",
+            "078, de 14/11/2018",
+            "9.394/1996",
+            "Piso legal de carga horária",
+            "mobilidade acadêmica",
+            "Módulo Eventos do SUAP",
+        ):
+            self.assertIn(trecho, geracao)
+
+        agenda = build_agenda(
+            data_inicio=inicio,
+            data_fim=fim,
+            feriados=[],
+            eventos=[],
+            dias_letivos_previstos=100,
+            dias_letivos_por_mes=[],
+        )
+        conferencia = requisitos.verificar_requisitos(
+            "graduacao", eventos=[], feriados=[], agenda=agenda
+        )
+        verificacao = llm.montar_prompt_verificacao(
+            entrada, inicio, fim, [], [], agenda, conferencia
+        )
+        for trecho in (
+            "253, de 22/12/2025",
+            "carga_minima",
+            "100 dias de efetivo trabalho escolar",
+            "365 dias corridos",
+            "Comprovação dos temas transversais",
+        ):
+            self.assertIn(trecho, verificacao)
 
     def _itens(self, modalidade, eventos, agenda=None, **extra):
         return {
@@ -1618,8 +1797,9 @@ class RequisitosTests(TestCase):
 
     def test_item_manual_fica_como_conferir(self):
         itens = self._itens("integrado_medio", [])
-        self.assertEqual(itens["XXI"]["situacao"], requisitos.SITUACAO_CONFERIR)
-        self.assertIn("manualmente", itens["XXI"]["motivo"])
+        # O item manual agora é a comprovação dos temas transversais (XXX).
+        self.assertEqual(itens["XXX"]["situacao"], requisitos.SITUACAO_CONFERIR)
+        self.assertIn("manualmente", itens["XXX"]["motivo"])
 
     def test_sem_agenda_os_itens_calculados_nao_afirmam_atendido(self):
         resultado = requisitos.verificar_requisitos("integrado_medio", eventos=[])
@@ -1684,13 +1864,23 @@ class RequisitosTests(TestCase):
             dias_letivos_por_mes=cal.dias_letivos_por_mes,
         )
         self.assertEqual(resultado["norma"], "Art. 38")
-        self.assertEqual(resultado["resumo"]["total"], 22)
+        self.assertEqual(resultado["resumo"]["total"], 32)
         self.assertGreaterEqual(resultado["resumo"]["atendidos"], 15)
         itens = {i["codigo"]: i for i in resultado["itens"]}
         for codigo in ("V", "VII", "XI", "XII", "XIV", "XV", "XX"):
             self.assertEqual(
                 itens[codigo]["situacao"], requisitos.SITUACAO_ATENDIDO, codigo
             )
+        # A atualização das normas passa a ser cobrada no mesmo checklist.
+        novos = ("XXI", "XXII", "XXIII", "XXIV", "XXV", "XXVI", "XXVII", "XXVIII", "XXIX")
+        self.assertTrue(all(codigo in itens for codigo in novos))
+        self.assertTrue(
+            any(
+                itens[codigo]["situacao"] == requisitos.SITUACAO_FALTANDO
+                for codigo in novos
+            ),
+            "o calendário oficial 2026.2 não tem os eventos novos — algum deve faltar",
+        )
 
 
 # ===========================================================================

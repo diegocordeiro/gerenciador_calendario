@@ -117,6 +117,15 @@ TIPOS_NEUTROS = (
 #: tratado pela regra normal de dia letivo/feriado).
 TIPOS_SABADO = ("sabado_letivo", "sabado_reposicao")
 
+#: Pisos e limites da **atualização das normas** (LDB arts. 24 e 47 e orientação do
+#: calendário): 200 dias no ano letivo, no mínimo 100 dias de efetivo trabalho
+#: escolar por semestre, até 15 dias de férias coletivas antes do início das aulas
+#: e ano letivo concluído em no máximo 365 dias corridos (incluindo as férias).
+CARGA_MINIMA_SEMESTRE = 100
+CARGA_MINIMA_ANO = 200
+LIMITE_FERIAS_ANTES = 15
+LIMITE_DIAS_ANO_LETIVO = 365
+
 STATUS_LABEL = {
     STATUS_LETIVO: "Dia letivo",
     STATUS_LETIVO_SABADO: "Sábado letivo",
@@ -409,6 +418,13 @@ def _vazio() -> dict:
             "sabados_sem_referencia": 0,
             "reposicoes": 0,
             "total_documento": 0,
+        },
+        "carga_minima": {
+            "semestre": CARGA_MINIMA_SEMESTRE,
+            "ano": None,
+            "aplicado": 0,
+            "total": 0,
+            "atende": True,
         },
         "notas": [],
         "status_conta": {st: st in STATUS_LETIVOS for st in STATUS_LABEL},
@@ -722,6 +738,55 @@ def build_agenda(
             f"facultativo ({datas}) — não entram na contagem de dias letivos."
         )
 
+    # --- Atualização das normas: carga horária mínima, férias e duração do ano ---
+    # 200 dias no ano letivo e, no mínimo, 100 dias de efetivo trabalho escolar por
+    # semestre (LDB arts. 24 e 47, excluído o tempo reservado aos exames finais). O
+    # ano letivo é reconhecido pelo período declarado (mais de 180 dias corridos) ou
+    # pela meta declarada de 200 dias ou mais.
+    periodo_dias = (fim - ini).days + 1
+    ano_letivo = periodo_dias > 180 or previsto >= CARGA_MINIMA_ANO
+    piso = CARGA_MINIMA_ANO if ano_letivo else CARGA_MINIMA_SEMESTRE
+    carga_minima = {
+        "semestre": CARGA_MINIMA_SEMESTRE,
+        "ano": CARGA_MINIMA_ANO if ano_letivo else None,
+        "aplicado": piso,
+        "total": total,
+        "atende": total >= piso,
+    }
+    if total < piso:
+        avisos.append(
+            f"Total de dias letivos ({total}) abaixo do mínimo legal ({piso} dias "
+            f"{'no ano letivo' if ano_letivo else 'por semestre'}) — LDB arts. 24 e 47."
+        )
+
+    # Férias coletivas antes do início das aulas: no máximo ``LIMITE_FERIAS_ANTES``.
+    dias_ferias_antes = set()
+    ultimo_dia_antes = ini - dt.timedelta(days=1)
+    for e in eventos_norm:
+        if e["tipo"] != "ferias_coletivas" or e["data_inicio"] >= ini:
+            continue
+        dia = e["data_inicio"]
+        limite = min(e["data_fim"] or e["data_inicio"], ultimo_dia_antes)
+        while dia <= limite:
+            dias_ferias_antes.add(dia)
+            dia += dt.timedelta(days=1)
+    if len(dias_ferias_antes) > LIMITE_FERIAS_ANTES:
+        avisos.append(
+            f"{len(dias_ferias_antes)} dia(s) de férias coletivas antes do início das "
+            f"aulas — o planejamento orienta no máximo {LIMITE_FERIAS_ANTES} dias."
+        )
+
+    # Duração do ano letivo: no máximo ``LIMITE_DIAS_ANO_LETIVO`` dias corridos,
+    # contando as férias coletivas que antecedem as aulas.
+    inicio_ano = min([ini] + [d for d in dias_ferias_antes]) if dias_ferias_antes else ini
+    duracao_ano = (fim - inicio_ano).days + 1
+    if duracao_ano > LIMITE_DIAS_ANO_LETIVO:
+        avisos.append(
+            f"Período de {duracao_ano} dias corridos (de {inicio_ano:%d/%m/%Y} a "
+            f"{fim:%d/%m/%Y}) — o ano letivo deve ser concluído em no máximo "
+            f"{LIMITE_DIAS_ANO_LETIVO} dias corridos, incluindo as férias coletivas."
+        )
+
     # Notas informativas (não são problemas): reposição fora da carga horária e os
     # registros que ficaram fora do período declarado.
     notas = []
@@ -777,6 +842,7 @@ def build_agenda(
         "dias_reposicao": reposicoes,
         "reposicoes_total": reposicoes_total,
         "totais_tabela": totais_tabela,
+        "carga_minima": carga_minima,
         "notas": notas,
         "status_conta": status_conta,
         "tipos_que_contam": list(TIPOS_QUE_CONTAM),

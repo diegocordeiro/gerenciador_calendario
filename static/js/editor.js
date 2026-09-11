@@ -1100,7 +1100,17 @@
 
   function atualizarNormaIA() {
     var alvo = $("iaNorma");
-    if (alvo) alvo.textContent = rotuloNormaIA() ? "Norma aplicada: " + rotuloNormaIA() : "";
+    if (!alvo) return;
+    var info = normaDaModalidadeIA();
+    if (!info) {
+      alvo.textContent = "";
+      alvo.removeAttribute("title");
+      return;
+    }
+    alvo.textContent = "Norma aplicada: " + rotuloNormaIA();
+    // A referência completa (resoluções, LDB e a atualização das normas) vai no tooltip.
+    if (info.referencia) alvo.title = info.referencia;
+    else alvo.removeAttribute("title");
   }
 
   function modoIA(modo) {

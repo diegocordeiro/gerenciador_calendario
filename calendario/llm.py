@@ -253,6 +253,9 @@ def montar_prompt_verificacao(
     return f"""Audite o calendário acadêmico abaixo contra a norma {norma_info['norma']} \
 ({norma_info['titulo']}) e aponte o que falta.
 
+# Normas aplicáveis (inclui a atualização das normas)
+{requisitos.referencia_normas()}
+
 # Unidade
 - Cidade: {entrada.get('cidade') or '-'} | Estado (UF): {entrada.get('estado') or '-'} | País: {entrada.get('pais') or 'Brasil'}
 - Instituição: {entrada.get('instituicao') or '-'} | Curso: {entrada.get('curso') or '-'} | Modalidade: {norma_info['titulo']}
@@ -270,6 +273,7 @@ def montar_prompt_verificacao(
     'sabados_letivos': agenda.get('sabados_total'),
     'letivos_por_dia': agenda.get('letivos_por_dia'),
     'meta_por_dia': agenda.get('meta_por_dia'),
+    'carga_minima': agenda.get('carga_minima'),
 })}
 
 # Eventos lançados
@@ -291,6 +295,15 @@ def montar_prompt_verificacao(
    permitida e data plausível dentro do período) OU null quando não for aplicável.
 3. Aponte em "observacoes" incoerências de datas (ex.: avaliação antes do início das aulas,
    recesso sobre feriado, sábado letivo em data que já é feriado).
+4. Confira as normas de carga horária e de prazo e aponte em "observacoes": mínimo de
+   100 dias de efetivo trabalho escolar por semestre e 200 dias no ano letivo (excluído o
+   tempo reservado aos exames finais), no máximo 15 dias de férias coletivas antes do
+   início das aulas e ano letivo concluído em no máximo 365 dias corridos (incluindo as
+   férias coletivas).
+5. Nos itens de temas transversais (Direitos Humanos, Educação Ambiental e Educação no
+   Trânsito), exija no "motivo" que as atividades estejam **descritas no calendário** e
+   lembre que o Campus deve cadastrá-las no Módulo Eventos do SUAP e fazer o registro
+   fotográfico/vídeo (comprovação — indicador 1.5 da avaliação externa).
 
 # Formato da resposta
 {{
@@ -339,6 +352,9 @@ def montar_prompt(entrada: dict, inicio: dt.date, fim: dt.date) -> str:
 - Término: {fim.isoformat()}
 - Semanas: {entrada.get('total_semanas')} (1ª parte com {entrada.get('semanas_primeira_parte')} semanas; o restante é reposição)
 - Meta de dias letivos do semestre: {previsto} (equivale a {meta} por dia da semana)
+- Piso legal de carga horária: 200 dias no ano letivo, com no mínimo 100 dias de efetivo
+  trabalho escolar por semestre (LDB arts. 24 e 47 — excluído o tempo reservado aos
+  exames finais)
 - Meses no período: {', '.join(_meses_do_periodo(inicio, fim))}
 
 # Feriados FEDERAIS já confirmados (não repita com outro texto)
@@ -360,6 +376,9 @@ Observação importante sobre sábados:
 - Nos dois casos use **uma data só** ("data_fim": null) e **sempre** informe
   "dia_semana_referencia".
 
+# Normas aplicáveis (inclui a atualização das normas)
+{requisitos.referencia_normas()}
+
 # Atividades exigidas pela norma {norma} — {norma_titulo}
 # O calendário DEVE contemplar TODAS as atividades abaixo:
 {itens_norma}
@@ -373,6 +392,13 @@ Observação importante sobre sábados:
 3. Sábados letivos: os sábados disponíveis no período são {', '.join(sabados)}.
    Use "sabado_letivo" com "dia_semana_referencia" = 0 (segunda) a 4 (sexta), indicando qual
    dia da semana o sábado repõe. NÃO use sábado que seja feriado/ponto facultativo.
+4. Atualização das normas: inclua os eventos de **mobilidade acadêmica (transferência
+   interna)**, **Disciplinas Eletivas Livres**, **avaliação dos cursos**, **20/11 (Dia
+   Nacional de Zumbi e da Consciência Negra)**, a **Semana Escolar de Combate à Violência
+   contra a Mulher (março)** e a **Semana Nacional de Ciência e Tecnologia (SNCT)**. Nos
+   **temas transversais** (Direitos Humanos, Educação Ambiental e Educação no Trânsito), o
+   título e a descrição do evento devem explicitar o tema (o Campus fará o registro
+   fotográfico/vídeo e o cadastro no Módulo Eventos do SUAP).
 
 # Regras de saída
 - Responda **somente** com JSON válido (sem texto antes ou depois, sem cercas de código).
