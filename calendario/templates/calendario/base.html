@@ -39,7 +39,7 @@
   {% endif %}
   {% endblock %}
 
-  <main class="site-main container">
+  <main class="site-main container{% block main_class %}{% endblock %}">
     {% if messages %}
     <ul class="messages">
       {% for m in messages %}<li class="message message-{{ m.tags }}">{{ m }}</li>{% endfor %}

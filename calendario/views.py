@@ -11,6 +11,7 @@ import json
 from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.db.models import Count
 from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -104,8 +105,15 @@ def editor(request):
     """Interface de montagem do calendário (mesmo visual do painel de horários)."""
     versao = request.GET.get("versao")
     cal = _por_slug(versao) if versao else None
-    etapas = list(Calendario.objects.all())
-    etapas.sort(key=lambda c: (c.data_inicio, c.etapa), reverse=True)
+    # Lista das etapas salvas: as contagens vêm anotadas (evita N+1 no template)
+    # e a ordem é a de sempre — a mais recente primeiro. O `distinct=True` é
+    # obrigatório: sem ele as duas relações são multiplicadas entre si.
+    etapas = list(
+        Calendario.objects.annotate(
+            n_eventos=Count("eventos", distinct=True),
+            n_feriados=Count("feriados", distinct=True),
+        ).order_by("-data_inicio", "-etapa", "-versao")
+    )
 
     inicial = {
         "versao": cal.versao if cal else "",
@@ -149,7 +157,14 @@ def editor(request):
     return render(
         request,
         "calendario/editor.html",
-        {"inicial": inicial, "etapas": etapas, "active": "editor"},
+        {
+            "inicial": inicial,
+            "etapas": etapas,
+            # A versão aberta no formulário (para o bloco 1.1 marcar "em edição").
+            "cal": cal,
+            "slug_atual": cal.slug if cal else "",
+            "active": "editor",
+        },
     )
 
 

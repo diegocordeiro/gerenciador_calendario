@@ -1,52 +1,183 @@
 {% extends "calendario/base.html" %}
 {% block title %}Editor — {{ site_title }}{% endblock %}
+{% block main_class %} editor-main{% endblock %}
 {% block content %}
-  <section class="cursos-hero">
-    <h1>Montagem do calendário acadêmico</h1>
-    <p>
-      Preencha os campos abaixo, marque feriados e eventos e salve cada etapa. As
-      <strong>prévias</strong> ficam reunidas no fim da página e são calculadas no servidor.
-    </p>
+  <section class="editor-hero">
+    <div class="editor-hero-text">
+      <h1>Montagem do calendário acadêmico</h1>
+      <p>
+        Preencha os campos, marque feriados e eventos e salve cada etapa. Use o
+        <strong>índice lateral</strong> para pular entre os blocos (<kbd data-mod="alt">Alt</kbd>+<kbd>1</kbd>…<kbd>6</kbd>),
+        <kbd data-mod="ctrl">Ctrl</kbd>+<kbd>K</kbd> para achar um campo e
+        <kbd data-mod="ctrl">Ctrl</kbd>+<kbd>S</kbd> para salvar.
+      </p>
+    </div>
   </section>
 
-  <div class="editor-steps">
-    <div class="editor-viewbar" role="group" aria-label="Exibir ou ocultar blocos">
-      <span class="editor-viewbar-label">Exibir:</span>
-      <button type="button" class="button mode-btn" data-toggle-block="inputs" aria-pressed="false">Ocultar preenchimento</button>
-      <button type="button" class="button mode-btn" data-toggle-block="previews" aria-pressed="false">Ocultar prévias</button>
-      <button type="button" class="button" data-toggle-block="tudo">Mostrar tudo</button>
+  {% comment %}
+    Área única de mensagens: sucesso/erro das ações, alerta de itens da IA não
+    salvos e os alertas do cálculo (ajustes, carga horária e observações), cada
+    grupo com um atalho para a prévia correspondente. Fica logo abaixo do quadro
+    azul com as instruções de atalho.
+  {% endcomment %}
+  <div class="editor-mensagens" id="editorMensagens" aria-live="polite" hidden>
+    <p class="editor-msg editor-msg-alerta" id="iaPendente" role="status" hidden>
+      Há itens da IA ainda <strong>não salvos</strong> — revise e clique em <em>Salvar versão</em>.
+    </p>
+    <p class="editor-msg" id="editorMsg" role="status"></p>
+    <div class="editor-alertas" id="editorAlertas"></div>
+  </div>
+
+  <div class="editor-tool" id="editorTool">
+    <div class="editor-topbar" id="editorTopbar">
+      <div class="editor-topbar-id">
+        <span class="editor-topbar-label">Editando</span>
+        <strong class="editor-topbar-versao" id="toolVersao">nova versão</strong>
+        <span class="chip chip-etapa" id="toolEtapa">etapa 1</span>
+        <span class="chip chip-periodo" id="toolPeriodo" hidden>—</span>
+      </div>
+      <div class="editor-topbar-actions">
+        <button id="btnSalvar" class="button button-primary" type="button">Salvar versão</button>
+        <button id="btnNovo" class="button" type="button">Nova versão</button>
+        <span class="editor-topbar-sep" aria-hidden="true"></span>
+        <button id="btnIA" class="button" type="button">Preencher com IA</button>
+        <button id="btnIAVerificar" class="button" type="button">Verificar com IA</button>
+        <button id="btnIAFeriados" class="button" type="button">Verificar feriados com IA</button>
+        <button id="btnRefSabados" class="button" type="button">Corrigir Referência dos sábados</button>
+        <span class="editor-topbar-sep" aria-hidden="true"></span>
+        <div class="editor-viewbar" role="group" aria-label="Exibir ou ocultar blocos">
+          <span class="editor-viewbar-label">Exibir:</span>
+          <button type="button" class="button mode-btn" data-toggle-block="inputs" aria-pressed="false">Ocultar preenchimento</button>
+          <button type="button" class="button mode-btn" data-toggle-block="previews" aria-pressed="false">Ocultar prévias</button>
+          <button type="button" class="button" data-toggle-block="tudo">Mostrar tudo</button>
+        </div>
+      </div>
     </div>
 
-    <h2 class="editor-section-title" data-block="inputs">1. Preenchimento</h2>
+    <div class="editor-body">
+      <aside class="editor-sidebar" id="editorNav" aria-label="Navegação do editor">
+        <div class="editor-search">
+          <label class="sr-only" for="editorBusca">Buscar bloco ou campo</label>
+          <input type="search" id="editorBusca" class="editor-search-input" autocomplete="off"
+                 placeholder="Buscar bloco ou campo…">
+          <kbd class="editor-search-kbd" data-mod="ctrl" data-mod-texto="{mod} K">Ctrl K</kbd>
+        </div>
+        <ul class="editor-search-results" id="editorBuscaResultados" hidden></ul>
+        <nav class="editor-nav">
+          <p class="editor-nav-title">Blocos</p>
+          <ul class="editor-nav-list">
+            <li><a href="#bloco-1-1" data-nav-block="1.1"><span class="editor-step">1.1</span>Etapas salvas</a></li>
+            <li><a href="#bloco-1-2" data-nav-block="1.2"><span class="editor-step">1.2</span>Parâmetros</a></li>
+            <li><a href="#bloco-1-3" data-nav-block="1.3"><span class="editor-step">1.3</span>Feriados</a></li>
+            <li><a href="#bloco-1-4" data-nav-block="1.4"><span class="editor-step">1.4</span>Eventos</a></li>
+            <li><a href="#bloco-2-1" data-nav-block="2.1"><span class="editor-step">2.1</span>Documento</a></li>
+            <li><a href="#bloco-2-2" data-nav-block="2.2"><span class="editor-step">2.2</span>Grade</a></li>
+          </ul>
+        </nav>
+        <div class="editor-nav-resumo">
+          <p class="editor-nav-title">Resumo</p>
+          <p class="editor-nav-kpi"><span>Dias letivos</span> <strong id="navLetivos">—</strong></p>
+          <p class="editor-nav-kpi"><span>Sábados letivos</span> <strong id="navSabados">—</strong></p>
+          <p class="editor-nav-kpi"><span>Feriados</span> <strong id="navFeriados">—</strong></p>
+          <p class="editor-nav-kpi"><span>Eventos</span> <strong id="navEventos">—</strong></p>
+          <div class="editor-nav-dias">
+            <p class="editor-nav-title">
+              Por dia da semana <span class="editor-nav-dias-meta" id="navPorDiaMeta"></span>
+            </p>
+            <ul class="editor-nav-dias-lista" id="navPorDia"></ul>
+          </div>
+        </div>
+      </aside>
 
-    <section class="panel editor-side" data-block="inputs">
-      <h2><span class="editor-step">1.1</span> Etapas salvas</h2>
+      <div class="editor-workspace editor-steps" id="editorSteps">
+        <h2 class="editor-section-title" data-block="inputs">1. Preenchimento</h2>
+
+    <section class="panel editor-side editor-block" id="bloco-1-1" data-block="inputs" data-nav-target="1.1">
+      <header class="editor-block-head">
+        <h2><span class="editor-step">1.1</span> Etapas salvas</h2>
+        <button class="editor-block-toggle" type="button" data-collapse="1.1" aria-expanded="true">
+          <span class="editor-block-toggle-txt">Recolher</span>
+        </button>
+      </header>
       <p class="editor-help">
-        <strong>Como utilizar:</strong> comece por aqui — clique no nome de uma versão para
-        carregá-la no formulário (campos e prévias são atualizados) e continue editando. O
+        <strong>Como utilizar:</strong> busque uma versão salva para encontrá-la e clique em
+        <em>Abrir no editor</em> para carregá-la no formulário (campos e prévias são
+        atualizados); <em>Ver no site</em> abre o documento já publicado. Enquanto você edita,
+        <strong>só a versão aberta fica à vista</strong> — busque novamente para trocar. O
         botão <em>Excluir</em> remove a versão do banco — a ação não pode ser desfeita.
       </p>
-      <ul class="editor-etapas">
+
+      {% if etapas %}
+      <div class="editor-etapas-busca">
+        <label class="sr-only" for="etapasBusca">Buscar versão salva</label>
+        <input type="search" id="etapasBusca" class="editor-etapas-input"
+               data-sem-sujeira="1" autocomplete="off"
+               placeholder="Buscar versão salva (versão, período, curso ou modalidade)…">
+        <span class="editor-etapas-contagem" id="etapasContagem"></span>
+      </div>
+      <p class="editor-etapas-aberta" id="etapasAberta">
+        {% if cal %}em edição: <strong>{{ cal.versao }}</strong>
+        {% else %}nenhuma versão aberta — você está criando uma nova{% endif %}
+      </p>
+
+      <div class="editor-etapas" id="etapasLista">
         {% for e in etapas %}
-          <li>
-            <a href="?versao={{ e.slug }}">{{ e.versao }}</a>
-            <span class="muted">{{ e.data_inicio|date:"d/m/Y" }} • etapa {{ e.etapa }}</span>
-            <form class="inline-form" method="post" action="{{ base }}versoes/excluir/"
-                  onsubmit="return confirm('Excluir a versão {{ e.versao|escapejs }}? Esta ação não pode ser desfeita.');">
-              {% csrf_token %}
-              <input type="hidden" name="versao" value="{{ e.versao }}">
-              <input type="hidden" name="destino" value="editor">
-              <button type="submit" class="btn-excluir">Excluir</button>
-            </form>
-          </li>
-        {% empty %}
-          <li class="muted">Nenhuma etapa salva ainda — preencha os parâmetros e salve a primeira.</li>
+          <article class="editor-etapa{% if e.slug == slug_atual %} is-atual{% endif %}"
+                   data-slug="{{ e.slug }}" data-versao="{{ e.versao }}"
+                   data-search="{{ e.versao }} {{ e.periodo }} {{ e.semestre }} {{ e.titulo }} {{ e.curso }} {{ e.get_modalidade_display }} {{ e.data_inicio|date:'d/m/Y' }}">
+            <div class="editor-etapa-head">
+              <strong class="editor-etapa-versao">{{ e.versao }}</strong>
+              {% if e.slug == slug_atual %}
+                <span class="editor-etapa-chip is-atual" data-estado-etapa>em edição</span>
+              {% endif %}
+              <span class="editor-etapa-chip">etapa {{ e.etapa }}</span>
+              {% if e.periodo %}<span class="badge badge-periodo">{{ e.periodo }}</span>{% endif %}
+              {% if e.modalidade %}<span class="badge badge-modalidade" data-modalidade="{{ e.modalidade }}">{{ e.get_modalidade_display }}</span>{% endif %}
+            </div>
+            <p class="editor-etapa-meta">
+              {{ e.data_inicio|date:"d/m/Y" }}
+              · {{ e.n_eventos }} evento{{ e.n_eventos|pluralize:"s" }}
+              · {{ e.n_feriados }} feriado{{ e.n_feriados|pluralize:"s" }}
+              {% if e.curso %}· {{ e.curso }}{% endif %}
+            </p>
+            {% if e.slug == slug_atual %}
+              <p class="editor-etapa-aviso" data-aviso-etapa hidden>
+                Alterações não salvas nesta versão — clique em <em>Salvar versão</em> para gravá-las.
+              </p>
+            {% endif %}
+            <div class="editor-etapa-acoes">
+              <a class="button button-primary" href="?versao={{ e.slug }}" data-abrir-etapa>Abrir no editor</a>
+              <a class="button" href="{{ base }}versoes/{{ e.slug }}/" target="_blank" rel="noopener">Ver no site</a>
+              <form class="inline-form" method="post" action="{{ base }}versoes/excluir/"
+                    onsubmit="return confirm('Excluir a versão {{ e.versao|escapejs }}? Esta ação não pode ser desfeita.');">
+                {% csrf_token %}
+                <input type="hidden" name="versao" value="{{ e.versao }}">
+                <input type="hidden" name="destino" value="editor">
+                <button type="submit" class="btn-excluir">Excluir</button>
+              </form>
+            </div>
+          </article>
         {% endfor %}
-      </ul>
+      </div>
+      <p class="editor-etapas-vazio" id="etapasVazio" hidden>
+        Nenhuma versão encontrada para a busca.
+      </p>
+      <p class="editor-etapas-desatualizada" id="etapasDesatualizada" hidden>
+        A versão salva ainda não está nesta lista.
+        <button type="button" class="editor-alerta-link" id="btnAtualizarLista">Atualizar lista</button>
+      </p>
+      {% else %}
+        <p class="muted">Nenhuma etapa salva ainda — preencha os parâmetros e salve a primeira.</p>
+      {% endif %}
     </section>
 
-    <section class="panel editor-form" data-block="inputs">
-      <h2><span class="editor-step">1.2</span> Parâmetros do calendário</h2>
+    <section class="panel editor-form editor-block" id="bloco-1-2" data-block="inputs" data-nav-target="1.2">
+      <header class="editor-block-head">
+        <h2><span class="editor-step">1.2</span> Parâmetros do calendário</h2>
+        <button class="editor-block-toggle" type="button" data-collapse="1.2" aria-expanded="true">
+          <span class="editor-block-toggle-txt">Recolher</span>
+        </button>
+      </header>
       <form id="editorForm" onsubmit="return false;">
         {% csrf_token %}
         <div class="field-row">
@@ -121,14 +252,18 @@
         </label>
       </form>
       <div class="editor-actions">
-        <button id="btnSalvar" class="button button-primary" type="button">Salvar versão</button>
-        <button id="btnNovo" class="button" type="button">Nova versão</button>
+        <button type="button" class="button button-primary" data-quick="salvar">Salvar versão</button>
+        <span class="field-hint">O mesmo botão fica fixo na barra de ações, no topo.</span>
       </div>
-      <div id="editorMsg" class="editor-msg" role="status"></div>
     </section>
 
-    <section class="panel" data-block="inputs">
-      <h2><span class="editor-step">1.3</span> Feriados e pontos facultativos</h2>
+    <section class="panel editor-block" id="bloco-1-3" data-block="inputs" data-nav-target="1.3">
+      <header class="editor-block-head">
+        <h2><span class="editor-step">1.3</span> Feriados e pontos facultativos</h2>
+        <button class="editor-block-toggle" type="button" data-collapse="1.3" aria-expanded="true">
+          <span class="editor-block-toggle-txt">Recolher</span>
+        </button>
+      </header>
       <p class="editor-help">
         <strong>Como utilizar:</strong> escolha uma data (segunda a sexta) e o tipo e clique
         em <em>Adicionar</em>. Use <em>Feriados nacionais do período</em> para importar
@@ -148,13 +283,21 @@
         </label>
         <button id="btnAddFeriado" class="button" type="button">Adicionar</button>
         <button id="btnNacionais" class="button" type="button">Feriados nacionais do período</button>
-        <button id="btnIAFeriados" class="button button-primary" type="button">Verificar feriados com IA</button>
       </div>
+      <p class="field-hint">
+        A conferência da lista de feriados com IA (<em>Verificar feriados com IA</em>)
+        fica na barra de ações, no topo.
+      </p>
       <ul id="holidayChips" class="chip-list"></ul>
     </section>
 
-    <section class="panel" data-block="inputs">
-      <h2><span class="editor-step">1.4</span> Eventos</h2>
+    <section class="panel editor-block" id="bloco-1-4" data-block="inputs" data-nav-target="1.4">
+      <header class="editor-block-head">
+        <h2><span class="editor-step">1.4</span> Eventos</h2>
+        <button class="editor-block-toggle" type="button" data-collapse="1.4" aria-expanded="true">
+          <span class="editor-block-toggle-txt">Recolher</span>
+        </button>
+      </header>
       <p class="editor-help">
         <strong>Como utilizar:</strong> informe o título e a data inicial (obrigatórios),
         escolha o tipo e clique em <em>Adicionar evento</em>. Use a data final para
@@ -163,15 +306,9 @@
         <em>Editar</em> para carregar um evento no formulário e <em>Excluir</em> para
         removê-lo.
       </p>
-      <div class="editor-actions">
-        <button id="btnIA" class="button button-primary" type="button">Preencher com IA</button>
-        <button id="btnIAVerificar" class="button" type="button">Verificar com IA</button>
-        <button id="btnRefSabados" class="button" type="button">Corrigir Referência dos sábados</button>
-        <span id="iaPendente" class="ia-pendente" role="status" hidden>
-          Há itens da IA ainda <strong>não salvos</strong> — revise e clique em <em>Salvar versão</em>.
-        </span>
-      </div>
       <p class="field-hint">
+        As ações de IA — <em>Preencher com IA</em>, <em>Verificar com IA</em> e
+        <em>Corrigir Referência dos sábados</em> — ficam na barra de ações, no topo.
         “Corrigir Referência dos sábados” preenche a Referência dos <strong>sábados
         letivos</strong> que estão sem dia da semana (usando o dia com maior déficit).
         Sábados de <strong>reposição</strong> não entram na carga horária e não precisam
@@ -239,33 +376,63 @@
 
     <h2 class="editor-section-title" data-block="previews">2. Prévias</h2>
 
-    <section class="panel" data-block="previews">
-      <h2><span class="editor-step">2.1</span> Prévia do documento</h2>
-      <p class="editor-help">
-        <strong>Como utilizar:</strong> mostra o resultado final (grades mensais, dias
-        letivos por mês, eventos, sábados letivos e feriados) — o mesmo conteúdo que será
-        publicado. Passe o mouse sobre um dia para ver o status e os eventos e
-        <strong>clique em um dia útil</strong> para marcar/desmarcar feriado.
-      </p>
-      <div id="docPreview" class="doc-preview">Carregando…</div>
-    </section>
-
-    <section class="panel" data-block="previews">
-      <h2><span class="editor-step">2.2</span> Prévia da grade (reposição)</h2>
-      <div class="editor-help">
-        <strong>Como utilizar</strong>
-        <ul>
-          <li><strong>Clique em um dia</strong> para marcá-lo como feriado; ele fica <strong>riscado em vermelho</strong> (hachurado). Clique nele de novo para <strong>desmarcar</strong> e o dia volta a ser letivo.</li>
-          <li>As semanas mostram a paridade (<strong>x1</strong>/<strong>x2</strong>) e os dias remanejados para a reposição.</li>
-          <li>Dias com um traço na base <strong>têm eventos</strong> — passe o mouse para ver o detalhe.</li>
-          <li>Células vazias (cinza) indicam que não há aula naquele dia da semana.</li>
-          <li>A coluna <strong>Sáb</strong> mostra o sábado de cada semana: os <strong>sábados letivos/de reposição</strong> aparecem destacados (com o dia da semana referenciado no tooltip) e os demais em cinza.</li>
-          <li>O <strong>total de dias letivos</strong> considera os sábados letivos, por isso confere com o documento.</li>
-          <li>A <strong>legenda de cores</strong> abaixo da grade resume cada situação.</li>
-        </ul>
+    {% comment %}
+      As duas prévias ficam em abas (cada uma é longa) e o conjunto inteiro é o
+      bloco "previews" do botão Exibir — assim o toggle global continua valendo e
+      as abas só decidem qual das duas aparece.
+    {% endcomment %}
+    <div class="editor-previews" data-block="previews">
+      <div class="editor-tabs" role="tablist" aria-label="Prévias">
+        <button type="button" class="editor-tab is-active" role="tab" id="tabDoc"
+                data-preview-tab="doc" aria-selected="true" aria-controls="bloco-2-1">Documento</button>
+        <button type="button" class="editor-tab" role="tab" id="tabGrade"
+                data-preview-tab="grade" aria-selected="false" aria-controls="bloco-2-2">Grade (reposição)</button>
       </div>
-      <div id="calPreview" class="cal-preview">Carregando…</div>
-    </section>
+
+      <section class="panel editor-preview-panel" id="bloco-2-1" data-preview-panel="doc"
+               data-nav-target="2.1" role="tabpanel" aria-labelledby="tabDoc">
+        <h2><span class="editor-step">2.1</span> Prévia do documento</h2>
+        <p class="editor-help">
+          <strong>Como utilizar:</strong> mostra o resultado final (grades mensais, dias
+          letivos por mês, eventos, sábados letivos e feriados) — o mesmo conteúdo que será
+          publicado. Passe o mouse sobre um dia para ver o status e os eventos e
+          <strong>clique em um dia útil</strong> para marcar/desmarcar feriado.
+        </p>
+        <div id="docPreview" class="doc-preview">Carregando…</div>
+      </section>
+
+      <section class="panel editor-preview-panel" id="bloco-2-2" data-preview-panel="grade"
+               data-nav-target="2.2" role="tabpanel" aria-labelledby="tabGrade" hidden>
+        <h2><span class="editor-step">2.2</span> Prévia da grade (reposição)</h2>
+        <div class="editor-help">
+          <strong>Como utilizar</strong>
+          <ul>
+            <li><strong>Clique em um dia</strong> para marcá-lo como feriado; ele fica <strong>riscado em vermelho</strong> (hachurado). Clique nele de novo para <strong>desmarcar</strong> e o dia volta a ser letivo.</li>
+            <li>As semanas mostram a paridade (<strong>x1</strong>/<strong>x2</strong>) e os dias remanejados para a reposição.</li>
+            <li>Dias com um traço na base <strong>têm eventos</strong> — passe o mouse para ver o detalhe.</li>
+            <li>Células vazias (cinza) indicam que não há aula naquele dia da semana.</li>
+            <li>A coluna <strong>Sáb</strong> mostra o sábado de cada semana: os <strong>sábados letivos/de reposição</strong> aparecem destacados (com o dia da semana referenciado no tooltip) e os demais em cinza.</li>
+            <li>O <strong>total de dias letivos</strong> considera os sábados letivos, por isso confere com o documento.</li>
+            <li>A <strong>legenda de cores</strong> abaixo da grade resume cada situação.</li>
+          </ul>
+        </div>
+        <div id="calPreview" class="cal-preview">Carregando…</div>
+      </section>
+    </div>
+      </div>
+    </div>
+
+    <div class="editor-statusbar" id="editorStatus">
+      <span class="editor-status-item"><span class="editor-status-label">Versão</span><strong id="stVersao">—</strong></span>
+      <span class="editor-status-item"><span class="editor-status-label">Letivos</span><strong id="stLetivos">—</strong></span>
+      <span class="editor-status-item"><span class="editor-status-label">Sábados</span><strong id="stSabados">—</strong></span>
+      <span class="editor-status-item"><span class="editor-status-label">Seg–sex</span><strong id="stPorDia">—</strong></span>
+      <span class="editor-status-item"><span class="editor-status-label">Feriados</span><strong id="stFeriados">—</strong></span>
+      <span class="editor-status-item"><span class="editor-status-label">Eventos</span><strong id="stEventos">—</strong></span>
+      <span class="editor-status-item"><span class="editor-status-label">Erros</span><strong id="stErros">—</strong></span>
+      <span class="editor-status-item"><strong id="stSalvo">salvo</strong></span>
+      <span class="editor-status-keys" id="editorStatusKeys">Ctrl+S salvar · Ctrl+K buscar · Alt+1…6 blocos</span>
+    </div>
   </div>
 
   <dialog id="iaModal" class="ia-modal" aria-labelledby="iaTitulo">

@@ -78,6 +78,7 @@
     if (!el) return;
     el.textContent = texto;
     el.className = "editor-msg " + (tipo === "ok" ? "editor-msg-ok" : "editor-msg-erro");
+    atualizarMensagens();
   }
 
   function fmtData(iso) {
@@ -169,6 +170,7 @@
     $("fSemanas1").value = inicial.semanas_primeira_parte || 9;
     $("fEtapa").value = inicial.etapa || 1;
     $("fObs").value = inicial.observacoes || "";
+    atualizarCabecalho();
   }
 
   function payload() {
@@ -627,11 +629,6 @@
           esc(agenda.total_letivos) +
           " dias) inclui esse(s) dia(s).</strong></p>"
         : "") +
-      (agenda.notas || [])
-        .map(function (n) {
-          return '<p class="muted">' + esc(n) + "</p>";
-        })
-        .join("") +
       '<p class="muted">Total do documento: <strong>' +
       esc(agenda.total_letivos) +
       "</strong> dias letivos (" +
@@ -700,18 +697,9 @@
       alvo.innerHTML = '<p class="muted">Informe a data de início para ver o documento.</p>';
       return;
     }
-    var avisos = (agenda.validacao && agenda.validacao.avisos) || [];
-    var alerta = avisos.length
-      ? '<div class="cal-alert"><strong>Atenção na carga horária:</strong><ul>' +
-        avisos
-          .map(function (a) {
-            return "<li>" + esc(a) + "</li>";
-          })
-          .join("") +
-        "</ul></div>"
-      : "";
+    // Os avisos da carga horária saem daqui: ficam agrupados na área de
+    // mensagens do editor, com atalho de volta para esta prévia.
     alvo.innerHTML =
-      alerta +
       renderMensalAgenda(agenda) +
       '<div class="doc-section">' +
       renderResumoDoc(agenda) +
@@ -808,15 +796,8 @@
 
     html += renderAjudaMetricas(d);
 
-    if (d.erros && d.erros.length) {
-      html +=
-        '<div class="cal-alert"><strong>Ajustes necessários:</strong><ul>' +
-        d.erros.map(function (e) {
-          return "<li>" + esc(e) + "</li>";
-        }).join("") +
-        "</ul></div>";
-    }
-
+    // Os ajustes necessários saem da prévia: ficam agrupados na área de
+    // mensagens do editor, com atalho de volta para esta prévia.
     var evPorData = eventosPorData(d.agenda);
     // Sábado de cada semana (sábado letivo x sábado de reposição), casado por data.
     var sabPorData = {};
@@ -916,10 +897,13 @@
     });
 
     renderAgenda(d.agenda);
+    atualizarStatus(d);
+    atualizarAlertas(d);
   }
 
   var timer = null;
   function agendarPreview() {
+    atualizarContadores();
     clearTimeout(timer);
     timer = setTimeout(preview, 180);
   }
@@ -972,6 +956,8 @@
   function marcarPendenteIA(pendente) {
     var el = $("iaPendente");
     if (el) el.hidden = !pendente;
+    marcarEstadoSalvo(pendente ? "pendente" : "salvo");
+    atualizarMensagens();
   }
 
   function salvar() {
@@ -980,6 +966,7 @@
         if (res && res.ok) {
           msg("Versão " + res.versao + " salva.", "ok");
           marcarPendenteIA(false);
+          sincronizarVersaoSalva(res.versao);
           if (res.dados) renderPreview(res.dados);
         } else {
           msg(((res && res.erros) || ["Erro ao salvar."]).join(" "), "erro");
@@ -991,6 +978,9 @@
   }
 
   function novaVersao() {
+    if (!confirmarDescarte("Há alterações não salvas. Começar uma nova versão e descartá-las?")) {
+      return;
+    }
     inicial = {};
     state.feriados = [];
     state.eventos = [];
@@ -2266,6 +2256,8 @@
       btn.textContent = (oculto ? "Mostrar " : "Ocultar ") + cfg.rotulo;
     }
     gravarOculto(cfg.chave, oculto);
+    // As prévias são abas: ao reexibir o bloco, só a aba ativa fica visível.
+    if (nome === "previews") aplicarAba();
   }
 
   function alternarBloco(nome) {
@@ -2363,6 +2355,793 @@
   }
   if ($("iaFerFechar")) $("iaFerFechar").addEventListener("click", fecharIAFeriados);
   if ($("iaFerCancelar")) $("iaFerCancelar").addEventListener("click", fecharIAFeriados);
+
+  // ---- Ferramenta: barra fixa, índice, abas e status ----------------------
+  // O editor se comporta como uma ferramenta: ações sempre visíveis (barra
+  // fixa), índice lateral com scroll-spy, blocos recolhíveis, prévias em abas,
+  // busca de bloco/campo (Ctrl+K) e barra de status com os números do cálculo.
+  var headerEl = document.querySelector(".site-header");
+  var topbarEl = $("editorTopbar");
+
+  // Atalhos acompanham o sistema: no macOS o modificador é ⌘ (Command) e o
+  // Option é ⌥ — os rótulos na tela mudam junto. O iPadOS se apresenta como
+  // "MacIntel", então o teste por plataforma/UA já o cobre (⌘ vale lá também).
+  var navInfo = typeof navigator !== "undefined" && navigator ? navigator : {};
+  var plataformaNav = String(
+    (navInfo.userAgentData && navInfo.userAgentData.platform) || navInfo.platform || ""
+  );
+  var ehMac = /Mac|iPhone|iPad|iPod/i.test(plataformaNav + " " + String(navInfo.userAgent || ""));
+  var TECLA_CTRL = ehMac ? "⌘" : "Ctrl";
+  var TECLA_ALT = ehMac ? "⌥" : "Alt";
+
+  // O texto pode vir de um modelo com "{mod}" (ex.: "{mod} K" → "⌘ K" no macOS e
+  // "Ctrl K" nos demais), preservando o resto do rótulo.
+  Array.prototype.forEach.call(document.querySelectorAll("[data-mod]"), function (el) {
+    var tecla = el.getAttribute("data-mod") === "alt" ? TECLA_ALT : TECLA_CTRL;
+    var modelo = el.getAttribute("data-mod-texto") || "{mod}";
+    el.textContent = modelo.replace("{mod}", tecla);
+  });
+  if ($("editorStatusKeys")) {
+    $("editorStatusKeys").textContent =
+      TECLA_CTRL + "+S salvar · " + TECLA_CTRL + "+K buscar · " + TECLA_ALT + "+1…6 blocos";
+  }
+
+  function medirOffsets() {
+    var raiz = document.documentElement;
+    if (headerEl) raiz.style.setProperty("--editor-offset", headerEl.offsetHeight + "px");
+    if (topbarEl) raiz.style.setProperty("--editor-topbar-h", topbarEl.offsetHeight + "px");
+  }
+
+  // Recolher/expandir cada bloco (a escolha é lembrada entre visitas).
+  function aplicarRecolhido(bloco, recolhido) {
+    bloco.classList.toggle("is-collapsed", recolhido);
+    var btn = bloco.querySelector("[data-collapse]");
+    if (!btn) return null;
+    btn.setAttribute("aria-expanded", recolhido ? "false" : "true");
+    var txt = btn.querySelector(".editor-block-toggle-txt");
+    if (txt) txt.textContent = recolhido ? "Expandir" : "Recolher";
+    return btn;
+  }
+
+  function guardarRecolhido(chave, recolhido) {
+    try {
+      localStorage.setItem("editor-collapse-" + chave, recolhido ? "1" : "0");
+    } catch (e) {
+      /* localStorage indisponível — ignora */
+    }
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll(".editor-block"), function (bloco) {
+    var btn = bloco.querySelector("[data-collapse]");
+    if (!btn) return;
+    var chave = btn.getAttribute("data-collapse");
+    var salvo = null;
+    try {
+      salvo = localStorage.getItem("editor-collapse-" + chave);
+    } catch (e) {
+      salvo = null;
+    }
+    aplicarRecolhido(bloco, salvo === "1");
+    btn.addEventListener("click", function () {
+      var recolhido = !bloco.classList.contains("is-collapsed");
+      aplicarRecolhido(bloco, recolhido);
+      guardarRecolhido(chave, recolhido);
+      medirOffsets();
+    });
+  });
+
+  // Prévias em abas (o conjunto inteiro continua sendo o bloco "previews").
+  var abas = Array.prototype.slice.call(document.querySelectorAll("[data-preview-tab]"));
+  var paineis = Array.prototype.slice.call(document.querySelectorAll("[data-preview-panel]"));
+
+  function aplicarAba(nome) {
+    if (!abas || !abas.length) return;
+    var alvo = nome;
+    if (!alvo) {
+      try {
+        alvo = localStorage.getItem("editor-preview-tab");
+      } catch (e) {
+        alvo = null;
+      }
+    }
+    var existe = abas.some(function (a) {
+      return a.getAttribute("data-preview-tab") === alvo;
+    });
+    if (!existe) alvo = abas[0].getAttribute("data-preview-tab");
+    abas.forEach(function (a) {
+      var ativa = a.getAttribute("data-preview-tab") === alvo;
+      a.classList.toggle("is-active", ativa);
+      a.setAttribute("aria-selected", ativa ? "true" : "false");
+    });
+    paineis.forEach(function (p) {
+      if (p.getAttribute("data-preview-panel") === alvo) p.removeAttribute("hidden");
+      else p.setAttribute("hidden", "hidden");
+    });
+    try {
+      localStorage.setItem("editor-preview-tab", alvo);
+    } catch (e) {
+      /* ignora */
+    }
+  }
+
+  abas.forEach(function (a) {
+    a.addEventListener("click", function () {
+      aplicarAba(a.getAttribute("data-preview-tab"));
+    });
+  });
+
+  // Navegação do índice + destaque do bloco visível (scroll-spy).
+  var navLinks = Array.prototype.slice.call(document.querySelectorAll("[data-nav-block]"));
+
+  function irPara(id, focoId) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var grupo = el.closest ? el.closest("[data-block]") : null;
+    if (grupo && grupo.hasAttribute("hidden")) {
+      aplicarBloco(grupo.getAttribute("data-block"), false);
+    }
+    if (el.classList.contains("is-collapsed")) {
+      var btn = aplicarRecolhido(el, false);
+      if (btn) guardarRecolhido(btn.getAttribute("data-collapse"), false);
+    }
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (focoId) {
+      window.setTimeout(function () {
+        var campo = $(focoId);
+        if (!campo) return;
+        try {
+          campo.focus({ preventScroll: true });
+        } catch (e) {
+          campo.focus();
+        }
+      }, 320);
+    }
+  }
+
+  navLinks.forEach(function (a) {
+    a.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      irPara(a.getAttribute("href").replace("#", ""));
+    });
+  });
+
+  var alvosNav = Array.prototype.slice.call(document.querySelectorAll("[data-nav-target]"));
+  var visiveisNav = {};
+
+  function destacarNoIndice(nome) {
+    navLinks.forEach(function (a) {
+      a.classList.toggle("is-active", a.getAttribute("data-nav-block") === nome);
+    });
+  }
+
+  if (window.IntersectionObserver && alvosNav.length) {
+    var observador = new window.IntersectionObserver(
+      function (entradas) {
+        entradas.forEach(function (e) {
+          visiveisNav[e.target.id] = e.isIntersecting;
+        });
+        for (var i = 0; i < alvosNav.length; i++) {
+          if (visiveisNav[alvosNav[i].id]) {
+            destacarNoIndice(alvosNav[i].getAttribute("data-nav-target"));
+            return;
+          }
+        }
+      },
+      { rootMargin: "-25% 0px -60% 0px" }
+    );
+    alvosNav.forEach(function (el) {
+      observador.observe(el);
+    });
+  }
+
+  // Busca rápida: blocos + campos do formulário (Ctrl+K).
+  var buscaInput = $("editorBusca");
+  var buscaLista = $("editorBuscaResultados");
+  var destinos = [];
+
+  function semAcento(texto) {
+    var t = String(texto || "").toLowerCase().trim();
+    if (typeof t.normalize === "function") {
+      t = t.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
+    return t;
+  }
+
+  function montarDestinos() {
+    destinos = [];
+    navLinks.forEach(function (a) {
+      destinos.push({
+        rotulo: a.textContent.replace(/\s+/g, " ").trim(),
+        bloco: a.getAttribute("href").replace("#", ""),
+        campo: ""
+      });
+    });
+    Array.prototype.forEach.call(
+      document.querySelectorAll("#editorSteps label.field"),
+      function (label) {
+        var copia = label.cloneNode(true);
+        Array.prototype.forEach.call(copia.querySelectorAll("small, .field-hint"), function (s) {
+          if (s.parentNode) s.parentNode.removeChild(s);
+        });
+        var texto = copia.textContent.replace(/\s+/g, " ").trim();
+        var controle = label.querySelector("input[id], select[id], textarea[id]");
+        if (!texto || !controle) return;
+        var dono = controle.closest ? controle.closest("[data-nav-target]") : null;
+        destinos.push({
+          rotulo: texto,
+          bloco: dono ? dono.id : "",
+          campo: controle.id
+        });
+      }
+    );
+  }
+
+  function desenharBusca(termo) {
+    if (!buscaLista) return;
+    var t = semAcento(termo);
+    if (!t) {
+      buscaLista.hidden = true;
+      buscaLista.innerHTML = "";
+      return;
+    }
+    var achados = destinos
+      .filter(function (d) {
+        return semAcento(d.rotulo).indexOf(t) !== -1;
+      })
+      .slice(0, 12);
+    if (!achados.length) {
+      buscaLista.innerHTML = '<li><button type="button" disabled>Nada encontrado</button></li>';
+      buscaLista.hidden = false;
+      return;
+    }
+    buscaLista.innerHTML = achados
+      .map(function (d) {
+        return (
+          '<li><button type="button" data-destino="' +
+          esc(d.bloco) +
+          '" data-campo="' +
+          esc(d.campo) +
+          '">' +
+          esc(d.rotulo) +
+          "<small>" +
+          (d.campo ? "ir para o campo" : "ir para o bloco") +
+          "</small></button></li>"
+        );
+      })
+      .join("");
+    buscaLista.hidden = false;
+  }
+
+  function abrirDestino(bloco, campo) {
+    if (buscaInput) {
+      buscaInput.value = "";
+      desenharBusca("");
+    }
+    if (campo) {
+      var alvo = document.getElementById(campo);
+      var dono = alvo && alvo.closest ? alvo.closest("[data-nav-target]") : null;
+      irPara(dono ? dono.id : bloco, campo);
+      return;
+    }
+    if (bloco) irPara(bloco);
+  }
+
+  if (buscaInput) {
+    buscaInput.addEventListener("input", function () {
+      desenharBusca(buscaInput.value);
+    });
+    buscaInput.addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter" && buscaLista) {
+        var primeiro = buscaLista.querySelector("button[data-destino], button[data-campo]");
+        if (primeiro && !primeiro.disabled) {
+          ev.preventDefault();
+          abrirDestino(primeiro.getAttribute("data-destino"), primeiro.getAttribute("data-campo"));
+        }
+      } else if (ev.key === "Escape") {
+        buscaInput.value = "";
+        desenharBusca("");
+      }
+    });
+  }
+
+  if (buscaLista) {
+    buscaLista.addEventListener("click", function (ev) {
+      var btn =
+        ev.target && ev.target.closest
+          ? ev.target.closest("button[data-destino], button[data-campo]")
+          : null;
+      if (!btn || btn.disabled) return;
+      abrirDestino(btn.getAttribute("data-destino"), btn.getAttribute("data-campo"));
+    });
+  }
+
+  // Botões espalhados pela página que acionam a ação correspondente da barra
+  // fixa (sem duplicar id): hoje só o "Salvar versão" do bloco 1.2.
+  Array.prototype.forEach.call(document.querySelectorAll("[data-quick]"), function (btn) {
+    btn.addEventListener("click", function () {
+      if (btn.getAttribute("data-quick") === "salvar" && $("btnSalvar")) {
+        $("btnSalvar").click();
+      }
+    });
+  });
+
+  // ---- Bloco 1.1: filtro da lista e proteção do trabalho -------------------
+  var etapasBusca = $("etapasBusca");
+  var etapasLista = $("etapasLista");
+  var etapasCartoes = etapasLista
+    ? Array.prototype.slice.call(etapasLista.querySelectorAll(".editor-etapa"))
+    : [];
+
+  // A versão aberta no formulário — o JS mantém este destaque, inclusive depois
+  // de salvar uma versão nova.
+  function cartaoAtual() {
+    return document.querySelector(".editor-etapa.is-atual");
+  }
+
+  // Estado "busca-primeiro": sem busca aparece só a versão aberta; sem versão
+  // aberta a área fica vazia e as versões salvas são encontradas pela busca.
+  function filtrarEtapas() {
+    if (!etapasBusca || !etapasLista) return;
+    var termo = semAcento(etapasBusca.value);
+    var atual = cartaoAtual();
+    var focado = !termo && !!atual;
+    var visiveis = 0;
+
+    Array.prototype.forEach.call(etapasCartoes, function (cartao) {
+      // Sem termo não há "encontrados": quem decide é o modo focado.
+      var achou =
+        !!termo &&
+        semAcento(cartao.getAttribute("data-search") || "").indexOf(termo) !== -1;
+      var mostrar = focado ? cartao === atual : achou;
+      cartao.hidden = !mostrar;
+      if (mostrar) visiveis += 1;
+    });
+
+    var total = etapasCartoes.length;
+    var contagem = $("etapasContagem");
+    if (contagem) {
+      if (termo) {
+        contagem.textContent =
+          visiveis + " de " + total + " " + (total === 1 ? "versão" : "versões");
+        contagem.removeAttribute("title");
+      } else if (atual) {
+        contagem.textContent =
+          "versão aberta · " + total + " " + (total === 1 ? "salva" : "salvas");
+        contagem.title = "Busque por outra versão para trocar";
+      } else {
+        contagem.textContent =
+          total + " " + (total === 1 ? "versão salva" : "versões salvas");
+        contagem.removeAttribute("title");
+      }
+    }
+
+    var vazio = $("etapasVazio");
+    if (vazio) {
+      if (!total) {
+        vazio.textContent =
+          "Nenhuma versão salva ainda — preencha os parâmetros e salve a primeira.";
+        vazio.hidden = false;
+      } else if (!termo && !atual) {
+        vazio.textContent =
+          "Nenhuma versão aberta — use a busca acima para encontrar e abrir uma versão salva.";
+        vazio.hidden = false;
+      } else if (termo && !visiveis) {
+        vazio.textContent = "Nenhuma versão encontrada para a busca.";
+        vazio.hidden = false;
+      } else {
+        vazio.hidden = true;
+      }
+    }
+  }
+
+  if (etapasBusca) {
+    etapasBusca.addEventListener("input", filtrarEtapas);
+    etapasBusca.addEventListener("search", filtrarEtapas);
+  }
+
+  // Trocar de versão (ou começar uma nova) com alterações não salvas precisa de
+  // confirmação — antes o trabalho era descartado em silêncio.
+  function confirmarDescarte(mensagem) {
+    if (estadoSalvo !== "pendente") return true;
+    return window.confirm(mensagem);
+  }
+
+  if (etapasLista) {
+    etapasLista.addEventListener("click", function (ev) {
+      var link =
+        ev.target && ev.target.closest ? ev.target.closest("[data-abrir-etapa]") : null;
+      if (!link) return;
+      if (
+        !confirmarDescarte("Há alterações não salvas nesta versão. Abrir outra e descartá-las?")
+      ) {
+        ev.preventDefault();
+      }
+    });
+  }
+
+  // Fechar/recarregar a página com alterações pendentes também avisa.
+  window.addEventListener("beforeunload", function (ev) {
+    if (estadoSalvo !== "pendente") return undefined;
+    ev.preventDefault();
+    ev.returnValue = "";
+    return "";
+  });
+
+  if ($("btnAtualizarLista")) {
+    $("btnAtualizarLista").addEventListener("click", function () {
+      window.location.reload();
+    });
+  }
+
+  // Depois de salvar: a URL passa a apontar para a versão aberta e o cartão do
+  // bloco 1.1 é remarcado sem recarregar a página.
+  function sincronizarVersaoSalva(versao) {
+    var cartao = null;
+    Array.prototype.forEach.call(document.querySelectorAll(".editor-etapa"), function (c) {
+      if (!cartao && c.getAttribute("data-versao") === versao) cartao = c;
+    });
+    var aviso = $("etapasDesatualizada");
+    if (!cartao) {
+      if (aviso) aviso.hidden = false;
+      return;
+    }
+    if (aviso) aviso.hidden = true;
+
+    Array.prototype.forEach.call(document.querySelectorAll(".editor-etapa"), function (c) {
+      var atual = c === cartao;
+      c.classList.toggle("is-atual", atual);
+      var chip = c.querySelector("[data-estado-etapa]");
+      if (atual && !chip) {
+        chip = document.createElement("span");
+        chip.className = "editor-etapa-chip is-atual";
+        chip.setAttribute("data-estado-etapa", "em edição");
+        chip.textContent = "em edição";
+        var head = c.querySelector(".editor-etapa-head");
+        var nome = c.querySelector(".editor-etapa-versao");
+        if (head && nome) head.insertBefore(chip, nome.nextSibling);
+        else if (head) head.appendChild(chip);
+      } else if (!atual && chip && chip.parentNode) {
+        chip.parentNode.removeChild(chip);
+      }
+      var avisoCartao = c.querySelector("[data-aviso-etapa]");
+      if (atual && !avisoCartao) {
+        avisoCartao = document.createElement("p");
+        avisoCartao.className = "editor-etapa-aviso";
+        avisoCartao.setAttribute("data-aviso-etapa", "1");
+        avisoCartao.hidden = true;
+        avisoCartao.innerHTML =
+          "Alterações não salvas nesta versão — clique em <em>Salvar versão</em> para gravá-las.";
+        var acoes = c.querySelector(".editor-etapa-acoes");
+        if (acoes) c.insertBefore(avisoCartao, acoes);
+        else c.appendChild(avisoCartao);
+      } else if (!atual && avisoCartao && avisoCartao.parentNode) {
+        avisoCartao.parentNode.removeChild(avisoCartao);
+      }
+    });
+
+    if ($("etapasAberta")) {
+      $("etapasAberta").innerHTML = "em edição: <strong>" + esc(versao) + "</strong>";
+    }
+    var slug = cartao.getAttribute("data-slug");
+    if (slug && window.history && window.history.replaceState) {
+      window.history.replaceState(null, "", "?versao=" + encodeURIComponent(slug));
+    }
+    atualizarCartaoEmEdicao();
+    filtrarEtapas();
+  }
+
+  // ---- Área única de mensagens (abaixo do quadro azul) --------------------
+  // A caixa só aparece quando há conteúdo: mensagem da interface, alerta de IA
+  // pendente ou algum dos grupos de alerta do cálculo.
+  function atualizarMensagens() {
+    var caixa = $("editorMensagens");
+    if (!caixa) return;
+    var msgEl = $("editorMsg");
+    var pendenteEl = $("iaPendente");
+    var alertasEl = $("editorAlertas");
+    var temMensagem = !!(msgEl && String(msgEl.textContent || "").trim());
+    var temPendente = !!(pendenteEl && !pendenteEl.hidden);
+    var temAlertas = !!(alertasEl && String(alertasEl.innerHTML || "").trim());
+    caixa.hidden = !(temMensagem || temPendente || temAlertas);
+  }
+
+  function grupoAlerta(titulo, itens, tipo, destino, rotuloDestino) {
+    if (!itens || !itens.length) return "";
+    return (
+      '<div class="editor-alerta-grupo ' +
+      tipo +
+      '"><div class="editor-alerta-head"><strong>' +
+      esc(titulo) +
+      " (" +
+      itens.length +
+      ")</strong>" +
+      (destino
+        ? '<button type="button" class="editor-alerta-link" data-ir-preview="' +
+          destino +
+          '">' +
+          esc(rotuloDestino) +
+          "</button>"
+        : "") +
+      "</div><ul>" +
+      itens
+        .map(function (item) {
+          return "<li>" + esc(item) + "</li>";
+        })
+        .join("") +
+      "</ul></div>"
+    );
+  }
+
+  // Alertas do cálculo (antes espalhados pelas prévias): agrupados aqui, cada um
+  // com um atalho que pula para a prévia onde o ponto aparece.
+  function atualizarAlertas(d) {
+    var caixa = $("editorAlertas");
+    if (!caixa) return;
+    var ag = (d && d.agenda) || {};
+    var erros = (d && d.erros) || [];
+    var avisos = (ag.validacao && ag.validacao.avisos) || [];
+    var notas = ag.notas || [];
+    caixa.innerHTML =
+      grupoAlerta("Ajustes necessários", erros, "is-erro", "grade", "Ver na prévia da grade") +
+      grupoAlerta(
+        "Atenção na carga horária",
+        avisos,
+        "is-alerta",
+        "doc",
+        "Ver na prévia do documento"
+      ) +
+      grupoAlerta(
+        "Observações do cálculo",
+        notas,
+        "is-info",
+        "doc",
+        "Ver na prévia do documento"
+      );
+    atualizarMensagens();
+  }
+
+  if ($("editorAlertas")) {
+    $("editorAlertas").addEventListener("click", function (ev) {
+      var btn =
+        ev.target && ev.target.closest ? ev.target.closest("[data-ir-preview]") : null;
+      if (!btn) return;
+      var destino = btn.getAttribute("data-ir-preview");
+      aplicarAba(destino);
+      irPara(destino === "grade" ? "bloco-2-2" : "bloco-2-1");
+    });
+  }
+
+  // Cabeçalho da barra fixa e estado de salvamento.
+  function atualizarCabecalho() {
+    var versao = ($("fVersao") && $("fVersao").value.trim()) || "nova versão";
+    var etapa = ($("fEtapa") && $("fEtapa").value.trim()) || "1";
+    var periodo = ($("fPeriodo") && $("fPeriodo").value.trim()) || "";
+    if ($("toolVersao")) $("toolVersao").textContent = versao;
+    if ($("toolEtapa")) $("toolEtapa").textContent = "etapa " + etapa;
+    if ($("toolPeriodo")) {
+      $("toolPeriodo").textContent = periodo || "—";
+      $("toolPeriodo").hidden = !periodo;
+    }
+    if ($("stVersao")) $("stVersao").textContent = versao + (periodo ? " · " + periodo : "");
+  }
+
+  var estadoSalvo = "salvo";
+
+  function marcarEstadoSalvo(estado) {
+    estadoSalvo = estado === "pendente" ? "pendente" : "salvo";
+    var el = $("stSalvo");
+    if (el) {
+      el.textContent = estadoSalvo === "pendente" ? "não salvo" : "salvo";
+      el.className = estadoSalvo === "pendente" ? "is-warn" : "is-ok";
+    }
+    atualizarCartaoEmEdicao();
+  }
+
+  // Reflete o estado no cartão da versão aberta (bloco 1.1): chip e aviso, para
+  // não confundir "estou editando" com "já está gravado".
+  function atualizarCartaoEmEdicao() {
+    var pendente = estadoSalvo === "pendente";
+    Array.prototype.forEach.call(
+      document.querySelectorAll(".editor-etapa.is-atual"),
+      function (cartao) {
+        cartao.classList.toggle("is-pendente", pendente);
+        var chip = cartao.querySelector("[data-estado-etapa]");
+        if (chip) chip.textContent = pendente ? "alterações não salvas" : "em edição";
+        var aviso = cartao.querySelector("[data-aviso-etapa]");
+        if (aviso) aviso.hidden = !pendente;
+      }
+    );
+  }
+
+  function setTexto(id, texto, classe) {
+    var el = $(id);
+    if (!el) return;
+    el.textContent = texto;
+    if (classe !== undefined && classe !== null) el.className = classe;
+  }
+
+  function atualizarContadores() {
+    setTexto("stFeriados", String(state.feriados.length), "");
+    setTexto("stEventos", String(state.eventos.length), "");
+    setTexto("navFeriados", String(state.feriados.length), "");
+    setTexto("navEventos", String(state.eventos.length), "");
+  }
+
+  // Quantitativos do rodapé e do Resumo do índice. Tudo vem do mesmo payload da
+  // prévia (nada é recalculado aqui) e segue a precedência usada na tabela do
+  // documento ("Dias letivos por dia da semana").
+  var DIAS_CURTOS = ["Seg", "Ter", "Qua", "Qui", "Sex"];
+
+  function atualizarStatus(d) {
+    var ag = (d && d.agenda) || {};
+    var tot = ag.totais_tabela || {};
+    var dias = ag.dias_por_dia || [];
+    var previstos = parseInt(($("fPrevistos") && $("fPrevistos").value) || "0", 10) || 0;
+    var total = typeof ag.total_letivos === "number" ? ag.total_letivos : null;
+    var metaDia = tot.minimo_por_dia !== undefined ? tot.minimo_por_dia : ag.meta_por_dia;
+    var sabados =
+      tot.sabados !== undefined
+        ? tot.sabados
+        : ag.sabados_contabilizados !== undefined
+        ? ag.sabados_contabilizados
+        : ag.sabados_total;
+    var semRef =
+      tot.sabados_sem_referencia !== undefined
+        ? tot.sabados_sem_referencia
+        : ag.sabados_sem_referencia;
+    var met = d && d.metricas;
+    var somaErros = met ? met.parity + met.weekday + met.part : null;
+    var textoLetivos = total === null ? "—" : total + (previstos ? " / " + previstos : "");
+
+    atualizarContadores();
+    setTexto(
+      "stLetivos",
+      textoLetivos,
+      total === null ? "" : previstos && total < previstos ? "is-warn" : "is-ok"
+    );
+    setTexto("navLetivos", textoLetivos, "");
+    setTexto(
+      "stErros",
+      met ? met.parity + " / " + met.weekday + " / " + met.part : "—",
+      somaErros === null ? "" : somaErros > 0 ? "is-erro" : "is-ok"
+    );
+
+    // Sábados letivos contabilizados (os de reposição não entram na carga horária).
+    var avisoSemRef = typeof semRef === "number" && semRef > 0;
+    var textoSabados = typeof sabados === "number" ? String(sabados) : "—";
+    setTexto("stSabados", textoSabados, total === null ? "" : avisoSemRef ? "is-warn" : "is-ok");
+    setTexto(
+      "navSabados",
+      avisoSemRef ? textoSabados + " (" + semRef + " sem Ref.)" : textoSabados,
+      ""
+    );
+
+    // Dias letivos por dia da semana (seg–sex + os sábados pela Referência).
+    // O `textContent` é escrito direto para não perder a classe do rótulo.
+    if ($("navPorDiaMeta")) {
+      $("navPorDiaMeta").textContent = metaDia ? metaDia + "/dia" : "";
+    }
+    if ($("navPorDia")) {
+      $("navPorDia").innerHTML = dias
+        .map(function (dia, i) {
+          var nome = DIAS_CURTOS[dia.weekday !== undefined ? dia.weekday : i] || dia.label || "";
+          var alvo = dia.meta || metaDia || 0;
+          var detalhe =
+            nome +
+            ": " +
+            dia.letivos +
+            (alvo ? "/" + alvo : "") +
+            " (seg–sex " +
+            dia.seg_sex +
+            " + sábados " +
+            dia.sabados +
+            ")";
+          return (
+            '<li class="editor-nav-dia ' +
+            (dia.ok ? "is-ok" : "is-warn") +
+            '" title="' +
+            esc(detalhe) +
+            '">' +
+            '<span class="editor-nav-dia-nome">' +
+            esc(nome) +
+            "</span>" +
+            '<span class="editor-nav-dia-val">' +
+            esc(dia.letivos) +
+            (alvo ? "/" + esc(alvo) : "") +
+            "</span></li>"
+          );
+        })
+        .join("");
+    }
+    var valores = dias.map(function (dia) {
+      return dia.letivos;
+    });
+    var algumAbaixo = dias.some(function (dia) {
+      return !dia.ok;
+    });
+    setTexto(
+      "stPorDia",
+      valores.length ? valores.join("/") : "—",
+      valores.length ? (algumAbaixo ? "is-warn" : "is-ok") : ""
+    );
+    if ($("stPorDia")) {
+      $("stPorDia").title = dias.length
+        ? dias
+            .map(function (dia, i) {
+              return (
+                (DIAS_CURTOS[dia.weekday !== undefined ? dia.weekday : i] || "") +
+                " " +
+                dia.letivos +
+                (dia.meta ? "/" + dia.meta : "")
+              );
+            })
+            .join(" · ")
+        : "";
+    }
+  }
+
+
+  ["fVersao", "fEtapa", "fPeriodo"].forEach(function (id) {
+    if (!$(id)) return;
+    $(id).addEventListener("input", atualizarCabecalho);
+    $(id).addEventListener("change", atualizarCabecalho);
+  });
+
+  // Qualquer edição no preenchimento marca a versão como "não salvo" (a busca do
+  // bloco 1.1 leva data-sem-sujeira para não contar como edição).
+  if ($("editorSteps")) {
+    ["input", "change"].forEach(function (evt) {
+      $("editorSteps").addEventListener(evt, function (ev) {
+        var alvo = ev.target;
+        if (!alvo || !/^(INPUT|SELECT|TEXTAREA)$/.test(alvo.tagName || "")) return;
+        if (alvo.hasAttribute("data-sem-sujeira")) return;
+        marcarEstadoSalvo("pendente");
+      });
+    });
+  }
+
+  // No macOS o Option (⌥) troca o caractere (⌥3 vira £), então o número do bloco
+  // vem do `ev.code` (Digit1…Digit6 / Numpad1…Numpad6), que não muda com os
+  // modificadores e continua funcionando com teclado ABNT/estrangeiro.
+  function numeroDoBloco(ev) {
+    var peloCodigo = /^(?:Digit|Numpad)([1-6])$/.exec(ev.code || "");
+    if (peloCodigo) return parseInt(peloCodigo[1], 10);
+    return /^[1-6]$/.test(ev.key || "") ? parseInt(ev.key, 10) : null;
+  }
+
+  // Atalhos de teclado: salvar, buscar e pular entre os blocos.
+  document.addEventListener("keydown", function (ev) {
+    var meta = ev.ctrlKey || ev.metaKey;
+    if (meta && !ev.altKey && (ev.key === "s" || ev.key === "S")) {
+      ev.preventDefault();
+      if ($("btnSalvar")) $("btnSalvar").click();
+      return;
+    }
+    if (meta && !ev.altKey && (ev.key === "k" || ev.key === "K")) {
+      ev.preventDefault();
+      if (buscaInput) {
+        buscaInput.focus();
+        buscaInput.select();
+      }
+      return;
+    }
+    if (ev.altKey && !meta) {
+      var numero = numeroDoBloco(ev);
+      var link = numero === null ? null : navLinks[numero - 1];
+      if (link) {
+        ev.preventDefault();
+        irPara(link.getAttribute("href").replace("#", ""));
+      }
+    }
+  });
+
+  medirOffsets();
+  montarDestinos();
+  filtrarEtapas();
+  atualizarCabecalho();
+  atualizarContadores();
+  aplicarAba();
+  window.addEventListener("load", medirOffsets);
 
   if ($("fInicio").value) preview();
   else {

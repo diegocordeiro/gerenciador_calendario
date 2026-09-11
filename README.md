@@ -181,9 +181,38 @@ divergência é exibida na página como conferência).
   cabeçalho, banner de versão, cards);
 - **Editor organizado em etapas** — começa por **Etapas salvas** (carregar uma versão
   existente) e segue com parâmetros, feriados e eventos, com **texto de ajuda em cada
-  campo**; os **eventos podem ser editados** na própria tabela (Editar/Excluir) e as
-  **prévias** ficam no fim. Ao passar o mouse sobre um dia, um tooltip mostra data,
-  status e eventos;
+  campo**; os **eventos podem ser editados** na própria tabela (Editar/Excluir). Ao
+  passar o mouse sobre um dia, um tooltip mostra data, status e eventos;
+- **Editor com visão de ferramenta** (`/editor/`) — **barra de ações fixa** no topo
+  (*Salvar versão*, *Nova versão*, as ações de IA e o controle **Exibir**),
+  **índice lateral** com *scroll-spy* (destaca o bloco visível e leva até ele),
+  bloco **Resumo** com dias letivos, **sábados letivos** (com aviso dos que estão
+  **sem Referência**) e **dias letivos por dia da semana** (`Seg 20/20`, colorido
+  pela meta), **blocos recolhíveis** (a preferência é lembrada no navegador),
+  **prévias em abas** (*Documento* / *Grade (reposição)*) e **barra de status** no
+  rodapé com letivos, sábados, `Seg–sex` por dia, feriados, eventos, erros e o
+  estado de salvamento;
+- **Área única de mensagens no editor** — logo abaixo do quadro azul com as
+  instruções de atalho ficam o **sucesso/erro** das ações, o aviso de **itens da IA
+  não salvos** e os **alertas do cálculo** (ajustes necessários, atenção na carga
+  horária e observações). Cada grupo traz um atalho *Ver na prévia* que abre a aba
+  correspondente e rola até ela — os alertas **saíram de dentro das prévias**;
+- **Etapas salvas em cartões** (bloco 1.1) — a lista é **busca-primeiro**: sem
+  versão aberta a área fica vazia (com a dica de buscar) e, com uma versão aberta,
+  **só o cartão dela** fica à vista — as demais são encontradas pela **busca** do
+  bloco (sem acento, casando versão, período, curso, modalidade e data). Cada cartão
+  traz período, data, contagens (eventos/feriados) e modalidade, com as ações
+  *Abrir no editor* × *Ver no site*; a versão aberta fica **destacada** com o chip
+  *em edição* (que vira *alterações não salvas* quando o formulário muda) e, ao
+  trocar de versão (ou fechar/recarregar a página) com alterações pendentes, o
+  editor **pede confirmação** antes de descartar. Ao salvar, a URL passa a apontar
+  para a versão aberta e o cartão é remarcado sem recarregar a página;
+- **Atalhos no editor** — `Ctrl+S` salva a versão, `Ctrl+K` abre a busca de
+  bloco/campo (filtra por nome e leva direto ao campo, ignorando acentos) e
+  `Alt+1`…`Alt+6` pulam para cada bloco; **no macOS valem `⌘S`, `⌘K` e `⌥1`…`⌥6`**
+  (os rótulos na tela mudam sozinhos conforme o sistema, e o número vem do
+  `KeyboardEvent.code`, porque `⌥` muda o caractere — `⌥3` digita `£`). O teclado
+  numérico também funciona;
 - **Navegação no editor** — botões para **ocultar o preenchimento** ou as
   **prévias** (a escolha é lembrada no navegador) e **legenda de cores** na prévia
   da grade (paridade x1/x2, feriado sem aula, 1ª parte, dia com evento e aula

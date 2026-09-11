@@ -917,6 +917,151 @@ class DocumentoViewTests(TestCase):
         self.assertContains(resp, 'data-block="inputs"')
         self.assertContains(resp, 'data-block="previews"')
 
+    def test_editor_tem_barra_de_ferramenta(self):
+        # Visão de ferramenta: barra de ações fixa, índice lateral e status.
+        resp = self.client.get(reverse("editor"))
+        self.assertContains(resp, "editor-main")
+        for alvo in ("editorTopbar", "editorNav", "editorSteps", "editorStatus"):
+            self.assertContains(resp, 'id="%s"' % alvo)
+        # As ações globais ficam na barra e continuam existindo uma única vez
+        # (id duplicado quebraria o editor.js, que busca por getElementById).
+        html = resp.content.decode()
+        for alvo in (
+            "btnSalvar",
+            "btnNovo",
+            "btnIA",
+            "btnIAVerificar",
+            "btnIAFeriados",
+            "btnRefSabados",
+            "editorMsg",
+            "iaPendente",
+        ):
+            self.assertEqual(html.count('id="%s"' % alvo), 1, alvo)
+            self.assertIn('id="%s"' % alvo, html)
+
+    def test_editor_tem_indice_e_blocos_recolhiveis(self):
+        resp = self.client.get(reverse("editor"))
+        for bloco, ancora in (
+            ("1.1", "bloco-1-1"),
+            ("1.2", "bloco-1-2"),
+            ("1.3", "bloco-1-3"),
+            ("1.4", "bloco-1-4"),
+            ("2.1", "bloco-2-1"),
+            ("2.2", "bloco-2-2"),
+        ):
+            self.assertContains(resp, 'data-nav-block="%s"' % bloco)
+            self.assertContains(resp, 'href="#%s"' % ancora)
+        for bloco in ("1.1", "1.2", "1.3", "1.4"):
+            self.assertContains(resp, 'id="bloco-%s"' % bloco.replace(".", "-"))
+            self.assertContains(resp, 'data-collapse="%s"' % bloco)
+            self.assertContains(resp, 'aria-expanded="true"')
+
+    def test_editor_tem_abas_de_previa(self):
+        resp = self.client.get(reverse("editor"))
+        self.assertContains(resp, 'data-preview-tab="doc"')
+        self.assertContains(resp, 'data-preview-tab="grade"')
+        self.assertContains(resp, 'data-preview-panel="doc"')
+        self.assertContains(resp, 'data-preview-panel="grade"')
+        # As prévias continuam com id único (usado pelo editor.js).
+        html = resp.content.decode()
+        self.assertEqual(html.count('id="docPreview"'), 1)
+        self.assertEqual(html.count('id="calPreview"'), 1)
+
+    def test_editor_tem_busca_e_barra_de_status(self):
+        resp = self.client.get(reverse("editor"))
+        self.assertContains(resp, 'id="editorBusca"')
+        self.assertContains(resp, 'id="editorBuscaResultados"')
+        for alvo in ("toolVersao", "toolEtapa", "toolPeriodo", "stVersao", "stSalvo"):
+            self.assertContains(resp, 'id="%s"' % alvo)
+        for alvo in ("stLetivos", "stFeriados", "stEventos", "stErros"):
+            self.assertContains(resp, 'id="%s"' % alvo)
+        for alvo in ("navLetivos", "navFeriados", "navEventos"):
+            self.assertContains(resp, 'id="%s"' % alvo)
+        # Dica de atalhos na barra de status.
+        self.assertContains(resp, "Ctrl+S salvar")
+
+    def test_editor_tem_quantitativos_no_resumo(self):
+        resp = self.client.get(reverse("editor"))
+        # Sábados letivos e dias letivos por dia da semana (Resumo do índice).
+        for alvo in ("navSabados", "navPorDia", "navPorDiaMeta", "stSabados", "stPorDia"):
+            self.assertContains(resp, 'id="%s"' % alvo)
+        self.assertContains(resp, "Por dia da semana")
+
+    def test_editor_tem_area_unica_de_mensagens(self):
+        # Sucesso/erro, alerta de IA e alertas do cálculo ficam num único lugar,
+        # logo abaixo do quadro azul com as instruções de atalho.
+        resp = self.client.get(reverse("editor"))
+        html = resp.content.decode("utf-8")
+        self.assertContains(resp, 'id="editorMensagens"')
+        self.assertContains(resp, 'id="editorAlertas"')
+        self.assertLess(html.index("editor-hero"), html.index('id="editorMensagens"'))
+        self.assertLess(html.index('id="editorMensagens"'), html.index('id="editorTopbar"'))
+        # As mensagens não vivem mais dentro da barra fixa.
+        self.assertNotIn("editor-topbar-msg", html)
+
+    def test_editor_sem_acoes_rapidas(self):
+        # O painel "Ações rápidas" saiu; o "Salvar versão" do bloco 1.2 continua
+        # acionando a ação da barra fixa (sem duplicar id).
+        html = self.client.get(reverse("editor")).content.decode("utf-8")
+        self.assertNotIn("Ações rápidas", html)
+        self.assertNotIn("editor-nav-quick", html)
+        self.assertNotIn('data-quick="nacionais"', html)
+        self.assertNotIn('data-quick="previa-doc"', html)
+        self.assertIn('data-quick="salvar"', html)
+
+    def test_editor_atalhos_indicam_o_sistema(self):
+        # Os rótulos dos atalhos são reescritos pelo JS conforme o sistema
+        # (⌘/⌥ no macOS), por isso o HTML traz o marcador data-mod — e o modelo
+        # "{mod}" preserva o resto do rótulo (ex.: "⌘ K").
+        resp = self.client.get(reverse("editor"))
+        self.assertContains(resp, 'data-mod="ctrl"')
+        self.assertContains(resp, 'data-mod="alt"')
+        self.assertContains(resp, 'data-mod-texto="{mod} K"')
+        self.assertContains(resp, 'id="editorStatusKeys"')
+
+    def test_editor_js_da_ferramenta_bate_com_o_html(self):
+        # Contrato template ↔ editor.js para os controles da barra/índice.
+        html = self.client.get(reverse("editor")).content.decode()
+        js = (
+            Path(__file__).resolve().parent.parent / "static" / "js" / "editor.js"
+        ).read_text(encoding="utf-8")
+        for alvo in (
+            "editorTopbar",
+            "editorBusca",
+            "editorBuscaResultados",
+            "editorSteps",
+            "editorStatusKeys",
+            "editorMensagens",
+            "editorAlertas",
+            "toolVersao",
+            "stVersao",
+            "stSalvo",
+            "stSabados",
+            "stPorDia",
+            "navLetivos",
+            "navSabados",
+            "navPorDia",
+            "navPorDiaMeta",
+        ):
+            self.assertIn('id="%s"' % alvo, html)
+            self.assertIn('"%s"' % alvo, js)
+        self.assertIn("aplicarAba", js)
+        self.assertIn("editor-collapse-", js)
+        self.assertIn("editor-preview-tab", js)
+        self.assertIn("IntersectionObserver", js)
+        # Atalhos: ⌘/⌥ no macOS — o número do bloco vem do `ev.code`, porque o
+        # Option muda o caractere (⌥3 → £).
+        self.assertIn("numeroDoBloco", js)
+        self.assertIn("Digit|Numpad", js)
+        self.assertIn("data-mod", js)
+        self.assertIn("data-mod-texto", js)
+        self.assertIn("{mod}", js)
+        # Os alertas do cálculo passaram a ser montados na área de mensagens.
+        self.assertIn("atualizarAlertas", js)
+        self.assertIn("atualizarMensagens", js)
+        self.assertIn("Ajustes necessários", js)
+        self.assertIn("Atenção na carga horária", js)
+
     def test_editor_js_tem_legenda_da_grade(self):
         # A prévia da grade renderiza a legenda de cores (paridade, feriado, parte,
         # evento e aula remanejada).
@@ -1006,6 +1151,58 @@ class DocumentoViewTests(TestCase):
         html = self.client.get(reverse("editor")).content.decode("utf-8")
         self.assertIn("1.1</span> Etapas salvas", html)
         self.assertLess(html.index("Etapas salvas"), html.index("Parâmetros do calendário"))
+
+    def test_editor_etapas_em_cartoes_com_busca(self):
+        # A lista deixou de ser um <ul> cru: cartões com busca, contagem e ações.
+        resp = self.client.get(reverse("editor"))
+        html = resp.content.decode("utf-8")
+        for alvo in ("etapasLista", "etapasBusca", "etapasContagem", "etapasVazio"):
+            self.assertContains(resp, 'id="%s"' % alvo)
+        self.assertContains(resp, "editor-etapa-head")
+        self.assertContains(resp, "data-abrir-etapa")
+        self.assertContains(resp, "Abrir no editor")
+        self.assertContains(resp, "Ver no site")
+        self.assertContains(resp, 'href="?versao=')
+        self.assertNotIn('<ul class="editor-etapas">', html)
+
+    def test_editor_etapas_marcam_a_versao_aberta(self):
+        # Só a versão carregada no formulário leva o cartão destacado e o chip.
+        cal = Calendario.objects.get(versao="2026.2.final")
+        outra = cal.clonar("2026.2.copia")
+        resp = self.client.get(reverse("editor") + "?versao=" + cal.slug)
+        html = resp.content.decode("utf-8")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(html.count("editor-etapa is-atual"), 1)
+        self.assertEqual(html.count("data-estado-etapa"), 1)
+        # O cartão destacado é o da versão aberta; as outras continuam na lista.
+        pos = html.index('class="editor-etapa is-atual"')
+        self.assertIn('data-slug="%s"' % cal.slug, html[pos : pos + 400])
+        self.assertIn('data-slug="%s"' % outra.slug, html)
+        # O bloco também diz qual versão está aberta.
+        self.assertIn("em edição: <strong>%s</strong>" % cal.versao, html)
+
+    def test_editor_etapas_mostram_contagens(self):
+        # Cada cartão resume a versão com eventos e feriados (annotate na view).
+        cal = Calendario.objects.get(versao="2026.2.final")
+        html = self.client.get(reverse("editor")).content.decode("utf-8")
+        trecho = html[html.index('data-slug="%s"' % cal.slug) :]
+        trecho = trecho[: trecho.index("</article>")]
+        self.assertIn("%d eventos" % cal.eventos.count(), trecho)
+        self.assertIn("%d feriados" % cal.feriados.count(), trecho)
+
+    def test_editor_sem_versao_aberta_avisa(self):
+        # Sem ?versao= o bloco deixa claro que não há versão salva aberta.
+        html = self.client.get(reverse("editor")).content.decode("utf-8")
+        self.assertIn("nenhuma versão aberta", html)
+        self.assertNotIn("editor-etapa is-atual", html)
+
+    def test_editor_etapas_e_busca_primeiro(self):
+        # A lista é busca-primeiro: a ajuda explica que só a versão aberta fica à
+        # vista e o vazio orienta a buscar (o foco em si é aplicado no JS).
+        resp = self.client.get(reverse("editor"))
+        self.assertContains(resp, "Buscar versão salva (versão, período, curso ou modalidade)…")
+        self.assertContains(resp, "só a versão aberta fica à vista")
+        self.assertContains(resp, 'id="etapasVazio"')
 
     def test_css_ferias_coletivas_em_azul_escuro(self):
         css = (
