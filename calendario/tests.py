@@ -1127,6 +1127,20 @@ class DocumentoViewTests(TestCase):
         # A antiga lista de chips foi substituída pela tabela.
         self.assertNotContains(resp, 'id="holidayChips"')
 
+    def test_editor_tem_equiparar_sabados(self):
+        """O editor expõe o 'Equiparar sábados': botão, diálogo e lista de versões."""
+        resp = self.client.get(reverse("editor"))
+        html = resp.content.decode()
+        for alvo in ("btnEquipararSabados", "equipararModal", "eqOrigem", "eqAplicar"):
+            self.assertContains(resp, 'id="%s"' % alvo)
+        # A lista de versões (seletor de origem) vai no JSON inicial.
+        corpo = re.search(
+            r'<script id="inicial-data" type="application/json">(.*?)</script>', html, re.S
+        ).group(1)
+        inicial = json.loads(corpo)
+        self.assertIn("versoes", inicial)
+        self.assertIn("2026.2.final", [v["versao"] for v in inicial["versoes"]])
+
     def test_editor_tem_abas_de_previa(self):
         resp = self.client.get(reverse("editor"))
         self.assertContains(resp, 'data-preview-tab="doc"')

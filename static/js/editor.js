@@ -60,6 +60,8 @@
   (inicial.dias_semana || []).forEach(function (d) {
     DIAS_SEMANA[d.valor] = d.label;
   });
+  //: Outras versões salvas (para o seletor de origem do "Equiparar sábados").
+  var VERSOES_SALVAS = (inicial.versoes || []).slice();
 
   function esc(s) {
     return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
@@ -1152,6 +1154,194 @@
       preenchidos +
         " sábado(s) letivo(s) receberam o dia com maior déficit em “Referência”. " +
         "NADA foi salvo ainda — clique em “Salvar versão”.",
+      "ok"
+    );
+  }
+
+  // ---- Equiparar sábados com outra versão --------------------------------
+  // Copia os sábados (letivos e de reposição) de uma versão salva para a versão
+  // aberta no editor, garantindo as MESMAS datas e o mesmo dia da semana
+  // referenciado entre as modalidades. Substitui os sábados atuais; os demais
+  // eventos são preservados. Nada é gravado até "Salvar versão".
+  var TIPOS_SABADO = { sabado_letivo: true, sabado_reposicao: true };
+  var eqState = { origem: "", eventos: [] };
+
+  function msgEq(texto, tipo) {
+    var el = $("eqMsg");
+    if (!el) return;
+    el.textContent = texto || "";
+    el.className =
+      "editor-msg " + (tipo === "erro" ? "editor-msg-erro" : tipo === "ok" ? "editor-msg-ok" : "");
+  }
+
+  function sabadosDaOrigem(eventos) {
+    return (eventos || []).filter(function (e) {
+      return TIPOS_SABADO[e.tipo];
+    });
+  }
+
+  function abrirEquipararSabados() {
+    var modal = $("equipararModal");
+    var sel = $("eqOrigem");
+    if (!modal || !sel) return;
+    if (!VERSOES_SALVAS.length) {
+      msg("Nenhuma outra versão salva para equiparar.", "erro");
+      return;
+    }
+    sel.innerHTML =
+      '<option value="">— escolha a versão —</option>' +
+      VERSOES_SALVAS.map(function (v) {
+        var extra = (v.periodo || "") + (v.curso ? " · " + v.curso : v.modalidade_label ? " · " + v.modalidade_label : "");
+        return (
+          '<option value="' + esc(v.versao) + '">' + esc(v.versao) + (extra ? " — " + esc(extra) : "") + "</option>"
+        );
+      }).join("");
+    eqState = { origem: "", eventos: [] };
+    msgEq("");
+    renderPreviaEquiparar();
+    if (typeof modal.showModal === "function") modal.showModal();
+    else modal.setAttribute("open", "open");
+    sel.focus();
+  }
+
+  function fecharEquipararSabados() {
+    var modal = $("equipararModal");
+    if (!modal) return;
+    if (typeof modal.close === "function" && modal.open) modal.close();
+    else modal.removeAttribute("open");
+  }
+
+  function carregarOrigemEquiparar() {
+    var sel = $("eqOrigem");
+    var versao = sel ? sel.value : "";
+    eqState.origem = versao;
+    eqState.eventos = [];
+    if (!versao) {
+      renderPreviaEquiparar();
+      msgEq("");
+      return;
+    }
+    msgEq("Carregando sábados da origem…");
+    fetch(BASE + "api/eventos/?versao=" + encodeURIComponent(versao))
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (d) {
+        if (!d || !d.ok) {
+          msgEq(
+            (d && d.erros && d.erros.join(" ")) || "Não foi possível ler a versão de origem.",
+            "erro"
+          );
+          return;
+        }
+        eqState.eventos = d.eventos || [];
+        renderPreviaEquiparar();
+        msgEq("");
+      })
+      .catch(function () {
+        msgEq("Falha de comunicação ao ler a versão de origem.", "erro");
+      });
+  }
+
+  function renderPreviaEquiparar() {
+    var box = $("eqPrevia");
+    if (!box) return;
+    var sabs = sabadosDaOrigem(eqState.eventos);
+    if (!eqState.origem) {
+      box.innerHTML = "";
+      return;
+    }
+    if (!sabs.length) {
+      box.innerHTML =
+        '<p class="field-hint">A versão escolhida não tem sábados letivos nem de reposição.</p>';
+      return;
+    }
+    function lista(itens, titulo) {
+      if (!itens.length) return "";
+      return (
+        "<div><strong>" +
+        titulo +
+        " (" +
+        itens.length +
+        ")</strong>" +
+        '<ul class="chip-list">' +
+        itens
+          .slice()
+          .sort(function (a, b) {
+            return a.data_inicio < b.data_inicio ? -1 : 1;
+          })
+          .map(function (e) {
+            var ref =
+              e.dia_semana_referencia === null || e.dia_semana_referencia === undefined
+                ? ""
+                : " (referente à " + esc(DIAS_SEMANA[e.dia_semana_referencia] || "") + ")";
+            return (
+              '<li class="chip">' +
+              esc((e.data_inicio || "").split("-").reverse().join("/")) +
+              ref +
+              "</li>"
+            );
+          })
+          .join("") +
+        "</ul></div>"
+      );
+    }
+    box.innerHTML =
+      lista(
+        sabs.filter(function (e) {
+          return e.tipo === "sabado_letivo";
+        }),
+        "Sábados letivos"
+      ) +
+      lista(
+        sabs.filter(function (e) {
+          return e.tipo === "sabado_reposicao";
+        }),
+        "Sábados de reposição"
+      );
+  }
+
+  function aplicarEquipararSabados() {
+    if (!eqState.origem) {
+      msgEq("Escolha o calendário de origem.", "erro");
+      return;
+    }
+    var sabs = sabadosDaOrigem(eqState.eventos);
+    if (!sabs.length) {
+      msgEq("A versão escolhida não tem sábados para copiar.", "erro");
+      return;
+    }
+    // Substitui TODOS os sábados atuais pelos da origem (mesmas datas/referências).
+    var outros = state.eventos.filter(function (e) {
+      return !TIPOS_SABADO[e.tipo];
+    });
+    var copiados = sabs.map(function (e) {
+      return {
+        titulo:
+          e.titulo ||
+          (e.tipo === "sabado_reposicao" ? "Sábado de reposição" : "Sábado letivo"),
+        tipo: e.tipo,
+        data_inicio: e.data_inicio,
+        data_fim: e.data_fim || "",
+        dia_semana_referencia:
+          e.dia_semana_referencia === undefined ? null : e.dia_semana_referencia,
+        descricao: e.descricao || "",
+        destaque: !!e.destaque
+      };
+    });
+    state.eventos = outros.concat(copiados);
+    state.eventoEditandoIdx = null;
+    limparFormEvento();
+    atualizarBotaoEvento();
+    renderEventos();
+    preview();
+    marcarEstadoSalvo("pendente");
+    fecharEquipararSabados();
+    msg(
+      copiados.length +
+        " sábado(s) copiado(s) da versão " +
+        eqState.origem +
+        ". NADA foi salvo ainda — clique em “Salvar versão”.",
       "ok"
     );
   }
@@ -2462,6 +2652,13 @@
   if ($("btnRefSabados")) {
     $("btnRefSabados").addEventListener("click", corrigirReferenciasSabados);
   }
+  if ($("btnEquipararSabados")) {
+    $("btnEquipararSabados").addEventListener("click", abrirEquipararSabados);
+  }
+  if ($("eqOrigem")) $("eqOrigem").addEventListener("change", carregarOrigemEquiparar);
+  if ($("eqAplicar")) $("eqAplicar").addEventListener("click", aplicarEquipararSabados);
+  if ($("eqCancelar")) $("eqCancelar").addEventListener("click", fecharEquipararSabados);
+  if ($("eqFechar")) $("eqFechar").addEventListener("click", fecharEquipararSabados);
   if ($("btnIAVerificar")) {
     $("btnIAVerificar").addEventListener("click", function () {
       abrirIAComo("verificar");

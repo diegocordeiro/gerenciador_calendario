@@ -44,6 +44,7 @@
         <button id="btnIAVerificar" class="button" type="button">Verificar com IA</button>
         <button id="btnIAFeriados" class="button" type="button">Verificar feriados com IA</button>
         <button id="btnRefSabados" class="button" type="button">Corrigir Referência dos sábados</button>
+        <button id="btnEquipararSabados" class="button" type="button">Equiparar sábados</button>
         <span class="editor-topbar-sep" aria-hidden="true"></span>
         <div class="editor-viewbar" role="group" aria-label="Exibir ou ocultar blocos">
           <span class="editor-viewbar-label">Exibir:</span>
@@ -643,6 +644,38 @@
       <p class="ia-alerta">
         <strong>Nada foi salvo ainda.</strong> Ao aplicar, os feriados entram no editor
         (quadro 1.3); a gravação acontece no <em>Salvar versão</em>.
+      </p>
+    </section>
+  </dialog>
+
+  <dialog id="equipararModal" class="ia-modal" aria-labelledby="eqTitulo">
+    <div class="ia-modal-head">
+      <h2 id="eqTitulo">Equiparar sábados</h2>
+      <button type="button" class="ia-fechar" id="eqFechar" aria-label="Fechar">&times;</button>
+    </div>
+    <section class="ia-step">
+      <p class="editor-help">
+        Copie os <strong>sábados letivos</strong> e os <strong>sábados de reposição</strong>
+        de outra versão para esta, para que as modalidades tenham os sábados
+        <strong>nas mesmas datas e com o mesmo dia da semana referenciado</strong>. Os
+        sábados atuais desta versão são <strong>substituídos</strong> pelos da versão
+        escolhida; os demais eventos são preservados.
+      </p>
+      <div class="field-row">
+        <label class="field">Calendário de origem
+          <select id="eqOrigem"></select>
+          <small class="field-hint">As mesmas datas e referências serão aplicadas à versão aberta no editor.</small>
+        </label>
+      </div>
+      <div id="eqPrevia" class="ia-avisos"></div>
+      <div id="eqMsg" class="editor-msg" role="status"></div>
+      <div class="editor-actions">
+        <button id="eqAplicar" class="button button-primary" type="button">Aplicar nesta versão</button>
+        <button id="eqCancelar" class="button" type="button">Cancelar</button>
+      </div>
+      <p class="ia-alerta">
+        <strong>Nada foi salvo ainda.</strong> Ao aplicar, os sábados entram no editor
+        (bloco 1.4); a gravação acontece no <em>Salvar versão</em>.
       </p>
     </section>
   </dialog>

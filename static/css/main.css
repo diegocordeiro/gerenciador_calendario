@@ -4206,6 +4206,17 @@ tr.ia-fer-motivo td {
   border-top: 0;
 }
 
+.ia-modal select,
+.ia-modal input[type="text"] {
+  padding: .5rem .7rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 400;
+}
+
 .ia-modal textarea {
   width: 100%;
   min-height: 180px;

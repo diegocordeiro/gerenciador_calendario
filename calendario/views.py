@@ -167,6 +167,18 @@ def editor(request):
         "modalidades": [
             {"valor": v, "label": lbl} for v, lbl in Calendario.MODALIDADE_CHOICES
         ],
+        # Outras versões salvas — usadas no editor para "Equiparar sábados".
+        "versoes": [
+            {
+                "versao": e.versao,
+                "titulo": e.titulo,
+                "periodo": e.periodo,
+                "curso": e.curso,
+                "modalidade_label": e.get_modalidade_display(),
+            }
+            for e in etapas
+            if cal is None or e.pk != cal.pk
+        ],
         "llm": _llm_contexto(),
     }
     return render(
