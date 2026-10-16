@@ -42,6 +42,8 @@
   function restorePrintState() {
     if (!printState) return;
     if (printState.mode && applyGridMode) applyGridMode(printState.mode);
+    // Volta ao retrato padrão: remove o estilo injetado e a classe de densificação.
+    aplicarOrientacaoImpressao('portrait');
     document.title = printState.title;
     printState = null;
   }
@@ -53,6 +55,33 @@
     try { stamp.textContent = 'Gerado em ' + new Date().toLocaleString('pt-BR'); } catch (e) { stamp.textContent = ''; }
   }
 
+  // Altera a orientação do papel na impressão ("Salvar como PDF"). O retrato é o
+  // padrão do main.css; a paisagem é injetada aqui — o <style> entra depois da
+  // folha de estilo, então vence a regra `@page` de retrato — e é removido logo
+  // após a impressão (em `restorePrintState`). A classe `doc-landscape` no <body>
+  // liga, no main.css, as regras que põem mais conteúdo por página (3 meses por
+  // linha e as seções em 2 colunas), só na impressão em paisagem.
+  //
+  // Usa só a palavra-chave de orientação (`size: landscape`), sem nome de papel:
+  // no Chromium a forma combinada (`size: A4 landscape`) é instável e o nome
+  // `A4` nem sempre é aceito — a orientação sozinha é o que vale. A margem
+  // continua vindo da regra padrão do main.css.
+  function aplicarOrientacaoImpressao(orientation) {
+    var estilo = document.getElementById('print-orientation-style');
+    var paisagem = orientation === 'landscape';
+    if (document.body) document.body.classList.toggle('doc-landscape', paisagem);
+    if (paisagem) {
+      if (!estilo) {
+        estilo = document.createElement('style');
+        estilo.id = 'print-orientation-style';
+        document.head.appendChild(estilo);
+      }
+      estilo.textContent = '@page { size: landscape; margin: 10mm; }';
+    } else if (estilo) {
+      estilo.remove();
+    }
+  }
+
   var printButtons = document.querySelectorAll('[data-print-pdf]');
   Array.prototype.forEach.call(printButtons, function (btn) {
     btn.addEventListener('click', function () {
@@ -61,11 +90,14 @@
       // A grade precisa sair completa no PDF: o modo "super condensado" esconde
       // linhas e colunas com display:none inline.
       var mode = btn.getAttribute('data-print-mode');
+      var orientation = btn.getAttribute('data-print-orientation') || 'portrait';
       printState = {
         mode: (mode && applyGridMode) ? currentGridMode : null,
         title: document.title
       };
       if (mode && applyGridMode) applyGridMode(mode);
+      // A orientação precisa entrar antes do window.print() para valer no PDF.
+      aplicarOrientacaoImpressao(orientation);
 
       // O título vira o nome sugerido do arquivo ao salvar como PDF.
       var pdfTitle = btn.getAttribute('data-print-title');

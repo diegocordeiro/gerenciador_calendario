@@ -1002,6 +1002,38 @@ class DocumentoViewTests(TestCase):
         self.assertIn("size: A4 portrait", css)
         self.assertNotIn("size: A4 landscape", css)
 
+    def test_documento_tem_exportar_pdf_paisagem(self):
+        # Além do PDF retrato (padrão), a página oferece a exportação em A4 paisagem.
+        resp = self._doc()
+        self.assertContains(resp, 'data-print-orientation="landscape"')
+        self.assertContains(resp, "Exportar PDF (paisagem)")
+        # As seções 2–5 ficam num wrapper que vira 2 colunas na paisagem.
+        self.assertContains(resp, 'class="doc-colunas"')
+
+    def test_js_exportar_pdf_paisagem_injeta_a4_landscape(self):
+        # A orientação paisagem é injetada na hora da impressão (o CSS fica retrato).
+        # Usa só a palavra-chave de orientação — no Chromium `size: landscape`
+        # funciona, enquanto a forma com nome de papel (`A4 landscape`) é instável.
+        # A classe `doc-landscape` liga a densificação (mais conteúdo por página).
+        js = (
+            Path(__file__).resolve().parent.parent / "static" / "js" / "main.js"
+        ).read_text(encoding="utf-8")
+        self.assertIn("data-print-orientation", js)
+        self.assertIn("size: landscape", js)
+        self.assertIn("doc-landscape", js)
+
+    def test_css_paisagem_empacota_mais_por_pagina(self):
+        # Na paisagem o documento põe mais conteúdo por página: 3 meses por linha
+        # e Sábados/Feriados lado a lado (Legenda inteira embaixo) — tudo
+        # escopado por `.doc-landscape`.
+        css = (
+            Path(__file__).resolve().parent.parent / "static" / "css" / "main.css"
+        ).read_text(encoding="utf-8")
+        self.assertIn(".doc-landscape .doc-meses", css)
+        self.assertIn("repeat(3", css)
+        self.assertIn(".doc-landscape .doc-colunas", css)
+        self.assertIn("grid-template-columns: 1fr 1fr", css)
+
     def test_css_doc_mes_resumo_preservado(self):
         # A prévia do editor usa `.doc-mes-resumo` — a regra não pode ser removida.
         css = (

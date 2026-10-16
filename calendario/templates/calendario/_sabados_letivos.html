@@ -1,0 +1,13 @@
+{% if agenda.sabados_letivos %}
+<section class="doc-section" id="sabados-letivos">
+  <h2>3. Sábados letivos</h2>
+  <ul class="doc-sabados">
+    {% for s in agenda.sabados_letivos %}
+    <li>
+      <strong>{{ s.label }}</strong> — {{ s.titulo }}
+      {% if s.referencia %}<em class="muted">({{ s.referencia }})</em>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}

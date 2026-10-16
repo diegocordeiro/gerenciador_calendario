@@ -4003,6 +4003,95 @@ blockquote {
   }
 }
 
+/* ===== Impressão em paisagem: layout compacto e alinhado =====
+   O modo paisagem é ligado pelo botão "Exportar PDF (paisagem)": o JS injeta
+   `@page { size: landscape }` e marca o <body> com `.doc-landscape`. Só nesse
+   fluxo as regras abaixo entram — na tela e na impressão retrato nada muda. */
+@media print {
+  /* Meses: 3 por linha, compactos e uniformes (no retrato são 2). */
+  .doc-landscape .doc-meses {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4mm;
+  }
+
+  .doc-landscape .doc-mes {
+    padding: .3rem .35rem;
+  }
+
+  .doc-landscape .doc-mes-titulo {
+    margin-bottom: .2rem;
+    font-size: .72rem;
+  }
+
+  .doc-landscape .doc-mes-grid {
+    font-size: .6rem;
+  }
+
+  .doc-landscape .doc-mes-grid th,
+  .doc-landscape .doc-dia {
+    padding: .08rem 0;
+  }
+
+  /* Coluna "Quant. de dias letivos" estreita, para o mês caber em 1/3. */
+  .doc-landscape .doc-mes-quant {
+    flex-basis: 4.6rem;
+    padding: .2rem .25rem;
+    font-size: .6rem;
+  }
+
+  /* Espaçamento e cabeçalhos mais enxutos entre as seções. */
+  .doc-landscape .doc-section {
+    margin: .9rem 0 0;
+  }
+
+  .doc-landscape .doc-section h2 {
+    margin-bottom: .4rem;
+    font-size: .9rem;
+  }
+
+  /* Tabelas e listas compactas (mais linhas por página). */
+  .doc-landscape .doc-table {
+    font-size: .72rem;
+  }
+
+  .doc-landscape .doc-table th,
+  .doc-landscape .doc-table td {
+    padding: .18rem .3rem;
+  }
+
+  .doc-landscape .doc-sabados {
+    font-size: .72rem;
+  }
+
+  .doc-landscape .doc-sabados li {
+    padding: .1rem 0;
+  }
+
+  .doc-landscape .doc-legenda {
+    gap: .3rem .8rem;
+    font-size: .72rem;
+  }
+
+  /* Sábados + Feriados lado a lado (alinhados no topo); Legenda embaixo, inteira. */
+  .doc-landscape .doc-colunas {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 6mm;
+    row-gap: 4mm;
+    align-items: start;
+    margin-top: .9rem;
+  }
+
+  /* O espaçamento entre as seções do grid vem do row-gap (sem margem dobrada). */
+  .doc-landscape .doc-colunas > .doc-section {
+    margin-top: 0;
+  }
+
+  .doc-landscape .doc-colunas #legenda {
+    grid-column: 1 / -1;
+  }
+}
+
 /* ==========================================================================
    Preenchimento/verificação por IA (LLM) — modal, prévia e checklist
    ========================================================================== */

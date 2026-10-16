@@ -12,6 +12,11 @@
             data-print-pdf
             data-print-title="Calendário acadêmico — {{ print_title|default:site_title }}"
             title="Abre a impressão do navegador: escolha “Salvar como PDF”">Exportar PDF</button>
+    <button class="mode-btn pdf-btn" type="button"
+            data-print-pdf
+            data-print-orientation="landscape"
+            data-print-title="Calendário acadêmico (paisagem) — {{ print_title|default:site_title }}"
+            title="Abre a impressão do navegador em A4 paisagem: escolha “Salvar como PDF”">Exportar PDF (paisagem)</button>
     {% endif %}
   </div>
 
@@ -31,8 +36,17 @@
 
     {% include "calendario/_mensal.html" %}
     {% include "calendario/_tabela_eventos.html" %}
-    {% include "calendario/_tabela_feriados.html" %}
-    {% include "calendario/_legenda.html" %}
+    {% comment %}
+      No documento, as seções 3–5 (sábados, feriados e legenda) ficam no wrapper
+      `.doc-colunas`: na exportação em paisagem, Sábados e Feriados ficam lado a
+      lado (alinhados) e a Legenda ocupa a largura toda — mais compacto e legível.
+      Na tela e na impressão retrato elas continuam empilhadas, como antes.
+    {% endcomment %}
+    <div class="doc-colunas">
+      {% include "calendario/_sabados_letivos.html" %}
+      {% include "calendario/_tabela_feriados.html" %}
+      {% include "calendario/_legenda.html" %}
+    </div>
 
     {% if cal.observacoes %}
     <section class="doc-section">
