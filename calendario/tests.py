@@ -221,6 +221,33 @@ class ApiTests(TestCase):
         self.assertEqual(resp.status_code, 404)
         self.assertFalse(resp.json()["ok"])
 
+    def test_salvar_atualiza_descricao_feriado(self):
+        """Editar a descrição no bloco 1.3 e salvar atualiza o feriado existente."""
+        self.post("api_salvar", _payload())
+        cal = Calendario.objects.get(versao="2026.1.etapa1")
+        self.assertEqual(
+            cal.feriados.get(data=dt.date(2026, 10, 12)).descricao, "N. S. Aparecida"
+        )
+
+        self.post(
+            "api_salvar",
+            _payload(
+                feriados=[
+                    {
+                        "data": "2026-10-12",
+                        "descricao": "Nossa Senhora Aparecida (padroeira)",
+                        "origem": "nacional",
+                        "tipo": "feriado",
+                    }
+                ]
+            ),
+        )
+        self.assertEqual(cal.feriados.count(), 1)
+        self.assertEqual(
+            cal.feriados.get(data=dt.date(2026, 10, 12)).descricao,
+            "Nossa Senhora Aparecida (padroeira)",
+        )
+
 
 class ViewsTests(TestCase):
     @classmethod
@@ -859,10 +886,10 @@ class EventosApiTests(TestCase):
         self.client.post(
             reverse("api_salvar"), data=json.dumps(payload), content_type="application/json"
         )
-        self.assertEqual(
-            Feriado.objects.get(calendario__versao="2026.1.etapa1").tipo,
-            "ponto_facultativo",
-        )
+        feriado = Feriado.objects.get(calendario__versao="2026.1.etapa1")
+        self.assertEqual(feriado.tipo, "ponto_facultativo")
+        # A descrição informada na edição do bloco 1.3 é persistida.
+        self.assertEqual(feriado.descricao, "Dia do Professor/TAE")
 
 
 class DocumentoViewTests(TestCase):
@@ -1073,6 +1100,32 @@ class DocumentoViewTests(TestCase):
             self.assertContains(resp, 'id="bloco-%s"' % bloco.replace(".", "-"))
             self.assertContains(resp, 'data-collapse="%s"' % bloco)
             self.assertContains(resp, 'aria-expanded="true"')
+
+    def test_editor_feriado_desabilitado_no_tipo_de_evento(self):
+        """No bloco 1.4, 'Feriado'/'Ponto facultativo' ficam desabilitados (bloco 1.3)."""
+        resp = self.client.get(reverse("editor"))
+        html = resp.content.decode()
+        self.assertIn('<option value="feriado" disabled>Feriado</option>', html)
+        self.assertIn(
+            '<option value="ponto_facultativo" disabled>Ponto facultativo</option>', html
+        )
+        # Os demais tipos continuam disponíveis para escolha.
+        self.assertIn('<option value="letivo">Dia letivo</option>', html)
+        self.assertIn('<option value="evento">Evento institucional</option>', html)
+
+    def test_editor_feriados_tem_tabela_e_formulario(self):
+        """O bloco 1.3 separa campos/ações e lista os feriados em tabela."""
+        resp = self.client.get(reverse("editor"))
+        for alvo in (
+            "feriadosTable",
+            "feriadosBody",
+            "btnAddFeriado",
+            "btnCancelarFeriado",
+            "btnNacionais",
+        ):
+            self.assertContains(resp, 'id="%s"' % alvo)
+        # A antiga lista de chips foi substituída pela tabela.
+        self.assertNotContains(resp, 'id="holidayChips"')
 
     def test_editor_tem_abas_de_previa(self):
         resp = self.client.get(reverse("editor"))

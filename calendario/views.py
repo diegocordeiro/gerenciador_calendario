@@ -103,6 +103,12 @@ def _llm_contexto() -> dict:
     }
 
 
+#: Tipos de evento que pertencem ao bloco 1.3 (Feriado/Ponto facultativo) e, por
+#: isso, não devem ser oferecidos no campo "Tipo" do bloco 1.4 — permanecem
+#: válidos no model e no backend para os eventos já existentes.
+TIPOS_EVENTO_DO_MODULO_FERIADOS = {t for t, _ in Feriado.TIPO_CHOICES}
+
+
 def editor(request):
     """Interface de montagem do calendário (mesmo visual do painel de horários)."""
     versao = request.GET.get("versao")
@@ -149,7 +155,14 @@ def editor(request):
             else []
         ),
         "eventos": _eventos_para_json(cal) if cal else [],
-        "tipos_evento": [{"valor": t, "label": lbl} for t, lbl in Evento.TIPO_CHOICES],
+        "tipos_evento": [
+            {
+                "valor": t,
+                "label": lbl,
+                "desabilitado": t in TIPOS_EVENTO_DO_MODULO_FERIADOS,
+            }
+            for t, lbl in Evento.TIPO_CHOICES
+        ],
         "dias_semana": [{"valor": v, "label": lbl} for v, lbl in Evento.DIAS_SEMANA_CHOICES],
         "modalidades": [
             {"valor": v, "label": lbl} for v, lbl in Calendario.MODALIDADE_CHOICES

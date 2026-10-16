@@ -265,30 +265,51 @@
         </button>
       </header>
       <p class="editor-help">
-        <strong>Como utilizar:</strong> escolha uma data (segunda a sexta) e o tipo e clique
-        em <em>Adicionar</em>. Use <em>Feriados nacionais do período</em> para importar
-        automaticamente os feriados do ano. Você também pode clicar direto em um dia das
-        prévias para marcar/desmarcar. Feriados e pontos facultativos não contam como dias
-        letivos.
+        <strong>Como utilizar:</strong> informe a <strong>data</strong> (segunda a sexta),
+        o <strong>tipo</strong> e a <strong>descrição</strong> e clique em <em>Adicionar</em>.
+        Use <em>Feriados nacionais do período</em> para importar automaticamente os feriados
+        do ano — ou clique direto em um dia das prévias para marcar/desmarcar. Na tabela,
+        use <em>Editar</em> para ajustar um feriado já cadastrado e <em>Excluir</em> para
+        removê-lo. Feriados e pontos facultativos não contam como dias letivos.
       </p>
       <div class="editor-holidays">
         <label class="editor-holidays-field">Data
           <input type="date" id="fFeriado">
+          <small class="field-hint">Segunda a sexta.</small>
         </label>
         <label class="editor-holidays-field">Tipo
           <select id="fFeriadoTipo">
             <option value="feriado">Feriado</option>
             <option value="ponto_facultativo">Ponto facultativo</option>
           </select>
+          <small class="field-hint">Feriado ou ponto facultativo.</small>
         </label>
-        <button id="btnAddFeriado" class="button" type="button">Adicionar</button>
+        <label class="editor-holidays-field">Descrição
+          <input type="text" id="fFeriadoDescricao" maxlength="200"
+                 placeholder="Independência do Brasil" autocomplete="off">
+          <small class="field-hint">Nome exibido no documento.</small>
+        </label>
+      </div>
+      <div class="editor-actions">
+        <button id="btnAddFeriado" class="button button-primary" type="button">Adicionar</button>
+        <button id="btnCancelarFeriado" class="button" type="button" hidden>Cancelar edição</button>
         <button id="btnNacionais" class="button" type="button">Feriados nacionais do período</button>
       </div>
       <p class="field-hint">
         A conferência da lista de feriados com IA (<em>Verificar feriados com IA</em>)
         fica na barra de ações, no topo.
       </p>
-      <ul id="holidayChips" class="chip-list"></ul>
+      <table class="doc-table" id="feriadosTable">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Descrição</th>
+            <th>Tipo</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="feriadosBody"></tbody>
+      </table>
     </section>
 
     <section class="panel editor-block" id="bloco-1-4" data-block="inputs" data-nav-target="1.4">
@@ -323,10 +344,10 @@
           <label class="field">Tipo
             <select id="evTipo">
               {% for t in inicial.tipos_evento %}
-                <option value="{{ t.valor }}">{{ t.label }}</option>
+                <option value="{{ t.valor }}"{% if t.desabilitado %} disabled{% endif %}>{{ t.label }}</option>
               {% endfor %}
             </select>
-            <small class="field-hint">Categoria usada na cor da legenda e no status do dia.</small>
+            <small class="field-hint">Categoria usada na cor da legenda e no status do dia. <strong>Feriado</strong> e <strong>Ponto facultativo</strong> ficam no bloco 1.3.</small>
           </label>
         </div>
         <div class="field-row">

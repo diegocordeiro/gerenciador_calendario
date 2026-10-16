@@ -43,12 +43,18 @@
         destaque: !!e.destaque
       };
     }),
-    eventoEditandoIdx: null
+    eventoEditandoIdx: null,
+    feriadoEditandoData: null
   };
 
   var TIPOS_EVENTO = {};
+  //: Tipos do bloco 1.3 (Feriado/Ponto facultativo): aparecem desabilitados no
+  //: campo "Tipo" dos eventos (bloco 1.4), mas os eventos antigos que já os usam
+  //: continuam válidos e são preservados ao editar.
+  var TIPOS_EVENTO_DESABILITADOS = {};
   (inicial.tipos_evento || []).forEach(function (t) {
     TIPOS_EVENTO[t.valor] = t.label;
+    if (t.desabilitado) TIPOS_EVENTO_DESABILITADOS[t.valor] = true;
   });
   var DIAS_SEMANA = {};
   (inicial.dias_semana || []).forEach(function (d) {
@@ -212,8 +218,20 @@
     });
   }
 
+  function indiceFeriado(data) {
+    for (var i = 0; i < state.feriados.length; i++) {
+      if (state.feriados[i].data === data) return i;
+    }
+    return -1;
+  }
+
   function toggleFeriado(iso) {
     if (temFeriado(iso)) {
+      if (state.feriadoEditandoData === iso) {
+        state.feriadoEditandoData = null;
+        limparFormFeriado();
+        atualizarBotaoFeriado();
+      }
       state.feriados = state.feriados.filter(function (f) {
         return f.data !== iso;
       });
@@ -224,31 +242,101 @@
     agendarPreview();
   }
 
+  function limparFormFeriado() {
+    $("fFeriado").value = "";
+    $("fFeriadoTipo").value = "feriado";
+    $("fFeriadoDescricao").value = "";
+  }
+
+  function atualizarBotaoFeriado() {
+    var btn = $("btnAddFeriado");
+    var cancelar = $("btnCancelarFeriado");
+    var editando = state.feriadoEditandoData !== null;
+    if (btn) btn.textContent = editando ? "Salvar alterações" : "Adicionar";
+    if (cancelar) cancelar.hidden = !editando;
+  }
+
+  function editarFeriado(data) {
+    var idx = indiceFeriado(data);
+    if (idx < 0) return;
+    var f = state.feriados[idx];
+    $("fFeriado").value = f.data || "";
+    $("fFeriadoTipo").value = f.tipo || "feriado";
+    $("fFeriadoDescricao").value = f.descricao || "";
+    state.feriadoEditandoData = f.data;
+    atualizarBotaoFeriado();
+    renderChips();
+    msg(
+      "Editando o feriado selecionado — ajuste os campos e clique em “Salvar alterações”.",
+      "ok"
+    );
+    $("fFeriadoDescricao").focus();
+  }
+
+  function cancelarEdicaoFeriado() {
+    state.feriadoEditandoData = null;
+    limparFormFeriado();
+    atualizarBotaoFeriado();
+    renderChips();
+  }
+
   function renderChips() {
-    var ul = $("holidayChips");
-    if (!ul) return;
+    // Mantém o nome por compatibilidade, mas agora renderiza a TABELA de feriados
+    // (#feriadosBody) do bloco 1.3, com ações explícitas de Editar/Excluir.
+    // Se o feriado em edição deixou de existir (ex.: substituído pela IA ou
+    // removido em outro fluxo), zera o modo de edição para o formulário não
+    // ficar apontando para um item inexistente.
+    if (
+      state.feriadoEditandoData !== null &&
+      indiceFeriado(state.feriadoEditandoData) < 0
+    ) {
+      state.feriadoEditandoData = null;
+      limparFormFeriado();
+      atualizarBotaoFeriado();
+    }
+    var tbody = $("feriadosBody");
+    if (!tbody) return;
     var ordenados = state.feriados.slice().sort(function (a, b) {
       return a.data < b.data ? -1 : 1;
     });
-    ul.innerHTML = ordenados
+    tbody.innerHTML = ordenados
       .map(function (f) {
         var rotulo = f.data.split("-").reverse().join("/");
         var tipo = f.tipo === "ponto_facultativo" ? "Ponto facultativo" : "Feriado";
+        var editando = f.data === state.feriadoEditandoData;
         return (
-          '<li class="chip chip-removable" data-date="' +
-          esc(f.data) +
-          '">' +
+          "<tr" +
+          (editando ? ' class="row-editando"' : "") +
+          ">" +
+          "<td>" +
           esc(rotulo) +
-          " <small>(" +
+          "</td>" +
+          "<td>" +
+          (f.descricao ? esc(f.descricao) : "—") +
+          "</td>" +
+          "<td>" +
           esc(tipo) +
-          ")</small>" +
-          ' <button type="button" class="chip-remove" aria-label="Remover">&times;</button></li>'
+          "</td>" +
+          '<td class="feriado-acoes">' +
+          '<button type="button" class="btn-editar" data-edit="' +
+          esc(f.data) +
+          '" title="Editar feriado" aria-label="Editar feriado">Editar</button>' +
+          '<button type="button" class="btn-excluir" data-excluir="' +
+          esc(f.data) +
+          '" title="Excluir feriado" aria-label="Excluir feriado">Excluir</button>' +
+          "</td>" +
+          "</tr>"
         );
       })
       .join("");
-    Array.prototype.forEach.call(ul.querySelectorAll(".chip-remove"), function (btn) {
+    Array.prototype.forEach.call(tbody.querySelectorAll(".btn-editar"), function (btn) {
       btn.addEventListener("click", function () {
-        toggleFeriado(btn.parentNode.getAttribute("data-date"));
+        editarFeriado(btn.getAttribute("data-edit"));
+      });
+    });
+    Array.prototype.forEach.call(tbody.querySelectorAll(".btn-excluir"), function (btn) {
+      btn.addEventListener("click", function () {
+        toggleFeriado(btn.getAttribute("data-excluir"));
       });
     });
   }
@@ -985,6 +1073,7 @@
     state.feriados = [];
     state.eventos = [];
     state.eventoEditandoIdx = null;
+    state.feriadoEditandoData = null;
     fill();
     limparFormEvento();
     atualizarBotaoEvento();
@@ -1203,7 +1292,15 @@
     if (tipos && !tipos.options.length) {
       tipos.innerHTML += Object.keys(TIPOS_EVENTO)
         .map(function (t) {
-          return '<option value="' + esc(t) + '">' + esc(TIPOS_EVENTO[t]) + "</option>";
+          return (
+            '<option value="' +
+            esc(t) +
+            '"' +
+            (TIPOS_EVENTO_DESABILITADOS[t] ? " disabled" : "") +
+            ">" +
+            esc(TIPOS_EVENTO[t]) +
+            "</option>"
+          );
         })
         .join("");
     }
@@ -2298,6 +2395,7 @@
   // ---- Inicialização -----------------------------------------------------
   fill();
   renderChips();
+  atualizarBotaoFeriado();
   renderEventos();
   ["fInicio", "fDataFim", "fSemanas", "fSemanas1", "fPrevistos"].forEach(function (id) {
     $(id).addEventListener("change", agendarPreview);
@@ -2305,17 +2403,54 @@
   });
   $("btnAddFeriado").addEventListener("click", function () {
     var valor = $("fFeriado").value;
-    if (!valor) return;
+    if (!valor) {
+      msg("Escolha uma data (segunda a sexta) para o feriado/ponto facultativo.", "erro");
+      return;
+    }
     var dia = new Date(valor + "T00:00:00").getDay();
     if (dia === 0 || dia === 6) {
       msg("Selecione um dia útil (segunda a sexta).", "erro");
       return;
     }
-    addFeriado(valor, "", "manual", $("fFeriadoTipo").value);
-    $("fFeriado").value = "";
+    var tipo = $("fFeriadoTipo").value;
+    var descricao = $("fFeriadoDescricao").value.trim();
+
+    if (state.feriadoEditandoData !== null) {
+      var idx = indiceFeriado(state.feriadoEditandoData);
+      if (idx < 0) {
+        cancelarEdicaoFeriado();
+        return;
+      }
+      if (valor !== state.feriadoEditandoData && temFeriado(valor)) {
+        msg("Já existe um feriado cadastrado nessa data.", "erro");
+        return;
+      }
+      state.feriados[idx] = {
+        data: valor,
+        descricao: descricao,
+        origem: state.feriados[idx].origem || "manual",
+        tipo: tipo
+      };
+      state.feriadoEditandoData = null;
+      limparFormFeriado();
+      atualizarBotaoFeriado();
+      renderChips();
+      msg("Feriado atualizado.", "ok");
+      preview();
+      return;
+    }
+
+    if (temFeriado(valor)) {
+      msg("Esse dia já está marcado como feriado/ponto facultativo.", "erro");
+      return;
+    }
+    addFeriado(valor, descricao, "manual", tipo);
+    limparFormFeriado();
     renderChips();
+    msg("Feriado adicionado.", "ok");
     preview();
   });
+  $("btnCancelarFeriado").addEventListener("click", cancelarEdicaoFeriado);
   $("btnAddEvento").addEventListener("click", salvarEvento);
   $("btnCancelarEvento").addEventListener("click", cancelarEdicaoEvento);
   $("btnNacionais").addEventListener("click", carregarNacionais);
