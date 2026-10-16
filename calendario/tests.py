@@ -892,6 +892,57 @@ class EventosApiTests(TestCase):
         self.assertEqual(feriado.descricao, "Dia do Professor/TAE")
 
 
+class FeriadosApiTests(TestCase):
+    """Os feriados/pontos facultativos de uma versão são legíveis pela API.
+
+    É a origem do "Equiparar feriados e pontos facultativos": o editor lê os
+    feriados de outra versão e os copia para a versão aberta (nada é gravado até
+    o "Salvar versão").
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.cal = Calendario.objects.create(
+            versao="2026.2.etapa1",
+            data_inicio=dt.date(2026, 9, 14),
+        )
+        Feriado.objects.create(
+            calendario=cls.cal,
+            data=dt.date(2026, 10, 12),
+            descricao="N. S. Aparecida",
+            origem="nacional",
+            tipo="feriado",
+        )
+        Feriado.objects.create(
+            calendario=cls.cal,
+            data=dt.date(2026, 10, 15),
+            descricao="Dia do Professor/TAE",
+            origem="institucional",
+            tipo="ponto_facultativo",
+        )
+
+    def test_get_feriados_da_versao(self):
+        resp = self.client.get(reverse("api_feriados"), {"versao": "2026.2.etapa1"})
+        self.assertEqual(resp.status_code, 200)
+        dados = resp.json()
+        self.assertTrue(dados["ok"])
+        self.assertEqual(dados["versao"], "2026.2.etapa1")
+        por_data = {f["data"]: f for f in dados["feriados"]}
+        self.assertEqual(set(por_data), {"2026-10-12", "2026-10-15"})
+        self.assertEqual(por_data["2026-10-12"]["tipo"], "feriado")
+        self.assertEqual(por_data["2026-10-15"]["tipo"], "ponto_facultativo")
+        self.assertEqual(por_data["2026-10-15"]["descricao"], "Dia do Professor/TAE")
+        self.assertEqual(por_data["2026-10-15"]["origem"], "institucional")
+
+    def test_get_versao_inexistente(self):
+        resp = self.client.get(reverse("api_feriados"), {"versao": "nada"})
+        self.assertEqual(resp.status_code, 404)
+
+    def test_metodo_nao_permitido(self):
+        resp = self.client.post(reverse("api_feriados"), data={})
+        self.assertEqual(resp.status_code, 405)
+
+
 class DocumentoViewTests(TestCase):
     """A página do calendário renderiza o documento oficial completo."""
 
@@ -1140,6 +1191,34 @@ class DocumentoViewTests(TestCase):
         inicial = json.loads(corpo)
         self.assertIn("versoes", inicial)
         self.assertIn("2026.2.final", [v["versao"] for v in inicial["versoes"]])
+
+    def test_editor_tem_equiparar_feriados(self):
+        """O editor expõe o 'Equiparar feriados e pontos facultativos'."""
+        resp = self.client.get(reverse("editor"))
+        for alvo in (
+            "btnEquipararFeriados",
+            "equipararFeriadosModal",
+            "eqFerOrigem",
+            "eqFerAplicar",
+        ):
+            self.assertContains(resp, 'id="%s"' % alvo)
+
+    def test_editor_ia_tem_seletor_de_norma(self):
+        """Nos modais de IA (preencher/verificar) dá para escolher a norma."""
+        resp = self.client.get(reverse("editor"))
+        self.assertContains(resp, 'id="iaNormaSelect"')
+        self.assertContains(resp, 'id="iaNorma"')
+        # As normas disponíveis (arts. 38/39/40) chegam ao JS pelo JSON inicial.
+        html = resp.content.decode()
+        corpo = re.search(
+            r'<script id="inicial-data" type="application/json">(.*?)</script>', html, re.S
+        ).group(1)
+        inicial = json.loads(corpo)
+        self.assertIn("normas", inicial["llm"])
+        self.assertEqual(
+            set(inicial["llm"]["normas"]),
+            {"integrado_medio", "concomitante_subsequente", "graduacao"},
+        )
 
     def test_editor_tem_abas_de_previa(self):
         resp = self.client.get(reverse("editor"))

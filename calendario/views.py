@@ -141,19 +141,7 @@ def editor(request):
         "dias_letivos_por_mes": cal.dias_letivos_por_mes if cal else [],
         "etapa": cal.etapa if cal else 1,
         "observacoes": cal.observacoes if cal else "",
-        "feriados": (
-            [
-                {
-                    "data": f.data.isoformat(),
-                    "descricao": f.descricao,
-                    "origem": f.origem,
-                    "tipo": f.tipo,
-                }
-                for f in cal.feriados.all()
-            ]
-            if cal
-            else []
-        ),
+        "feriados": _feriados_para_json(cal) if cal else [],
         "eventos": _eventos_para_json(cal) if cal else [],
         "tipos_evento": [
             {
@@ -279,6 +267,18 @@ def _eventos_para_json(cal):
             "destaque": e.destaque,
         }
         for e in cal.eventos.all()
+    ]
+
+
+def _feriados_para_json(cal):
+    return [
+        {
+            "data": f.data.isoformat(),
+            "descricao": f.descricao,
+            "origem": f.origem,
+            "tipo": f.tipo,
+        }
+        for f in cal.feriados.all()
     ]
 
 
@@ -497,6 +497,24 @@ def api_eventos(request):
     )
     return JsonResponse(
         {"ok": True, "versao": cal.versao, "eventos": _eventos_para_json(cal)}
+    )
+
+
+def api_feriados(request):
+    """Lista (GET) os feriados/pontos facultativos de uma versão.
+
+    GET ``?versao=<versao>`` → ``{ok, versao, feriados}``. Usado pelo editor no
+    "Equiparar feriados e pontos facultativos": copia os feriados de uma versão
+    salva para a versão aberta (nada é gravado até o "Salvar versão").
+    """
+    if request.method != "GET":
+        return JsonResponse({"ok": False, "erros": ["Método não permitido."]}, status=405)
+    versao = (request.GET.get("versao") or "").strip()
+    cal = Calendario.objects.filter(versao=versao).first()
+    if cal is None:
+        return JsonResponse({"ok": False, "erros": ["Versão não encontrada."]}, status=404)
+    return JsonResponse(
+        {"ok": True, "versao": cal.versao, "feriados": _feriados_para_json(cal)}
     )
 
 

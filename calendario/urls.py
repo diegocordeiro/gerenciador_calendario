@@ -16,6 +16,7 @@ urlpatterns = [
     path("api/excluir/", views.api_excluir, name="api_excluir"),
     path("api/clonar/", views.api_clonar, name="api_clonar"),
     path("api/eventos/", views.api_eventos, name="api_eventos"),
+    path("api/feriados/", views.api_feriados, name="api_feriados"),
     path(
         "api/feriados-nacionais/",
         views.api_feriados_nacionais,

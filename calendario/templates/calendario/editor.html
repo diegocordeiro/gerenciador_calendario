@@ -45,6 +45,7 @@
         <button id="btnIAFeriados" class="button" type="button">Verificar feriados com IA</button>
         <button id="btnRefSabados" class="button" type="button">Corrigir Referência dos sábados</button>
         <button id="btnEquipararSabados" class="button" type="button">Equiparar sábados</button>
+        <button id="btnEquipararFeriados" class="button" type="button">Equiparar feriados e pontos facultativos</button>
         <span class="editor-topbar-sep" aria-hidden="true"></span>
         <div class="editor-viewbar" role="group" aria-label="Exibir ou ocultar blocos">
           <span class="editor-viewbar-label">Exibir:</span>
@@ -469,7 +470,12 @@
         <strong>sábados letivos</strong> são distribuídos pelo próprio sistema para
         fechar a carga horária de cada dia da semana. Nada é gravado nesta etapa.
       </p>
-      <p class="field-hint" id="iaNorma"></p>
+      <div class="field-row">
+        <label class="field">Norma
+          <select id="iaNormaSelect"></select>
+          <small class="field-hint" id="iaNorma"></small>
+        </label>
+      </div>
       <div class="field-row">
         <label class="field">Cidade
           <input type="text" id="iaCidade" autocomplete="off" placeholder="Barras">
@@ -676,6 +682,38 @@
       <p class="ia-alerta">
         <strong>Nada foi salvo ainda.</strong> Ao aplicar, os sábados entram no editor
         (bloco 1.4); a gravação acontece no <em>Salvar versão</em>.
+      </p>
+    </section>
+  </dialog>
+
+  <dialog id="equipararFeriadosModal" class="ia-modal" aria-labelledby="eqFerTitulo">
+    <div class="ia-modal-head">
+      <h2 id="eqFerTitulo">Equiparar feriados e pontos facultativos</h2>
+      <button type="button" class="ia-fechar" id="eqFerFechar" aria-label="Fechar">&times;</button>
+    </div>
+    <section class="ia-step">
+      <p class="editor-help">
+        Copie os <strong>feriados</strong> e os <strong>pontos facultativos</strong> de
+        outra versão para esta, para que as modalidades tenham os dias não letivos
+        <strong>nas mesmas datas, tipos e descrições</strong>. Os feriados/pontos atuais
+        desta versão são <strong>substituídos</strong> pelos da versão escolhida; os
+        eventos e sábados são preservados.
+      </p>
+      <div class="field-row">
+        <label class="field">Calendário de origem
+          <select id="eqFerOrigem"></select>
+          <small class="field-hint">As mesmas datas, tipos e descrições serão aplicadas à versão aberta no editor.</small>
+        </label>
+      </div>
+      <div id="eqFerPrevia" class="ia-avisos"></div>
+      <div id="eqFerMsg" class="editor-msg" role="status"></div>
+      <div class="editor-actions">
+        <button id="eqFerAplicar" class="button button-primary" type="button">Aplicar nesta versão</button>
+        <button id="eqFerCancelar" class="button" type="button">Cancelar</button>
+      </div>
+      <p class="ia-alerta">
+        <strong>Nada foi salvo ainda.</strong> Ao aplicar, os feriados entram no editor
+        (bloco 1.3); a gravação acontece no <em>Salvar versão</em>.
       </p>
     </section>
   </dialog>

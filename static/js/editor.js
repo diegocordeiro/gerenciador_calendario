@@ -1346,6 +1346,188 @@
     );
   }
 
+  // ---- Equiparar feriados e pontos facultativos com outra versão ----------
+  // Mesma mecânica do "Equiparar sábados", mas sobre a coleção de feriados
+  // (bloco 1.3): copia os feriados/pontos facultativos de uma versão salva para
+  // a versão aberta no editor, garantindo as MESMAS datas, tipos e descrições
+  // entre as modalidades. Substitui os feriados/pontos atuais; eventos e
+  // sábados são preservados. Nada é gravado até "Salvar versão".
+  var eqFerState = { origem: "", feriados: [] };
+
+  function msgEqFer(texto, tipo) {
+    var el = $("eqFerMsg");
+    if (!el) return;
+    el.textContent = texto || "";
+    el.className =
+      "editor-msg " + (tipo === "erro" ? "editor-msg-erro" : tipo === "ok" ? "editor-msg-ok" : "");
+  }
+
+  function feriadosDaOrigem(feriados) {
+    return (feriados || []).filter(function (f) {
+      return f && f.data;
+    });
+  }
+
+  function abrirEquipararFeriados() {
+    var modal = $("equipararFeriadosModal");
+    var sel = $("eqFerOrigem");
+    if (!modal || !sel) return;
+    if (!VERSOES_SALVAS.length) {
+      msg("Nenhuma outra versão salva para equiparar.", "erro");
+      return;
+    }
+    sel.innerHTML =
+      '<option value="">— escolha a versão —</option>' +
+      VERSOES_SALVAS.map(function (v) {
+        var extra =
+          (v.periodo || "") +
+          (v.curso ? " · " + v.curso : v.modalidade_label ? " · " + v.modalidade_label : "");
+        return (
+          '<option value="' +
+          esc(v.versao) +
+          '">' +
+          esc(v.versao) +
+          (extra ? " — " + esc(extra) : "") +
+          "</option>"
+        );
+      }).join("");
+    eqFerState = { origem: "", feriados: [] };
+    msgEqFer("");
+    renderPreviaEquipararFeriados();
+    if (typeof modal.showModal === "function") modal.showModal();
+    else modal.setAttribute("open", "open");
+    sel.focus();
+  }
+
+  function fecharEquipararFeriados() {
+    var modal = $("equipararFeriadosModal");
+    if (!modal) return;
+    if (typeof modal.close === "function" && modal.open) modal.close();
+    else modal.removeAttribute("open");
+  }
+
+  function carregarOrigemEquipararFeriados() {
+    var sel = $("eqFerOrigem");
+    var versao = sel ? sel.value : "";
+    eqFerState.origem = versao;
+    eqFerState.feriados = [];
+    if (!versao) {
+      renderPreviaEquipararFeriados();
+      msgEqFer("");
+      return;
+    }
+    msgEqFer("Carregando feriados da origem…");
+    fetch(BASE + "api/feriados/?versao=" + encodeURIComponent(versao))
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (d) {
+        if (!d || !d.ok) {
+          msgEqFer(
+            (d && d.erros && d.erros.join(" ")) || "Não foi possível ler a versão de origem.",
+            "erro"
+          );
+          return;
+        }
+        eqFerState.feriados = d.feriados || [];
+        renderPreviaEquipararFeriados();
+        msgEqFer("");
+      })
+      .catch(function () {
+        msgEqFer("Falha de comunicação ao ler a versão de origem.", "erro");
+      });
+  }
+
+  function renderPreviaEquipararFeriados() {
+    var box = $("eqFerPrevia");
+    if (!box) return;
+    var fers = feriadosDaOrigem(eqFerState.feriados);
+    if (!eqFerState.origem) {
+      box.innerHTML = "";
+      return;
+    }
+    if (!fers.length) {
+      box.innerHTML =
+        '<p class="field-hint">A versão escolhida não tem feriados nem pontos facultativos.</p>';
+      return;
+    }
+    function lista(itens, titulo) {
+      if (!itens.length) return "";
+      return (
+        "<div><strong>" +
+        titulo +
+        " (" +
+        itens.length +
+        ")</strong>" +
+        '<ul class="chip-list">' +
+        itens
+          .slice()
+          .sort(function (a, b) {
+            return a.data < b.data ? -1 : 1;
+          })
+          .map(function (f) {
+            var desc = f.descricao ? " — " + esc(f.descricao) : "";
+            return (
+              '<li class="chip">' +
+              esc((f.data || "").split("-").reverse().join("/")) +
+              desc +
+              "</li>"
+            );
+          })
+          .join("") +
+        "</ul></div>"
+      );
+    }
+    box.innerHTML =
+      lista(
+        fers.filter(function (f) {
+          return f.tipo === "ponto_facultativo";
+        }),
+        "Pontos facultativos"
+      ) +
+      lista(
+        fers.filter(function (f) {
+          return f.tipo !== "ponto_facultativo";
+        }),
+        "Feriados"
+      );
+  }
+
+  function aplicarEquipararFeriados() {
+    if (!eqFerState.origem) {
+      msgEqFer("Escolha o calendário de origem.", "erro");
+      return;
+    }
+    var fers = feriadosDaOrigem(eqFerState.feriados);
+    if (!fers.length) {
+      msgEqFer("A versão escolhida não tem feriados para copiar.", "erro");
+      return;
+    }
+    // Substitui TODOS os feriados/pontos atuais pelos da origem (mesmas datas/tipos).
+    state.feriados = fers.map(function (f) {
+      return {
+        data: f.data,
+        descricao: f.descricao || "",
+        origem: f.origem || "manual",
+        tipo: f.tipo === "ponto_facultativo" ? "ponto_facultativo" : "feriado"
+      };
+    });
+    state.feriadoEditandoData = null;
+    limparFormFeriado();
+    atualizarBotaoFeriado();
+    renderChips();
+    preview();
+    marcarEstadoSalvo("pendente");
+    fecharEquipararFeriados();
+    msg(
+      state.feriados.length +
+        " feriado(s)/ponto(s) facultativo(s) copiado(s) da versão " +
+        eqFerState.origem +
+        ". NADA foi salvo ainda — clique em “Salvar versão”.",
+      "ok"
+    );
+  }
+
   // ---- Preenchimento com IA (LLM) ----------------------------------------
   // Fluxo em duas etapas: a IA gera uma PRÉVIA (nada é gravado) que pode ser
   // editada aqui; "Aplicar ao editor" leva os itens para as tabelas/chips do
@@ -1366,9 +1548,14 @@
   };
   var iaTimer = null;
 
+  function normaSelecionadaIA() {
+    var sel = $("iaNormaSelect");
+    if (sel && sel.value) return sel.value;
+    return $("fModalidade") ? $("fModalidade").value : "";
+  }
+
   function normaDaModalidadeIA() {
-    var valor = $("fModalidade") ? $("fModalidade").value : "";
-    return (IA.normas || {})[valor] || null;
+    return (IA.normas || {})[normaSelecionadaIA()] || null;
   }
 
   function rotuloNormaIA() {
@@ -1475,9 +1662,36 @@
     if (padrao) sel.value = padrao;
   }
 
+  function preencherSelectNormaIA() {
+    var sel = $("iaNormaSelect");
+    if (!sel) return;
+    var normas = IA.normas || {};
+    if (!sel.options.length) {
+      sel.innerHTML = Object.keys(normas)
+        .map(function (valor) {
+          var info = normas[valor] || {};
+          return (
+            '<option value="' +
+            esc(valor) +
+            '">' +
+            esc(info.norma || valor) +
+            " — " +
+            esc(info.titulo || "") +
+            "</option>"
+          );
+        })
+        .join("");
+    }
+    // O padrão segue a modalidade do bloco 1.2; o usuário pode trocar livremente.
+    var atual = $("fModalidade") ? $("fModalidade").value : "";
+    if (atual && normas[atual]) sel.value = atual;
+    else if (sel.options.length) sel.selectedIndex = 0;
+  }
+
   function preencherSelectsIA() {
     preencherSelectProvedorIA($("iaProvedor"));
     preencherSelectProvedorIA($("iaFerProvedor"));
+    preencherSelectNormaIA();
     var tipos = $("iaEvTipo");
     if (tipos && !tipos.options.length) {
       tipos.innerHTML += Object.keys(TIPOS_EVENTO)
@@ -1596,7 +1810,7 @@
       modelo: $("iaModelo").value.trim(),
       instituicao: p.instituicao,
       curso: p.curso,
-      modalidade: p.modalidade,
+      modalidade: normaSelecionadaIA(),
       data_inicio: p.data_inicio,
       data_fim: p.data_fim,
       total_semanas: p.total_semanas,
@@ -2659,12 +2873,27 @@
   if ($("eqAplicar")) $("eqAplicar").addEventListener("click", aplicarEquipararSabados);
   if ($("eqCancelar")) $("eqCancelar").addEventListener("click", fecharEquipararSabados);
   if ($("eqFechar")) $("eqFechar").addEventListener("click", fecharEquipararSabados);
+  if ($("btnEquipararFeriados")) {
+    $("btnEquipararFeriados").addEventListener("click", abrirEquipararFeriados);
+  }
+  if ($("eqFerOrigem")) {
+    $("eqFerOrigem").addEventListener("change", carregarOrigemEquipararFeriados);
+  }
+  if ($("eqFerAplicar")) $("eqFerAplicar").addEventListener("click", aplicarEquipararFeriados);
+  if ($("eqFerCancelar")) $("eqFerCancelar").addEventListener("click", fecharEquipararFeriados);
+  if ($("eqFerFechar")) $("eqFerFechar").addEventListener("click", fecharEquipararFeriados);
   if ($("btnIAVerificar")) {
     $("btnIAVerificar").addEventListener("click", function () {
       abrirIAComo("verificar");
     });
   }
-  if ($("fModalidade")) $("fModalidade").addEventListener("change", atualizarNormaIA);
+  if ($("fModalidade")) {
+    $("fModalidade").addEventListener("change", function () {
+      preencherSelectNormaIA();
+      atualizarNormaIA();
+    });
+  }
+  if ($("iaNormaSelect")) $("iaNormaSelect").addEventListener("change", atualizarNormaIA);
   if ($("iaGerar")) $("iaGerar").addEventListener("click", gerarIA);
   if ($("iaAplicar")) $("iaAplicar").addEventListener("click", aplicarIA);
   if ($("iaAplicarSelecionados")) {
