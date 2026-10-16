@@ -1235,6 +1235,17 @@ class DocumentoViewTests(TestCase):
         ):
             self.assertContains(resp, 'id="%s"' % alvo)
 
+    def test_editor_tem_equiparar_eventos(self):
+        """O editor expõe o 'Equiparar eventos' (bloco 1.4)."""
+        resp = self.client.get(reverse("editor"))
+        for alvo in (
+            "btnEquipararEventos",
+            "equipararEventosModal",
+            "eqEvOrigem",
+            "eqEvAplicar",
+        ):
+            self.assertContains(resp, 'id="%s"' % alvo)
+
     def test_editor_ia_tem_seletor_de_norma(self):
         """Nos modais de IA (preencher/verificar) dá para escolher a norma."""
         resp = self.client.get(reverse("editor"))

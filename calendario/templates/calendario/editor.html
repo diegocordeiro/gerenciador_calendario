@@ -46,6 +46,7 @@
         <button id="btnRefSabados" class="button" type="button">Corrigir Referência dos sábados</button>
         <button id="btnEquipararSabados" class="button" type="button">Equiparar sábados</button>
         <button id="btnEquipararFeriados" class="button" type="button">Equiparar feriados e pontos facultativos</button>
+        <button id="btnEquipararEventos" class="button" type="button">Equiparar eventos</button>
         <span class="editor-topbar-sep" aria-hidden="true"></span>
         <div class="editor-viewbar" role="group" aria-label="Exibir ou ocultar blocos">
           <span class="editor-viewbar-label">Exibir:</span>
@@ -714,6 +715,40 @@
       <p class="ia-alerta">
         <strong>Nada foi salvo ainda.</strong> Ao aplicar, os feriados entram no editor
         (bloco 1.3); a gravação acontece no <em>Salvar versão</em>.
+      </p>
+    </section>
+  </dialog>
+
+  <dialog id="equipararEventosModal" class="ia-modal" aria-labelledby="eqEvTitulo">
+    <div class="ia-modal-head">
+      <h2 id="eqEvTitulo">Equiparar eventos</h2>
+      <button type="button" class="ia-fechar" id="eqEvFechar" aria-label="Fechar">&times;</button>
+    </div>
+    <section class="ia-step">
+      <p class="editor-help">
+        Copie os <strong>eventos</strong> de outra versão para esta, para que as
+        modalidades tenham os mesmos eventos <strong>nas mesmas datas, tipos e
+        descrições</strong>. Entram apenas os eventos do bloco 1.4 que
+        <strong>não</strong> são sábados letivos/reposição nem feriados/pontos
+        facultativos (esses têm ações próprias). Os eventos atuais desta versão desse
+        grupo são <strong>substituídos</strong> pelos da versão escolhida; sábados e
+        feriados são preservados.
+      </p>
+      <div class="field-row">
+        <label class="field">Calendário de origem
+          <select id="eqEvOrigem"></select>
+          <small class="field-hint">As mesmas datas, tipos e descrições serão aplicadas à versão aberta no editor.</small>
+        </label>
+      </div>
+      <div id="eqEvPrevia" class="ia-avisos"></div>
+      <div id="eqEvMsg" class="editor-msg" role="status"></div>
+      <div class="editor-actions">
+        <button id="eqEvAplicar" class="button button-primary" type="button">Aplicar nesta versão</button>
+        <button id="eqEvCancelar" class="button" type="button">Cancelar</button>
+      </div>
+      <p class="ia-alerta">
+        <strong>Nada foi salvo ainda.</strong> Ao aplicar, os eventos entram no editor
+        (bloco 1.4); a gravação acontece no <em>Salvar versão</em>.
       </p>
     </section>
   </dialog>

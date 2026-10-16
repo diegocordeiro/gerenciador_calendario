@@ -1528,6 +1528,187 @@
     );
   }
 
+  // ---- Equiparar eventos (bloco 1.4) com outra versão ---------------------
+  // Mesma mecânica do "Equiparar sábados", mas sobre os DEMAIS eventos do bloco
+  // 1.4: copia os eventos de uma versão salva para a versão aberta no editor,
+  // garantindo as MESMAS datas, tipos e descrições entre as modalidades. Ficam
+  // de fora os sábados letivos/reposição e os feriados/pontos facultativos (que
+  // têm ações próprias). Substitui os eventos atuais desse grupo; sábados e
+  // feriados são preservados. Nada é gravado até "Salvar versão".
+  var TIPOS_FORA_EQUIPARAR_EVENTOS = {
+    sabado_letivo: true,
+    sabado_reposicao: true,
+    feriado: true,
+    ponto_facultativo: true
+  };
+  var eqEvState = { origem: "", eventos: [] };
+
+  function msgEqEv(texto, tipo) {
+    var el = $("eqEvMsg");
+    if (!el) return;
+    el.textContent = texto || "";
+    el.className =
+      "editor-msg " + (tipo === "erro" ? "editor-msg-erro" : tipo === "ok" ? "editor-msg-ok" : "");
+  }
+
+  function eventosDaOrigem(eventos) {
+    return (eventos || []).filter(function (e) {
+      return e && !TIPOS_FORA_EQUIPARAR_EVENTOS[e.tipo];
+    });
+  }
+
+  function abrirEquipararEventos() {
+    var modal = $("equipararEventosModal");
+    var sel = $("eqEvOrigem");
+    if (!modal || !sel) return;
+    if (!VERSOES_SALVAS.length) {
+      msg("Nenhuma outra versão salva para equiparar.", "erro");
+      return;
+    }
+    sel.innerHTML =
+      '<option value="">— escolha a versão —</option>' +
+      VERSOES_SALVAS.map(function (v) {
+        var extra =
+          (v.periodo || "") +
+          (v.curso ? " · " + v.curso : v.modalidade_label ? " · " + v.modalidade_label : "");
+        return (
+          '<option value="' +
+          esc(v.versao) +
+          '">' +
+          esc(v.versao) +
+          (extra ? " — " + esc(extra) : "") +
+          "</option>"
+        );
+      }).join("");
+    eqEvState = { origem: "", eventos: [] };
+    msgEqEv("");
+    renderPreviaEquipararEventos();
+    if (typeof modal.showModal === "function") modal.showModal();
+    else modal.setAttribute("open", "open");
+    sel.focus();
+  }
+
+  function fecharEquipararEventos() {
+    var modal = $("equipararEventosModal");
+    if (!modal) return;
+    if (typeof modal.close === "function" && modal.open) modal.close();
+    else modal.removeAttribute("open");
+  }
+
+  function carregarOrigemEquipararEventos() {
+    var sel = $("eqEvOrigem");
+    var versao = sel ? sel.value : "";
+    eqEvState.origem = versao;
+    eqEvState.eventos = [];
+    if (!versao) {
+      renderPreviaEquipararEventos();
+      msgEqEv("");
+      return;
+    }
+    msgEqEv("Carregando eventos da origem…");
+    fetch(BASE + "api/eventos/?versao=" + encodeURIComponent(versao))
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (d) {
+        if (!d || !d.ok) {
+          msgEqEv(
+            (d && d.erros && d.erros.join(" ")) || "Não foi possível ler a versão de origem.",
+            "erro"
+          );
+          return;
+        }
+        eqEvState.eventos = d.eventos || [];
+        renderPreviaEquipararEventos();
+        msgEqEv("");
+      })
+      .catch(function () {
+        msgEqEv("Falha de comunicação ao ler a versão de origem.", "erro");
+      });
+  }
+
+  function renderPreviaEquipararEventos() {
+    var box = $("eqEvPrevia");
+    if (!box) return;
+    var evs = eventosDaOrigem(eqEvState.eventos);
+    if (!eqEvState.origem) {
+      box.innerHTML = "";
+      return;
+    }
+    if (!evs.length) {
+      box.innerHTML =
+        '<p class="field-hint">A versão escolhida não tem eventos para copiar.</p>';
+      return;
+    }
+    box.innerHTML =
+      "<div><strong>Eventos (" +
+      evs.length +
+      ")</strong>" +
+      '<ul class="chip-list">' +
+      evs
+        .slice()
+        .sort(function (a, b) {
+          return a.data_inicio < b.data_inicio ? -1 : 1;
+        })
+        .map(function (e) {
+          var tipo = TIPOS_EVENTO[e.tipo] || e.tipo || "";
+          return (
+            '<li class="chip">' +
+            esc((e.data_inicio || "").split("-").reverse().join("/")) +
+            " — " +
+            esc(e.titulo || "") +
+            " (" +
+            esc(tipo) +
+            ")</li>"
+          );
+        })
+        .join("") +
+      "</ul></div>";
+  }
+
+  function aplicarEquipararEventos() {
+    if (!eqEvState.origem) {
+      msgEqEv("Escolha o calendário de origem.", "erro");
+      return;
+    }
+    var evs = eventosDaOrigem(eqEvState.eventos);
+    if (!evs.length) {
+      msgEqEv("A versão escolhida não tem eventos para copiar.", "erro");
+      return;
+    }
+    // Preserva sábados e feriados/pontos atuais; substitui os demais pela origem.
+    var preservados = state.eventos.filter(function (e) {
+      return TIPOS_FORA_EQUIPARAR_EVENTOS[e.tipo];
+    });
+    var copiados = evs.map(function (e) {
+      return {
+        titulo: e.titulo || "Evento",
+        tipo: e.tipo,
+        data_inicio: e.data_inicio,
+        data_fim: e.data_fim || "",
+        dia_semana_referencia:
+          e.dia_semana_referencia === undefined ? null : e.dia_semana_referencia,
+        descricao: e.descricao || "",
+        destaque: !!e.destaque
+      };
+    });
+    state.eventos = preservados.concat(copiados);
+    state.eventoEditandoIdx = null;
+    limparFormEvento();
+    atualizarBotaoEvento();
+    renderEventos();
+    preview();
+    marcarEstadoSalvo("pendente");
+    fecharEquipararEventos();
+    msg(
+      copiados.length +
+        " evento(s) copiado(s) da versão " +
+        eqEvState.origem +
+        ". NADA foi salvo ainda — clique em “Salvar versão”.",
+      "ok"
+    );
+  }
+
   // ---- Preenchimento com IA (LLM) ----------------------------------------
   // Fluxo em duas etapas: a IA gera uma PRÉVIA (nada é gravado) que pode ser
   // editada aqui; "Aplicar ao editor" leva os itens para as tabelas/chips do
@@ -2882,6 +3063,15 @@
   if ($("eqFerAplicar")) $("eqFerAplicar").addEventListener("click", aplicarEquipararFeriados);
   if ($("eqFerCancelar")) $("eqFerCancelar").addEventListener("click", fecharEquipararFeriados);
   if ($("eqFerFechar")) $("eqFerFechar").addEventListener("click", fecharEquipararFeriados);
+  if ($("btnEquipararEventos")) {
+    $("btnEquipararEventos").addEventListener("click", abrirEquipararEventos);
+  }
+  if ($("eqEvOrigem")) {
+    $("eqEvOrigem").addEventListener("change", carregarOrigemEquipararEventos);
+  }
+  if ($("eqEvAplicar")) $("eqEvAplicar").addEventListener("click", aplicarEquipararEventos);
+  if ($("eqEvCancelar")) $("eqEvCancelar").addEventListener("click", fecharEquipararEventos);
+  if ($("eqEvFechar")) $("eqEvFechar").addEventListener("click", fecharEquipararEventos);
   if ($("btnIAVerificar")) {
     $("btnIAVerificar").addEventListener("click", function () {
       abrirIAComo("verificar");
