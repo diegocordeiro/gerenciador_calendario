@@ -50,6 +50,11 @@
             data-print-pdf
             data-print-title="Calendário acadêmico — Calendário Acadêmico Cursos Integrados na Modalidade Proeja"
             title="Abre a impressão do navegador: escolha “Salvar como PDF”">Exportar PDF</button>
+    <button class="mode-btn pdf-btn" type="button"
+            data-print-pdf
+            data-print-orientation="landscape"
+            data-print-title="Calendário acadêmico (paisagem) — Calendário Acadêmico Cursos Integrados na Modalidade Proeja"
+            title="Abre a impressão do navegador em A4 paisagem: escolha “Salvar como PDF”">Exportar PDF (paisagem)</button>
     
   </div>
 
@@ -86,7 +91,7 @@
   <tbody>
     <tr>
       <td>01/03/2027</td>
-      <td>24/12/2027</td>
+      <td>15/01/2028</td>
       <td>
         200 dias
         
@@ -895,8 +900,8 @@
                 
                   
                   <td class="doc-dia doc-dia-letivo doc-dia-conta doc-dia-destaque doc-dia-com-evento"
-                      data-tip="01/03/2027 — Dia letivo — Aulas do Programa de Acolhimento ao Estudante Ingressante (PRAEI); Início do Ano Letivo e do 1º Bimestre; Jornada Pedagógica e Planejamento Bimestral de Ensino"
-                      aria-label="01/03/2027 — Dia letivo — Aulas do Programa de Acolhimento ao Estudante Ingressante (PRAEI); Início do Ano Letivo e do 1º Bimestre; Jornada Pedagógica e Planejamento Bimestral de Ensino">
+                      data-tip="01/03/2027 — Dia letivo — Aulas do Programa de Acolhimento ao Estudante Ingressante (PRAEI); Início do Ano Letivo e do 1º Bimestre; Jornada Pedagógica e Planejamento Bimestral de Ensino; Renovação de Matrícula de alunos reprovados e Assinatura Termos de Estudos Progressão Parcial"
+                      aria-label="01/03/2027 — Dia letivo — Aulas do Programa de Acolhimento ao Estudante Ingressante (PRAEI); Início do Ano Letivo e do 1º Bimestre; Jornada Pedagógica e Planejamento Bimestral de Ensino; Renovação de Matrícula de alunos reprovados e Assinatura Termos de Estudos Progressão Parcial">
                     <span class="doc-dia-num">1</span>
                   </td>
                   
@@ -944,9 +949,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-letivo_sabado doc-dia-conta doc-dia-com-evento"
-                      data-tip="06/03/2027 — Sábado letivo — Sábado Letivo"
-                      aria-label="06/03/2027 — Sábado letivo — Sábado Letivo">
+                  <td class="doc-dia doc-dia-nao_letivo"
+                      data-tip="06/03/2027 — Não letivo"
+                      aria-label="06/03/2027 — Não letivo">
                     <span class="doc-dia-num">6</span>
                   </td>
                   
@@ -1018,9 +1023,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-reposicao doc-dia-com-evento"
-                      data-tip="13/03/2027 — Sábado de reposição (não conta) — Sábado Letivo"
-                      aria-label="13/03/2027 — Sábado de reposição (não conta) — Sábado Letivo">
+                  <td class="doc-dia doc-dia-nao_letivo"
+                      data-tip="13/03/2027 — Não letivo"
+                      aria-label="13/03/2027 — Não letivo">
                     <span class="doc-dia-num">13</span>
                   </td>
                   
@@ -1092,9 +1097,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-letivo_sabado doc-dia-conta doc-dia-com-evento"
-                      data-tip="20/03/2027 — Sábado letivo — Sábado Letivo"
-                      aria-label="20/03/2027 — Sábado letivo — Sábado Letivo">
+                  <td class="doc-dia doc-dia-nao_letivo"
+                      data-tip="20/03/2027 — Não letivo"
+                      aria-label="20/03/2027 — Não letivo">
                     <span class="doc-dia-num">20</span>
                   </td>
                   
@@ -1146,9 +1151,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-letivo doc-dia-conta"
-                      data-tip="25/03/2027 — Dia letivo"
-                      aria-label="25/03/2027 — Dia letivo">
+                  <td class="doc-dia doc-dia-feriado"
+                      data-tip="25/03/2027 — Feriado"
+                      aria-label="25/03/2027 — Feriado">
                     <span class="doc-dia-num">25</span>
                   </td>
                   
@@ -1166,9 +1171,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-letivo_sabado doc-dia-conta doc-dia-com-evento"
-                      data-tip="27/03/2027 — Sábado letivo — Sábado letivo"
-                      aria-label="27/03/2027 — Sábado letivo — Sábado letivo">
+                  <td class="doc-dia doc-dia-nao_letivo"
+                      data-tip="27/03/2027 — Não letivo"
+                      aria-label="27/03/2027 — Não letivo">
                     <span class="doc-dia-num">27</span>
                   </td>
                   
@@ -1238,21 +1243,13 @@
         <div class="doc-mes-quant">
           <p class="doc-mes-quant-titulo">Quant. de dias letivos</p>
           <p class="doc-mes-quant-linha">
-            <span>Dias letivos</span><strong>25</strong>
-          </p>
-          
-          <p class="doc-mes-quant-linha">
-            <span>Sábados letivos</span><strong>3</strong>
+            <span>Dias letivos</span><strong>21</strong>
           </p>
           
           
-          <p class="doc-mes-quant-linha">
-            <span>Sáb. de reposição</span><strong>1</strong>
-          </p>
-          
           
           <p class="doc-mes-quant-linha">
-            <span>Feriados/pontos</span><strong>1</strong>
+            <span>Feriados/pontos</span><strong>2</strong>
           </p>
           
         </div>
@@ -1310,7 +1307,7 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-letivo_sabado doc-dia-conta doc-dia-com-evento"
+                  <td class="doc-dia doc-dia-letivo_sabado doc-dia-conta doc-dia-destaque doc-dia-com-evento"
                       data-tip="03/04/2027 — Sábado letivo — Sábado Letivo"
                       aria-label="03/04/2027 — Sábado letivo — Sábado Letivo">
                     <span class="doc-dia-num">3</span>
@@ -1384,9 +1381,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-letivo_sabado doc-dia-conta doc-dia-com-evento"
-                      data-tip="10/04/2027 — Sábado letivo — Sábado Letivo"
-                      aria-label="10/04/2027 — Sábado letivo — Sábado Letivo">
+                  <td class="doc-dia doc-dia-nao_letivo"
+                      data-tip="10/04/2027 — Não letivo"
+                      aria-label="10/04/2027 — Não letivo">
                     <span class="doc-dia-num">10</span>
                   </td>
                   
@@ -1458,9 +1455,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-letivo_sabado doc-dia-conta doc-dia-com-evento"
-                      data-tip="17/04/2027 — Sábado letivo — Sábado letivo"
-                      aria-label="17/04/2027 — Sábado letivo — Sábado letivo">
+                  <td class="doc-dia doc-dia-nao_letivo"
+                      data-tip="17/04/2027 — Não letivo"
+                      aria-label="17/04/2027 — Não letivo">
                     <span class="doc-dia-num">17</span>
                   </td>
                   
@@ -1616,11 +1613,11 @@
         <div class="doc-mes-quant">
           <p class="doc-mes-quant-titulo">Quant. de dias letivos</p>
           <p class="doc-mes-quant-linha">
-            <span>Dias letivos</span><strong>25</strong>
+            <span>Dias letivos</span><strong>23</strong>
           </p>
           
           <p class="doc-mes-quant-linha">
-            <span>Sábados letivos</span><strong>4</strong>
+            <span>Sábados letivos</span><strong>2</strong>
           </p>
           
           
@@ -1820,9 +1817,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-letivo_sabado doc-dia-conta doc-dia-com-evento"
-                      data-tip="15/05/2027 — Sábado letivo — Reunião de Pais do 1º Bimestre; Sábado Letivo"
-                      aria-label="15/05/2027 — Sábado letivo — Reunião de Pais do 1º Bimestre; Sábado Letivo">
+                  <td class="doc-dia doc-dia-nao_letivo"
+                      data-tip="15/05/2027 — Não letivo"
+                      aria-label="15/05/2027 — Não letivo">
                     <span class="doc-dia-num">15</span>
                   </td>
                   
@@ -1968,9 +1965,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-letivo_sabado doc-dia-conta doc-dia-com-evento"
-                      data-tip="29/05/2027 — Sábado letivo — Sábado Letivo"
-                      aria-label="29/05/2027 — Sábado letivo — Sábado Letivo">
+                  <td class="doc-dia doc-dia-nao_letivo"
+                      data-tip="29/05/2027 — Não letivo"
+                      aria-label="29/05/2027 — Não letivo">
                     <span class="doc-dia-num">29</span>
                   </td>
                   
@@ -2028,11 +2025,11 @@
         <div class="doc-mes-quant">
           <p class="doc-mes-quant-titulo">Quant. de dias letivos</p>
           <p class="doc-mes-quant-linha">
-            <span>Dias letivos</span><strong>21</strong>
+            <span>Dias letivos</span><strong>19</strong>
           </p>
           
           <p class="doc-mes-quant-linha">
-            <span>Sábados letivos</span><strong>4</strong>
+            <span>Sábados letivos</span><strong>2</strong>
           </p>
           
           
@@ -2108,9 +2105,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-letivo_sabado doc-dia-conta doc-dia-com-evento"
-                      data-tip="05/06/2027 — Sábado letivo — Semana do Meio Ambiente; Solicitação de Mobilidade Acadêmica (Transferência Interna); Sábado Letivo"
-                      aria-label="05/06/2027 — Sábado letivo — Semana do Meio Ambiente; Solicitação de Mobilidade Acadêmica (Transferência Interna); Sábado Letivo">
+                  <td class="doc-dia doc-dia-nao_letivo doc-dia-com-evento"
+                      data-tip="05/06/2027 — Não letivo — Semana do Meio Ambiente; Solicitação de Mobilidade Acadêmica (Transferência Interna)"
+                      aria-label="05/06/2027 — Não letivo — Semana do Meio Ambiente; Solicitação de Mobilidade Acadêmica (Transferência Interna)">
                     <span class="doc-dia-num">5</span>
                   </td>
                   
@@ -2182,9 +2179,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-reposicao doc-dia-com-evento"
-                      data-tip="12/06/2027 — Sábado de reposição (não conta) — Solicitação de Mobilidade Acadêmica (Transferência Interna); Sábado de Reposição de Aulas"
-                      aria-label="12/06/2027 — Sábado de reposição (não conta) — Solicitação de Mobilidade Acadêmica (Transferência Interna); Sábado de Reposição de Aulas">
+                  <td class="doc-dia doc-dia-nao_letivo doc-dia-com-evento"
+                      data-tip="12/06/2027 — Não letivo — Solicitação de Mobilidade Acadêmica (Transferência Interna)"
+                      aria-label="12/06/2027 — Não letivo — Solicitação de Mobilidade Acadêmica (Transferência Interna)">
                     <span class="doc-dia-num">12</span>
                   </td>
                   
@@ -2402,17 +2399,13 @@
         <div class="doc-mes-quant">
           <p class="doc-mes-quant-titulo">Quant. de dias letivos</p>
           <p class="doc-mes-quant-linha">
-            <span>Dias letivos</span><strong>25</strong>
+            <span>Dias letivos</span><strong>24</strong>
           </p>
           
           <p class="doc-mes-quant-linha">
-            <span>Sábados letivos</span><strong>3</strong>
+            <span>Sábados letivos</span><strong>2</strong>
           </p>
           
-          
-          <p class="doc-mes-quant-linha">
-            <span>Sáb. de reposição</span><strong>1</strong>
-          </p>
           
           
           <p class="doc-mes-quant-linha">
@@ -2519,8 +2512,8 @@
                 
                   
                   <td class="doc-dia doc-dia-letivo doc-dia-conta doc-dia-com-evento"
-                      data-tip="07/07/2027 — Dia letivo — Recuperação Paralela do 2º Bimestre"
-                      aria-label="07/07/2027 — Dia letivo — Recuperação Paralela do 2º Bimestre">
+                      data-tip="07/07/2027 — Dia letivo — Recuperação Paralela do 2º Bimestre / Termino do 2º Bimestre e 2º Semestre."
+                      aria-label="07/07/2027 — Dia letivo — Recuperação Paralela do 2º Bimestre / Termino do 2º Bimestre e 2º Semestre.">
                     <span class="doc-dia-num">7</span>
                   </td>
                   
@@ -2529,8 +2522,8 @@
                 
                   
                   <td class="doc-dia doc-dia-letivo doc-dia-conta doc-dia-com-evento"
-                      data-tip="08/07/2027 — Dia letivo — Recuperação Paralela do 2º Bimestre"
-                      aria-label="08/07/2027 — Dia letivo — Recuperação Paralela do 2º Bimestre">
+                      data-tip="08/07/2027 — Dia letivo — Recuperação Paralela do 2º Bimestre / Termino do 2º Bimestre e 2º Semestre."
+                      aria-label="08/07/2027 — Dia letivo — Recuperação Paralela do 2º Bimestre / Termino do 2º Bimestre e 2º Semestre.">
                     <span class="doc-dia-num">8</span>
                   </td>
                   
@@ -2538,9 +2531,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-letivo doc-dia-conta doc-dia-com-evento"
-                      data-tip="09/07/2027 — Dia letivo — Recuperação Paralela do 2º Bimestre"
-                      aria-label="09/07/2027 — Dia letivo — Recuperação Paralela do 2º Bimestre">
+                  <td class="doc-dia doc-dia-avaliacao_final doc-dia-com-evento"
+                      data-tip="09/07/2027 — Avaliação final — Prova Final"
+                      aria-label="09/07/2027 — Avaliação final — Prova Final">
                     <span class="doc-dia-num">9</span>
                   </td>
                   
@@ -2548,9 +2541,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-letivo_sabado doc-dia-conta doc-dia-com-evento"
-                      data-tip="10/07/2027 — Sábado letivo — Sábado letivo"
-                      aria-label="10/07/2027 — Sábado letivo — Sábado letivo">
+                  <td class="doc-dia doc-dia-avaliacao_final doc-dia-com-evento"
+                      data-tip="10/07/2027 — Avaliação final — Prova Final; Prazo de Lançamento de Notas do 2º Bimestre no SUAP; Sábado letivo"
+                      aria-label="10/07/2027 — Avaliação final — Prova Final; Prazo de Lançamento de Notas do 2º Bimestre no SUAP; Sábado letivo">
                     <span class="doc-dia-num">10</span>
                   </td>
                   
@@ -2583,8 +2576,8 @@
                 
                   
                   <td class="doc-dia doc-dia-conselho doc-dia-com-evento"
-                      data-tip="13/07/2027 — Conselho de classe — Conselho de Classe do 2º Bimestre"
-                      aria-label="13/07/2027 — Conselho de classe — Conselho de Classe do 2º Bimestre">
+                      data-tip="13/07/2027 — Conselho de classe — Conselho de Classe do 2º Bimestre; Conselho de Classe"
+                      aria-label="13/07/2027 — Conselho de classe — Conselho de Classe do 2º Bimestre; Conselho de Classe">
                     <span class="doc-dia-num">13</span>
                   </td>
                   
@@ -2623,8 +2616,8 @@
                 
                   
                   <td class="doc-dia doc-dia-ferias doc-dia-destaque doc-dia-com-evento"
-                      data-tip="17/07/2027 — Férias coletivas — Férias Coletivas dos Servidores; Reunião de Pais do 2º Bimestre"
-                      aria-label="17/07/2027 — Férias coletivas — Férias Coletivas dos Servidores; Reunião de Pais do 2º Bimestre">
+                      data-tip="17/07/2027 — Férias coletivas — Férias Coletivas dos Servidores"
+                      aria-label="17/07/2027 — Férias coletivas — Férias Coletivas dos Servidores">
                     <span class="doc-dia-num">17</span>
                   </td>
                   
@@ -2786,11 +2779,11 @@
         <div class="doc-mes-quant">
           <p class="doc-mes-quant-titulo">Quant. de dias letivos</p>
           <p class="doc-mes-quant-linha">
-            <span>Dias letivos</span><strong>9</strong>
+            <span>Dias letivos</span><strong>7</strong>
           </p>
           
           <p class="doc-mes-quant-linha">
-            <span>Sábados letivos</span><strong>2</strong>
+            <span>Sábados letivos</span><strong>1</strong>
           </p>
           
           
@@ -3454,9 +3447,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-letivo_sabado doc-dia-conta doc-dia-com-evento"
-                      data-tip="25/09/2027 — Sábado letivo — Setembro Amarelo — Prevenção ao Suicídio; Sábado Letivo"
-                      aria-label="25/09/2027 — Sábado letivo — Setembro Amarelo — Prevenção ao Suicídio; Sábado Letivo">
+                  <td class="doc-dia doc-dia-nao_letivo doc-dia-com-evento"
+                      data-tip="25/09/2027 — Não letivo — Setembro Amarelo — Prevenção ao Suicídio"
+                      aria-label="25/09/2027 — Não letivo — Setembro Amarelo — Prevenção ao Suicídio">
                     <span class="doc-dia-num">25</span>
                   </td>
                   
@@ -3532,11 +3525,11 @@
         <div class="doc-mes-quant">
           <p class="doc-mes-quant-titulo">Quant. de dias letivos</p>
           <p class="doc-mes-quant-linha">
-            <span>Dias letivos</span><strong>24</strong>
+            <span>Dias letivos</span><strong>23</strong>
           </p>
           
           <p class="doc-mes-quant-linha">
-            <span>Sábados letivos</span><strong>4</strong>
+            <span>Sábados letivos</span><strong>3</strong>
           </p>
           
           
@@ -3692,9 +3685,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-letivo doc-dia-conta"
-                      data-tip="11/10/2027 — Dia letivo"
-                      aria-label="11/10/2027 — Dia letivo">
+                  <td class="doc-dia doc-dia-ponto_facultativo"
+                      data-tip="11/10/2027 — Ponto facultativo"
+                      aria-label="11/10/2027 — Ponto facultativo">
                     <span class="doc-dia-num">11</span>
                   </td>
                   
@@ -3732,9 +3725,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-ponto_facultativo doc-dia-com-evento"
-                      data-tip="15/10/2027 — Ponto facultativo — Prazo de Lançamento de Notas do 3º Bimestre no SUAP"
-                      aria-label="15/10/2027 — Ponto facultativo — Prazo de Lançamento de Notas do 3º Bimestre no SUAP">
+                  <td class="doc-dia doc-dia-letivo doc-dia-conta doc-dia-com-evento"
+                      data-tip="15/10/2027 — Dia letivo — Prazo de Lançamento de Notas do 3º Bimestre no SUAP"
+                      aria-label="15/10/2027 — Dia letivo — Prazo de Lançamento de Notas do 3º Bimestre no SUAP">
                     <span class="doc-dia-num">15</span>
                   </td>
                   
@@ -3742,9 +3735,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-letivo_sabado doc-dia-conta doc-dia-com-evento"
-                      data-tip="16/10/2027 — Sábado letivo — Prazo de Lançamento de Notas do 3º Bimestre no SUAP; Sábado letivo"
-                      aria-label="16/10/2027 — Sábado letivo — Prazo de Lançamento de Notas do 3º Bimestre no SUAP; Sábado letivo">
+                  <td class="doc-dia doc-dia-nao_letivo doc-dia-com-evento"
+                      data-tip="16/10/2027 — Não letivo — Prazo de Lançamento de Notas do 3º Bimestre no SUAP"
+                      aria-label="16/10/2027 — Não letivo — Prazo de Lançamento de Notas do 3º Bimestre no SUAP">
                     <span class="doc-dia-num">16</span>
                   </td>
                   
@@ -3817,8 +3810,8 @@
                 
                   
                   <td class="doc-dia doc-dia-letivo_sabado doc-dia-conta doc-dia-com-evento"
-                      data-tip="23/10/2027 — Sábado letivo — Reunião de Pais do 3º Bimestre; Sábado Letivo"
-                      aria-label="23/10/2027 — Sábado letivo — Reunião de Pais do 3º Bimestre; Sábado Letivo">
+                      data-tip="23/10/2027 — Sábado letivo — Sábado Letivo"
+                      aria-label="23/10/2027 — Sábado letivo — Sábado Letivo">
                     <span class="doc-dia-num">23</span>
                   </td>
                   
@@ -3944,11 +3937,11 @@
         <div class="doc-mes-quant">
           <p class="doc-mes-quant-titulo">Quant. de dias letivos</p>
           <p class="doc-mes-quant-linha">
-            <span>Dias letivos</span><strong>20</strong>
+            <span>Dias letivos</span><strong>19</strong>
           </p>
           
           <p class="doc-mes-quant-linha">
-            <span>Sábados letivos</span><strong>5</strong>
+            <span>Sábados letivos</span><strong>4</strong>
           </p>
           
           
@@ -4105,8 +4098,8 @@
                 
                   
                   <td class="doc-dia doc-dia-reposicao doc-dia-com-evento"
-                      data-tip="13/11/2027 — Sábado de reposição (não conta) — Sabado de Reposição"
-                      aria-label="13/11/2027 — Sábado de reposição (não conta) — Sabado de Reposição">
+                      data-tip="13/11/2027 — Sábado de reposição (não conta) — Sábado de Reposição"
+                      aria-label="13/11/2027 — Sábado de reposição (não conta) — Sábado de Reposição">
                     <span class="doc-dia-num">13</span>
                   </td>
                   
@@ -4514,9 +4507,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-letivo doc-dia-conta doc-dia-com-evento"
-                      data-tip="15/12/2027 — Dia letivo — Recuperação Paralela do 4º Bimestre"
-                      aria-label="15/12/2027 — Dia letivo — Recuperação Paralela do 4º Bimestre">
+                  <td class="doc-dia doc-dia-letivo doc-dia-conta"
+                      data-tip="15/12/2027 — Dia letivo"
+                      aria-label="15/12/2027 — Dia letivo">
                     <span class="doc-dia-num">15</span>
                   </td>
                   
@@ -4524,9 +4517,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-letivo doc-dia-conta doc-dia-com-evento"
-                      data-tip="16/12/2027 — Dia letivo — Recuperação Paralela do 4º Bimestre"
-                      aria-label="16/12/2027 — Dia letivo — Recuperação Paralela do 4º Bimestre">
+                  <td class="doc-dia doc-dia-letivo doc-dia-conta"
+                      data-tip="16/12/2027 — Dia letivo"
+                      aria-label="16/12/2027 — Dia letivo">
                     <span class="doc-dia-num">16</span>
                   </td>
                   
@@ -4545,8 +4538,8 @@
                 
                   
                   <td class="doc-dia doc-dia-letivo_sabado doc-dia-conta doc-dia-com-evento"
-                      data-tip="18/12/2027 — Sábado letivo — Reunião de Pais do 4º Bimestre; Sábado letivo"
-                      aria-label="18/12/2027 — Sábado letivo — Reunião de Pais do 4º Bimestre; Sábado letivo">
+                      data-tip="18/12/2027 — Sábado letivo — Sábado letivo"
+                      aria-label="18/12/2027 — Sábado letivo — Sábado letivo">
                     <span class="doc-dia-num">18</span>
                   </td>
                   
@@ -4568,9 +4561,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-avaliacao_final doc-dia-com-evento"
-                      data-tip="20/12/2027 — Avaliação final — Prazo de Lançamento de Notas do 4º Bimestre no SUAP; Prova Final"
-                      aria-label="20/12/2027 — Avaliação final — Prazo de Lançamento de Notas do 4º Bimestre no SUAP; Prova Final">
+                  <td class="doc-dia doc-dia-letivo doc-dia-conta"
+                      data-tip="20/12/2027 — Dia letivo"
+                      aria-label="20/12/2027 — Dia letivo">
                     <span class="doc-dia-num">20</span>
                   </td>
                   
@@ -4578,9 +4571,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-avaliacao_final doc-dia-com-evento"
-                      data-tip="21/12/2027 — Avaliação final — Prazo de Lançamento de Notas do 4º Bimestre no SUAP; Prova Final"
-                      aria-label="21/12/2027 — Avaliação final — Prazo de Lançamento de Notas do 4º Bimestre no SUAP; Prova Final">
+                  <td class="doc-dia doc-dia-letivo doc-dia-conta"
+                      data-tip="21/12/2027 — Dia letivo"
+                      aria-label="21/12/2027 — Dia letivo">
                     <span class="doc-dia-num">21</span>
                   </td>
                   
@@ -4588,9 +4581,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-avaliacao_final doc-dia-com-evento"
-                      data-tip="22/12/2027 — Avaliação final — Prazo de Lançamento de Notas do 4º Bimestre no SUAP; Prova Final"
-                      aria-label="22/12/2027 — Avaliação final — Prazo de Lançamento de Notas do 4º Bimestre no SUAP; Prova Final">
+                  <td class="doc-dia doc-dia-letivo doc-dia-conta"
+                      data-tip="22/12/2027 — Dia letivo"
+                      aria-label="22/12/2027 — Dia letivo">
                     <span class="doc-dia-num">22</span>
                   </td>
                   
@@ -4598,9 +4591,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-conselho doc-dia-destaque doc-dia-com-evento"
-                      data-tip="23/12/2027 — Conselho de classe — Conselho de Classe do 4º Bimestre; Término do Ano Letivo e do 4º Bimestre"
-                      aria-label="23/12/2027 — Conselho de classe — Conselho de Classe do 4º Bimestre; Término do Ano Letivo e do 4º Bimestre">
+                  <td class="doc-dia doc-dia-letivo doc-dia-conta"
+                      data-tip="23/12/2027 — Dia letivo"
+                      aria-label="23/12/2027 — Dia letivo">
                     <span class="doc-dia-num">23</span>
                   </td>
                   
@@ -4618,9 +4611,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-fora doc-dia-com-evento"
-                      data-tip="25/12/2027 — Fora do período — Recesso Escolar"
-                      aria-label="25/12/2027 — Fora do período — Recesso Escolar">
+                  <td class="doc-dia doc-dia-feriado doc-dia-com-evento"
+                      data-tip="25/12/2027 — Feriado — Recesso Escolar"
+                      aria-label="25/12/2027 — Feriado — Recesso Escolar">
                     <span class="doc-dia-num">25</span>
                   </td>
                   
@@ -4632,9 +4625,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-fora doc-dia-com-evento"
-                      data-tip="26/12/2027 — Fora do período — Recesso Escolar"
-                      aria-label="26/12/2027 — Fora do período — Recesso Escolar">
+                  <td class="doc-dia doc-dia-recesso doc-dia-com-evento"
+                      data-tip="26/12/2027 — Recesso escolar — Recesso Escolar"
+                      aria-label="26/12/2027 — Recesso escolar — Recesso Escolar">
                     <span class="doc-dia-num">26</span>
                   </td>
                   
@@ -4642,9 +4635,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-fora doc-dia-com-evento"
-                      data-tip="27/12/2027 — Fora do período — Recesso Escolar"
-                      aria-label="27/12/2027 — Fora do período — Recesso Escolar">
+                  <td class="doc-dia doc-dia-recesso doc-dia-com-evento"
+                      data-tip="27/12/2027 — Recesso escolar — Recesso Escolar"
+                      aria-label="27/12/2027 — Recesso escolar — Recesso Escolar">
                     <span class="doc-dia-num">27</span>
                   </td>
                   
@@ -4652,9 +4645,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-fora doc-dia-com-evento"
-                      data-tip="28/12/2027 — Fora do período — Recesso Escolar"
-                      aria-label="28/12/2027 — Fora do período — Recesso Escolar">
+                  <td class="doc-dia doc-dia-recesso doc-dia-com-evento"
+                      data-tip="28/12/2027 — Recesso escolar — Recesso Escolar"
+                      aria-label="28/12/2027 — Recesso escolar — Recesso Escolar">
                     <span class="doc-dia-num">28</span>
                   </td>
                   
@@ -4662,9 +4655,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-fora doc-dia-com-evento"
-                      data-tip="29/12/2027 — Fora do período — Recesso Escolar"
-                      aria-label="29/12/2027 — Fora do período — Recesso Escolar">
+                  <td class="doc-dia doc-dia-recesso doc-dia-com-evento"
+                      data-tip="29/12/2027 — Recesso escolar — Recesso Escolar"
+                      aria-label="29/12/2027 — Recesso escolar — Recesso Escolar">
                     <span class="doc-dia-num">29</span>
                   </td>
                   
@@ -4672,9 +4665,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-fora doc-dia-com-evento"
-                      data-tip="30/12/2027 — Fora do período — Recesso Escolar"
-                      aria-label="30/12/2027 — Fora do período — Recesso Escolar">
+                  <td class="doc-dia doc-dia-recesso doc-dia-com-evento"
+                      data-tip="30/12/2027 — Recesso escolar — Recesso Escolar"
+                      aria-label="30/12/2027 — Recesso escolar — Recesso Escolar">
                     <span class="doc-dia-num">30</span>
                   </td>
                   
@@ -4682,9 +4675,9 @@
               
                 
                   
-                  <td class="doc-dia doc-dia-fora doc-dia-com-evento"
-                      data-tip="31/12/2027 — Fora do período — Recesso Escolar"
-                      aria-label="31/12/2027 — Fora do período — Recesso Escolar">
+                  <td class="doc-dia doc-dia-recesso doc-dia-com-evento"
+                      data-tip="31/12/2027 — Recesso escolar — Recesso Escolar"
+                      aria-label="31/12/2027 — Recesso escolar — Recesso Escolar">
                     <span class="doc-dia-num">31</span>
                   </td>
                   
@@ -4702,7 +4695,7 @@
         <div class="doc-mes-quant">
           <p class="doc-mes-quant-titulo">Quant. de dias letivos</p>
           <p class="doc-mes-quant-linha">
-            <span>Dias letivos</span><strong>15</strong>
+            <span>Dias letivos</span><strong>19</strong>
           </p>
           
           <p class="doc-mes-quant-linha">
@@ -4712,8 +4705,416 @@
           
           
           <p class="doc-mes-quant-linha">
-            <span>Feriados/pontos</span><strong>1</strong>
+            <span>Feriados/pontos</span><strong>2</strong>
           </p>
+          
+        </div>
+      </div>
+    </section>
+    
+    <section class="doc-mes">
+      <h3 class="doc-mes-titulo">MÊS: JAN/2028</h3>
+      <div class="doc-mes-corpo">
+        <table class="doc-mes-grid">
+          <thead>
+            <tr>
+              <th scope="col">D</th><th scope="col">S</th><th scope="col">T</th><th scope="col">Q</th><th scope="col">Q</th><th scope="col">S</th><th scope="col">S</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+            <tr>
+              
+                
+                  <td class="doc-dia doc-dia-vazio"></td>
+                
+              
+                
+                  <td class="doc-dia doc-dia-vazio"></td>
+                
+              
+                
+                  <td class="doc-dia doc-dia-vazio"></td>
+                
+              
+                
+                  <td class="doc-dia doc-dia-vazio"></td>
+                
+              
+                
+                  <td class="doc-dia doc-dia-vazio"></td>
+                
+              
+                
+                  <td class="doc-dia doc-dia-vazio"></td>
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-nao_letivo"
+                      data-tip="01/01/2028 — Não letivo"
+                      aria-label="01/01/2028 — Não letivo">
+                    <span class="doc-dia-num">1</span>
+                  </td>
+                  
+                
+              
+            </tr>
+            
+            <tr>
+              
+                
+                  
+                  <td class="doc-dia doc-dia-nao_letivo"
+                      data-tip="02/01/2028 — Não letivo"
+                      aria-label="02/01/2028 — Não letivo">
+                    <span class="doc-dia-num">2</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-letivo doc-dia-conta doc-dia-com-evento"
+                      data-tip="03/01/2028 — Dia letivo — Recuperação Paralela do 4º Bimestre"
+                      aria-label="03/01/2028 — Dia letivo — Recuperação Paralela do 4º Bimestre">
+                    <span class="doc-dia-num">3</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-letivo doc-dia-conta doc-dia-com-evento"
+                      data-tip="04/01/2028 — Dia letivo — Recuperação Paralela do 4º Bimestre"
+                      aria-label="04/01/2028 — Dia letivo — Recuperação Paralela do 4º Bimestre">
+                    <span class="doc-dia-num">4</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-letivo doc-dia-conta doc-dia-com-evento"
+                      data-tip="05/01/2028 — Dia letivo — Recuperação Paralela do 4º Bimestre"
+                      aria-label="05/01/2028 — Dia letivo — Recuperação Paralela do 4º Bimestre">
+                    <span class="doc-dia-num">5</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-letivo doc-dia-conta doc-dia-com-evento"
+                      data-tip="06/01/2028 — Dia letivo — Recuperação Paralela do 4º Bimestre"
+                      aria-label="06/01/2028 — Dia letivo — Recuperação Paralela do 4º Bimestre">
+                    <span class="doc-dia-num">6</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-letivo doc-dia-conta doc-dia-com-evento"
+                      data-tip="07/01/2028 — Dia letivo — Recuperação Paralela do 4º Bimestre"
+                      aria-label="07/01/2028 — Dia letivo — Recuperação Paralela do 4º Bimestre">
+                    <span class="doc-dia-num">7</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-letivo_sabado doc-dia-conta doc-dia-com-evento"
+                      data-tip="08/01/2028 — Sábado letivo — Sábado Letivo"
+                      aria-label="08/01/2028 — Sábado letivo — Sábado Letivo">
+                    <span class="doc-dia-num">8</span>
+                  </td>
+                  
+                
+              
+            </tr>
+            
+            <tr>
+              
+                
+                  
+                  <td class="doc-dia doc-dia-nao_letivo"
+                      data-tip="09/01/2028 — Não letivo"
+                      aria-label="09/01/2028 — Não letivo">
+                    <span class="doc-dia-num">9</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-letivo doc-dia-conta"
+                      data-tip="10/01/2028 — Dia letivo"
+                      aria-label="10/01/2028 — Dia letivo">
+                    <span class="doc-dia-num">10</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-avaliacao_final doc-dia-com-evento"
+                      data-tip="11/01/2028 — Avaliação final — Prova Final"
+                      aria-label="11/01/2028 — Avaliação final — Prova Final">
+                    <span class="doc-dia-num">11</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-letivo doc-dia-conta doc-dia-com-evento"
+                      data-tip="12/01/2028 — Dia letivo — Prazo de Lançamento de Notas do 4º Bimestre no SUAP"
+                      aria-label="12/01/2028 — Dia letivo — Prazo de Lançamento de Notas do 4º Bimestre no SUAP">
+                    <span class="doc-dia-num">12</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-conselho doc-dia-com-evento"
+                      data-tip="13/01/2028 — Conselho de classe — Conselho de Classe do 4º Bimestre"
+                      aria-label="13/01/2028 — Conselho de classe — Conselho de Classe do 4º Bimestre">
+                    <span class="doc-dia-num">13</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-letivo doc-dia-conta doc-dia-destaque doc-dia-com-evento"
+                      data-tip="14/01/2028 — Dia letivo — Término do Ano Letivo e do 4º Bimestre"
+                      aria-label="14/01/2028 — Dia letivo — Término do Ano Letivo e do 4º Bimestre">
+                    <span class="doc-dia-num">14</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-nao_letivo"
+                      data-tip="15/01/2028 — Não letivo"
+                      aria-label="15/01/2028 — Não letivo">
+                    <span class="doc-dia-num">15</span>
+                  </td>
+                  
+                
+              
+            </tr>
+            
+            <tr>
+              
+                
+                  
+                  <td class="doc-dia doc-dia-fora"
+                      data-tip="16/01/2028 — Fora do período"
+                      aria-label="16/01/2028 — Fora do período">
+                    <span class="doc-dia-num">16</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-fora"
+                      data-tip="17/01/2028 — Fora do período"
+                      aria-label="17/01/2028 — Fora do período">
+                    <span class="doc-dia-num">17</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-fora"
+                      data-tip="18/01/2028 — Fora do período"
+                      aria-label="18/01/2028 — Fora do período">
+                    <span class="doc-dia-num">18</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-fora"
+                      data-tip="19/01/2028 — Fora do período"
+                      aria-label="19/01/2028 — Fora do período">
+                    <span class="doc-dia-num">19</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-fora"
+                      data-tip="20/01/2028 — Fora do período"
+                      aria-label="20/01/2028 — Fora do período">
+                    <span class="doc-dia-num">20</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-fora"
+                      data-tip="21/01/2028 — Fora do período"
+                      aria-label="21/01/2028 — Fora do período">
+                    <span class="doc-dia-num">21</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-fora"
+                      data-tip="22/01/2028 — Fora do período"
+                      aria-label="22/01/2028 — Fora do período">
+                    <span class="doc-dia-num">22</span>
+                  </td>
+                  
+                
+              
+            </tr>
+            
+            <tr>
+              
+                
+                  
+                  <td class="doc-dia doc-dia-fora"
+                      data-tip="23/01/2028 — Fora do período"
+                      aria-label="23/01/2028 — Fora do período">
+                    <span class="doc-dia-num">23</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-fora"
+                      data-tip="24/01/2028 — Fora do período"
+                      aria-label="24/01/2028 — Fora do período">
+                    <span class="doc-dia-num">24</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-fora"
+                      data-tip="25/01/2028 — Fora do período"
+                      aria-label="25/01/2028 — Fora do período">
+                    <span class="doc-dia-num">25</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-fora"
+                      data-tip="26/01/2028 — Fora do período"
+                      aria-label="26/01/2028 — Fora do período">
+                    <span class="doc-dia-num">26</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-fora"
+                      data-tip="27/01/2028 — Fora do período"
+                      aria-label="27/01/2028 — Fora do período">
+                    <span class="doc-dia-num">27</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-fora"
+                      data-tip="28/01/2028 — Fora do período"
+                      aria-label="28/01/2028 — Fora do período">
+                    <span class="doc-dia-num">28</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-fora"
+                      data-tip="29/01/2028 — Fora do período"
+                      aria-label="29/01/2028 — Fora do período">
+                    <span class="doc-dia-num">29</span>
+                  </td>
+                  
+                
+              
+            </tr>
+            
+            <tr>
+              
+                
+                  
+                  <td class="doc-dia doc-dia-fora"
+                      data-tip="30/01/2028 — Fora do período"
+                      aria-label="30/01/2028 — Fora do período">
+                    <span class="doc-dia-num">30</span>
+                  </td>
+                  
+                
+              
+                
+                  
+                  <td class="doc-dia doc-dia-fora"
+                      data-tip="31/01/2028 — Fora do período"
+                      aria-label="31/01/2028 — Fora do período">
+                    <span class="doc-dia-num">31</span>
+                  </td>
+                  
+                
+              
+                
+                  <td class="doc-dia doc-dia-vazio"></td>
+                
+              
+                
+                  <td class="doc-dia doc-dia-vazio"></td>
+                
+              
+                
+                  <td class="doc-dia doc-dia-vazio"></td>
+                
+              
+                
+                  <td class="doc-dia doc-dia-vazio"></td>
+                
+              
+                
+                  <td class="doc-dia doc-dia-vazio"></td>
+                
+              
+            </tr>
+            
+          </tbody>
+        </table>
+        
+        <div class="doc-mes-quant">
+          <p class="doc-mes-quant-titulo">Quant. de dias letivos</p>
+          <p class="doc-mes-quant-linha">
+            <span>Dias letivos</span><strong>9</strong>
+          </p>
+          
+          <p class="doc-mes-quant-linha">
+            <span>Sábados letivos</span><strong>1</strong>
+          </p>
+          
+          
           
         </div>
       </div>
@@ -4750,7 +5151,7 @@
         
         <tr>
           
-            <th scope="rowgroup" rowspan="9" class="doc-mes-cel">MAR/2027</th>
+            <th scope="rowgroup" rowspan="6" class="doc-mes-cel">MAR/2027</th>
           
           <td class="doc-dia-cel">01 a 05</td>
           <td>
@@ -4779,10 +5180,10 @@
         
         <tr>
           
-          <td class="doc-dia-cel">06</td>
+          <td class="doc-dia-cel">01</td>
           <td>
-            <span class="doc-evento doc-evento-sabado_letivo">Sábado Letivo</span>
-            <em class="muted">(referente à segunda-feira)</em>
+            <span class="doc-evento doc-evento-evento">Renovação de Matrícula de alunos reprovados e Assinatura Termos de Estudos Progressão Parcial</span>
+            
           </td>
         </tr>
         
@@ -4804,60 +5205,15 @@
           </td>
         </tr>
         
-        <tr>
-          
-          <td class="doc-dia-cel">13</td>
-          <td>
-            <span class="doc-evento doc-evento-sabado_reposicao">Sábado Letivo</span>
-            <em class="muted">(referente à terça-feira)</em>
-          </td>
-        </tr>
-        
-        <tr>
-          
-          <td class="doc-dia-cel">20</td>
-          <td>
-            <span class="doc-evento doc-evento-sabado_letivo">Sábado Letivo</span>
-            <em class="muted">(referente à quarta-feira)</em>
-          </td>
-        </tr>
-        
-        <tr>
-          
-          <td class="doc-dia-cel">27</td>
-          <td>
-            <span class="doc-evento doc-evento-sabado_letivo">Sábado letivo</span>
-            <em class="muted">(referente à terça-feira)</em>
-          </td>
-        </tr>
-        
       
         
         <tr>
           
-            <th scope="rowgroup" rowspan="5" class="doc-mes-cel">ABR/2027</th>
+            <th scope="rowgroup" rowspan="3" class="doc-mes-cel">ABR/2027</th>
           
           <td class="doc-dia-cel">03</td>
           <td>
             <span class="doc-evento doc-evento-sabado_letivo">Sábado Letivo</span>
-            <em class="muted">(referente à sexta-feira)</em>
-          </td>
-        </tr>
-        
-        <tr>
-          
-          <td class="doc-dia-cel">10</td>
-          <td>
-            <span class="doc-evento doc-evento-sabado_letivo">Sábado Letivo</span>
-            <em class="muted">(referente à sexta-feira)</em>
-          </td>
-        </tr>
-        
-        <tr>
-          
-          <td class="doc-dia-cel">17</td>
-          <td>
-            <span class="doc-evento doc-evento-sabado_letivo">Sábado letivo</span>
             <em class="muted">(referente à segunda-feira)</em>
           </td>
         </tr>
@@ -4884,7 +5240,7 @@
         
         <tr>
           
-            <th scope="rowgroup" rowspan="10" class="doc-mes-cel">MAI/2027</th>
+            <th scope="rowgroup" rowspan="7" class="doc-mes-cel">MAI/2027</th>
           
           <td class="doc-dia-cel">03 a 04</td>
           <td>
@@ -4940,24 +5296,6 @@
         
         <tr>
           
-          <td class="doc-dia-cel">15</td>
-          <td>
-            <span class="doc-evento doc-evento-evento">Reunião de Pais do 1º Bimestre</span>
-            
-          </td>
-        </tr>
-        
-        <tr>
-          
-          <td class="doc-dia-cel">15</td>
-          <td>
-            <span class="doc-evento doc-evento-sabado_letivo">Sábado Letivo</span>
-            <em class="muted">(referente à quinta-feira)</em>
-          </td>
-        </tr>
-        
-        <tr>
-          
           <td class="doc-dia-cel">22</td>
           <td>
             <span class="doc-evento doc-evento-sabado_letivo">Sábado Letivo</span>
@@ -4965,20 +5303,11 @@
           </td>
         </tr>
         
-        <tr>
-          
-          <td class="doc-dia-cel">29</td>
-          <td>
-            <span class="doc-evento doc-evento-sabado_letivo">Sábado Letivo</span>
-            <em class="muted">(referente à segunda-feira)</em>
-          </td>
-        </tr>
-        
       
         
         <tr>
           
-            <th scope="rowgroup" rowspan="7" class="doc-mes-cel">JUN/2027</th>
+            <th scope="rowgroup" rowspan="5" class="doc-mes-cel">JUN/2027</th>
           
           <td class="doc-dia-cel">01 a 05</td>
           <td>
@@ -4998,28 +5327,10 @@
         
         <tr>
           
-          <td class="doc-dia-cel">05</td>
-          <td>
-            <span class="doc-evento doc-evento-sabado_letivo">Sábado Letivo</span>
-            <em class="muted">(referente à terça-feira)</em>
-          </td>
-        </tr>
-        
-        <tr>
-          
-          <td class="doc-dia-cel">12</td>
-          <td>
-            <span class="doc-evento doc-evento-sabado_reposicao">Sábado de Reposição de Aulas</span>
-            <em class="muted">(referente à quinta-feira)</em>
-          </td>
-        </tr>
-        
-        <tr>
-          
           <td class="doc-dia-cel">19</td>
           <td>
             <span class="doc-evento doc-evento-sabado_letivo">Sábado Letivo</span>
-            <em class="muted">(referente à quarta-feira)</em>
+            <em class="muted">(referente à quinta-feira)</em>
           </td>
         </tr>
         
@@ -5045,7 +5356,7 @@
         
         <tr>
           
-            <th scope="rowgroup" rowspan="8" class="doc-mes-cel">JUL/2027</th>
+            <th scope="rowgroup" rowspan="10" class="doc-mes-cel">JUL/2027</th>
           
           <td class="doc-dia-cel">03</td>
           <td>
@@ -5065,9 +5376,27 @@
         
         <tr>
           
-          <td class="doc-dia-cel">07 a 09</td>
+          <td class="doc-dia-cel">07 a 08</td>
           <td>
-            <span class="doc-evento doc-evento-recuperacao">Recuperação Paralela do 2º Bimestre</span>
+            <span class="doc-evento doc-evento-recuperacao">Recuperação Paralela do 2º Bimestre / Termino do 2º Bimestre e 2º Semestre.</span>
+            
+          </td>
+        </tr>
+        
+        <tr>
+          
+          <td class="doc-dia-cel">09 a 10</td>
+          <td>
+            <span class="doc-evento doc-evento-avaliacao_final">Prova Final</span>
+            
+          </td>
+        </tr>
+        
+        <tr>
+          
+          <td class="doc-dia-cel">10</td>
+          <td>
+            <span class="doc-evento doc-evento-evento">Prazo de Lançamento de Notas do 2º Bimestre no SUAP</span>
             
           </td>
         </tr>
@@ -5092,6 +5421,15 @@
         
         <tr>
           
+          <td class="doc-dia-cel">13</td>
+          <td>
+            <span class="doc-evento doc-evento-evento">Conselho de Classe</span>
+            
+          </td>
+        </tr>
+        
+        <tr>
+          
           <td class="doc-dia-cel">14/07 a 14/08</td>
           <td>
             <span class="doc-evento doc-evento-ferias_coletivas">Férias Coletivas dos Servidores</span>
@@ -5104,15 +5442,6 @@
           <td class="doc-dia-cel">14 a 16</td>
           <td>
             <span class="doc-evento doc-evento-administrativo">Prazo de Lançamento de Notas do 2º Bimestre no SUAP</span>
-            
-          </td>
-        </tr>
-        
-        <tr>
-          
-          <td class="doc-dia-cel">17</td>
-          <td>
-            <span class="doc-evento doc-evento-evento">Reunião de Pais do 2º Bimestre</span>
             
           </td>
         </tr>
@@ -5152,7 +5481,7 @@
         
         <tr>
           
-            <th scope="rowgroup" rowspan="8" class="doc-mes-cel">SET/2027</th>
+            <th scope="rowgroup" rowspan="7" class="doc-mes-cel">SET/2027</th>
           
           <td class="doc-dia-cel">01 a 30</td>
           <td>
@@ -5208,15 +5537,6 @@
         
         <tr>
           
-          <td class="doc-dia-cel">25</td>
-          <td>
-            <span class="doc-evento doc-evento-sabado_letivo">Sábado Letivo</span>
-            <em class="muted">(referente à terça-feira)</em>
-          </td>
-        </tr>
-        
-        <tr>
-          
           <td class="doc-dia-cel">27/09 a 01/10</td>
           <td>
             <span class="doc-evento doc-evento-avaliacao">Avaliações Bimestrais do 3º Bimestre</span>
@@ -5228,7 +5548,7 @@
         
         <tr>
           
-            <th scope="rowgroup" rowspan="12" class="doc-mes-cel">OUT/2027</th>
+            <th scope="rowgroup" rowspan="10" class="doc-mes-cel">OUT/2027</th>
           
           <td class="doc-dia-cel">02</td>
           <td>
@@ -5284,15 +5604,6 @@
         
         <tr>
           
-          <td class="doc-dia-cel">16</td>
-          <td>
-            <span class="doc-evento doc-evento-sabado_letivo">Sábado letivo</span>
-            <em class="muted">(referente à terça-feira)</em>
-          </td>
-        </tr>
-        
-        <tr>
-          
           <td class="doc-dia-cel">18 a 22</td>
           <td>
             <span class="doc-evento doc-evento-evento">Semana Nacional de Ciência e Tecnologia (SNCT)</span>
@@ -5304,17 +5615,8 @@
           
           <td class="doc-dia-cel">23</td>
           <td>
-            <span class="doc-evento doc-evento-evento">Reunião de Pais do 3º Bimestre</span>
-            
-          </td>
-        </tr>
-        
-        <tr>
-          
-          <td class="doc-dia-cel">23</td>
-          <td>
             <span class="doc-evento doc-evento-sabado_letivo">Sábado Letivo</span>
-            <em class="muted">(referente à segunda-feira)</em>
+            <em class="muted">(referente à terça-feira)</em>
           </td>
         </tr>
         
@@ -5332,7 +5634,7 @@
           <td class="doc-dia-cel">30</td>
           <td>
             <span class="doc-evento doc-evento-sabado_letivo">Sábado letivo</span>
-            <em class="muted">(referente à quarta-feira)</em>
+            <em class="muted">(referente à segunda-feira)</em>
           </td>
         </tr>
         
@@ -5362,7 +5664,7 @@
           
           <td class="doc-dia-cel">13</td>
           <td>
-            <span class="doc-evento doc-evento-sabado_reposicao">Sabado de Reposição</span>
+            <span class="doc-evento doc-evento-sabado_reposicao">Sábado de Reposição</span>
             
           </td>
         </tr>
@@ -5390,7 +5692,7 @@
           <td class="doc-dia-cel">27</td>
           <td>
             <span class="doc-evento doc-evento-sabado_letivo">Sábado Letivo</span>
-            <em class="muted">(referente à quinta-feira)</em>
+            <em class="muted">(referente à quarta-feira)</em>
           </td>
         </tr>
         
@@ -5398,7 +5700,7 @@
         
         <tr>
           
-            <th scope="rowgroup" rowspan="12" class="doc-mes-cel">DEZ/2027</th>
+            <th scope="rowgroup" rowspan="6" class="doc-mes-cel">DEZ/2027</th>
           
           <td class="doc-dia-cel">04</td>
           <td>
@@ -5436,64 +5738,10 @@
         
         <tr>
           
-          <td class="doc-dia-cel">15 a 16</td>
-          <td>
-            <span class="doc-evento doc-evento-recuperacao">Recuperação Paralela do 4º Bimestre</span>
-            
-          </td>
-        </tr>
-        
-        <tr>
-          
-          <td class="doc-dia-cel">18</td>
-          <td>
-            <span class="doc-evento doc-evento-evento">Reunião de Pais do 4º Bimestre</span>
-            
-          </td>
-        </tr>
-        
-        <tr>
-          
           <td class="doc-dia-cel">18</td>
           <td>
             <span class="doc-evento doc-evento-sabado_letivo">Sábado letivo</span>
             <em class="muted">(referente à quinta-feira)</em>
-          </td>
-        </tr>
-        
-        <tr>
-          
-          <td class="doc-dia-cel">20 a 22</td>
-          <td>
-            <span class="doc-evento doc-evento-administrativo">Prazo de Lançamento de Notas do 4º Bimestre no SUAP</span>
-            
-          </td>
-        </tr>
-        
-        <tr>
-          
-          <td class="doc-dia-cel">20 a 22</td>
-          <td>
-            <span class="doc-evento doc-evento-avaliacao_final">Prova Final</span>
-            
-          </td>
-        </tr>
-        
-        <tr>
-          
-          <td class="doc-dia-cel">23</td>
-          <td>
-            <span class="doc-evento doc-evento-conselho_classe">Conselho de Classe do 4º Bimestre</span>
-            
-          </td>
-        </tr>
-        
-        <tr>
-          
-          <td class="doc-dia-cel">23</td>
-          <td>
-            <span class="doc-evento doc-evento-letivo">Término do Ano Letivo e do 4º Bimestre</span>
-            
           </td>
         </tr>
         
@@ -5507,42 +5755,77 @@
         </tr>
         
       
+        
+        <tr>
+          
+            <th scope="rowgroup" rowspan="6" class="doc-mes-cel">JAN/2028</th>
+          
+          <td class="doc-dia-cel">03 a 07</td>
+          <td>
+            <span class="doc-evento doc-evento-recuperacao">Recuperação Paralela do 4º Bimestre</span>
+            
+          </td>
+        </tr>
+        
+        <tr>
+          
+          <td class="doc-dia-cel">08</td>
+          <td>
+            <span class="doc-evento doc-evento-sabado_letivo">Sábado Letivo</span>
+            <em class="muted">(referente à terça-feira)</em>
+          </td>
+        </tr>
+        
+        <tr>
+          
+          <td class="doc-dia-cel">11</td>
+          <td>
+            <span class="doc-evento doc-evento-avaliacao_final">Prova Final</span>
+            
+          </td>
+        </tr>
+        
+        <tr>
+          
+          <td class="doc-dia-cel">12</td>
+          <td>
+            <span class="doc-evento doc-evento-administrativo">Prazo de Lançamento de Notas do 4º Bimestre no SUAP</span>
+            
+          </td>
+        </tr>
+        
+        <tr>
+          
+          <td class="doc-dia-cel">13</td>
+          <td>
+            <span class="doc-evento doc-evento-conselho_classe">Conselho de Classe do 4º Bimestre</span>
+            
+          </td>
+        </tr>
+        
+        <tr>
+          
+          <td class="doc-dia-cel">14</td>
+          <td>
+            <span class="doc-evento doc-evento-letivo">Término do Ano Letivo e do 4º Bimestre</span>
+            
+          </td>
+        </tr>
+        
+      
     </tbody>
   </table>
 </section>
 
-
+    
+    <div class="doc-colunas">
+      
 <section class="doc-section" id="sabados-letivos">
   <h2>3. Sábados letivos</h2>
   <ul class="doc-sabados">
     
     <li>
-      <strong>06/03</strong> — Sábado Letivo
-      <em class="muted">(referente à segunda-feira)</em>
-    </li>
-    
-    <li>
-      <strong>20/03</strong> — Sábado Letivo
-      <em class="muted">(referente à quarta-feira)</em>
-    </li>
-    
-    <li>
-      <strong>27/03</strong> — Sábado letivo
-      <em class="muted">(referente à terça-feira)</em>
-    </li>
-    
-    <li>
       <strong>03/04</strong> — Sábado Letivo
-      <em class="muted">(referente à sexta-feira)</em>
-    </li>
-    
-    <li>
-      <strong>10/04</strong> — Sábado Letivo
-      <em class="muted">(referente à sexta-feira)</em>
-    </li>
-    
-    <li>
-      <strong>17/04</strong> — Sábado letivo
       <em class="muted">(referente à segunda-feira)</em>
     </li>
     
@@ -5557,28 +5840,13 @@
     </li>
     
     <li>
-      <strong>15/05</strong> — Sábado Letivo
-      <em class="muted">(referente à quinta-feira)</em>
-    </li>
-    
-    <li>
       <strong>22/05</strong> — Sábado Letivo
       <em class="muted">(referente à sexta-feira)</em>
     </li>
     
     <li>
-      <strong>29/05</strong> — Sábado Letivo
-      <em class="muted">(referente à segunda-feira)</em>
-    </li>
-    
-    <li>
-      <strong>05/06</strong> — Sábado Letivo
-      <em class="muted">(referente à terça-feira)</em>
-    </li>
-    
-    <li>
       <strong>19/06</strong> — Sábado Letivo
-      <em class="muted">(referente à quarta-feira)</em>
+      <em class="muted">(referente à quinta-feira)</em>
     </li>
     
     <li>
@@ -5622,11 +5890,6 @@
     </li>
     
     <li>
-      <strong>25/09</strong> — Sábado Letivo
-      <em class="muted">(referente à terça-feira)</em>
-    </li>
-    
-    <li>
       <strong>02/10</strong> — Sábado letivo
       <em class="muted">(referente à terça-feira)</em>
     </li>
@@ -5637,18 +5900,13 @@
     </li>
     
     <li>
-      <strong>16/10</strong> — Sábado letivo
+      <strong>23/10</strong> — Sábado Letivo
       <em class="muted">(referente à terça-feira)</em>
     </li>
     
     <li>
-      <strong>23/10</strong> — Sábado Letivo
-      <em class="muted">(referente à segunda-feira)</em>
-    </li>
-    
-    <li>
       <strong>30/10</strong> — Sábado letivo
-      <em class="muted">(referente à quarta-feira)</em>
+      <em class="muted">(referente à segunda-feira)</em>
     </li>
     
     <li>
@@ -5658,7 +5916,7 @@
     
     <li>
       <strong>27/11</strong> — Sábado Letivo
-      <em class="muted">(referente à quinta-feira)</em>
+      <em class="muted">(referente à quarta-feira)</em>
     </li>
     
     <li>
@@ -5676,11 +5934,16 @@
       <em class="muted">(referente à quinta-feira)</em>
     </li>
     
+    <li>
+      <strong>08/01</strong> — Sábado Letivo
+      <em class="muted">(referente à terça-feira)</em>
+    </li>
+    
   </ul>
 </section>
 
 
-    <section class="doc-section" id="feriados">
+      <section class="doc-section" id="feriados">
   <h2>4. Feriados e pontos facultativos</h2>
   <table class="doc-table doc-table-feriados">
     <thead>
@@ -5707,6 +5970,12 @@
       <tr>
         <td>09/02</td>
         <td>Carnaval (terça-feira)</td>
+        <td><span class="doc-evento doc-evento-feriado">Feriado</span></td>
+      </tr>
+      
+      <tr>
+        <td>25/03</td>
+        <td>Quinta-feira Santa</td>
         <td><span class="doc-evento doc-evento-feriado">Feriado</span></td>
       </tr>
       
@@ -5759,15 +6028,15 @@
       </tr>
       
       <tr>
-        <td>12/10</td>
-        <td>Nossa Senhora Aparecida</td>
-        <td><span class="doc-evento doc-evento-feriado">Feriado</span></td>
+        <td>11/10</td>
+        <td>Comemorações do Dia do Professor e do TAE</td>
+        <td><span class="doc-evento doc-evento-ponto_facultativo">Ponto facultativo</span></td>
       </tr>
       
       <tr>
-        <td>15/10</td>
-        <td>Dia do Professor</td>
-        <td><span class="doc-evento doc-evento-ponto_facultativo">Ponto facultativo</span></td>
+        <td>12/10</td>
+        <td>Nossa Senhora Aparecida</td>
+        <td><span class="doc-evento doc-evento-feriado">Feriado</span></td>
       </tr>
       
       <tr>
@@ -5816,7 +6085,7 @@
   </table>
 </section>
 
-    <section class="doc-section" id="legenda">
+      <section class="doc-section" id="legenda">
   <h2>5. Legenda</h2>
   <ul class="doc-legenda">
     
@@ -5826,18 +6095,8 @@
     </li>
     
     <li>
-      <span class="doc-dia-swatch doc-dia-letivo_sabado" aria-hidden="true"></span>
-      Sábado letivo — <em>conta na carga horária</em>
-    </li>
-    
-    <li>
       <span class="doc-dia-swatch doc-dia-nao_letivo" aria-hidden="true"></span>
       Não letivo — não conta
-    </li>
-    
-    <li>
-      <span class="doc-dia-swatch doc-dia-reposicao" aria-hidden="true"></span>
-      Sábado de reposição (não conta) — não conta
     </li>
     
     <li>
@@ -5846,8 +6105,18 @@
     </li>
     
     <li>
+      <span class="doc-dia-swatch doc-dia-letivo_sabado" aria-hidden="true"></span>
+      Sábado letivo — <em>conta na carga horária</em>
+    </li>
+    
+    <li>
       <span class="doc-dia-swatch doc-dia-conselho" aria-hidden="true"></span>
       Conselho de classe — não conta
+    </li>
+    
+    <li>
+      <span class="doc-dia-swatch doc-dia-avaliacao_final" aria-hidden="true"></span>
+      Avaliação final — não conta
     </li>
     
     <li>
@@ -5861,8 +6130,8 @@
     </li>
     
     <li>
-      <span class="doc-dia-swatch doc-dia-avaliacao_final" aria-hidden="true"></span>
-      Avaliação final — não conta
+      <span class="doc-dia-swatch doc-dia-reposicao" aria-hidden="true"></span>
+      Sábado de reposição (não conta) — não conta
     </li>
     
     <li>
@@ -5873,6 +6142,7 @@
   </ul>
 </section>
 
+    </div>
 
     
 
