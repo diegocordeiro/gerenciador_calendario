@@ -109,10 +109,26 @@ class AlgoritmoTests(TestCase):
         d = build_calendario("2026-09-14", 1, 5, [])
         self.assertFalse(d["valido"])
         self.assertTrue(d["erros"])
-        # Data fora de segunda-feira também é inválida.
-        d2 = build_calendario("2026-09-15", 18, 9, [])
-        self.assertFalse(d2["valido"])
-        self.assertTrue(any("segunda" in e for e in d2["erros"]))
+
+    def test_inicio_fora_de_segunda_e_valido(self):
+        # Início numa quarta-feira: a grade parte da segunda da mesma semana,
+        # segunda e terça viram dias livres e são repostos ao final.
+        d = build_calendario("2026-09-16", 18, 9, [])
+        self.assertTrue(d["valido"], d["erros"])
+        self.assertEqual(d["parametros"]["data_inicio"], "2026-09-16")
+        self.assertEqual(d["parametros"]["data_ancora"], "2026-09-14")
+        self.assertEqual(d["parametros"]["dias_antes_inicio"], ["2026-09-14", "2026-09-15"])
+        self.assertEqual(d["feriados_calendario"], [])
+        antes = [c["date"] for l in d["linhas"] for c in l["cells"] if c and c["antes_inicio"]]
+        self.assertEqual(antes, ["2026-09-14", "2026-09-15"])
+        # Mesmo número de dias letivos que um início na segunda (18 semanas x 5).
+        self.assertEqual(d["dias_letivos"], 18 * 5)
+
+    def test_inicio_no_fim_de_semana_vai_para_segunda(self):
+        d = build_calendario("2026-09-12", 18, 9, [])  # sábado
+        self.assertTrue(d["valido"], d["erros"])
+        self.assertEqual(d["parametros"]["data_ancora"], "2026-09-14")
+        self.assertEqual(d["parametros"]["dias_antes_inicio"], [])
 
 
 class FeriadosNacionaisTests(TestCase):

@@ -348,7 +348,7 @@ def montar_prompt(entrada: dict, inicio: dt.date, fim: dt.date) -> str:
 - Curso: {entrada.get('curso') or '-'} | Modalidade: {entrada.get('modalidade') or '-'}
 
 # Período
-- Início do período letivo: {inicio.isoformat()} (segunda-feira)
+- Início do período letivo: {inicio.isoformat()}
 - Término: {fim.isoformat()}
 - Semanas: {entrada.get('total_semanas')} (1ª parte com {entrada.get('semanas_primeira_parte')} semanas; o restante é reposição)
 - Meta de dias letivos do semestre: {previsto} (equivale a {meta} por dia da semana)

@@ -87,6 +87,12 @@
     el.textContent = texto;
     el.className = "editor-msg " + (tipo === "ok" ? "editor-msg-ok" : "editor-msg-erro");
     atualizarMensagens();
+    // A área de mensagens fica no topo da página: em caso de erro, traz a
+    // mensagem para a tela (antes ela era gravada fora da área visível e o
+    // usuário via só que nada tinha sido salvo).
+    if (tipo !== "ok" && el.scrollIntoView) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
   }
 
   function fmtData(iso) {

@@ -227,8 +227,22 @@ def build_calendario(data_inicio, total_semanas_valor, semanas_primeira_parte, f
         }
 
     erros = []
-    if data_inicio.weekday() != 0:
-        erros.append("A data de início deve ser uma segunda-feira.")
+
+    # A data de início pode cair em qualquer dia. A grade é sempre montada a
+    # partir da segunda-feira da semana de início (âncora): os dias úteis
+    # anteriores à data informada entram como dias livres — exatamente como um
+    # feriado —, e o algoritmo os repõe nas semanas extras. Assim o semestre
+    # mantém ``t`` semanas completas de aulas por dia da semana. Sábado/domingo
+    # avançam a âncora para a segunda-feira seguinte.
+    inicio_informado = data_inicio
+    dia_semana = data_inicio.weekday()
+    if dia_semana >= 5:
+        data_inicio = data_inicio + dt.timedelta(days=7 - dia_semana)
+        dias_antes = []
+    else:
+        data_inicio = data_inicio - dt.timedelta(days=dia_semana)
+        dias_antes = [data_inicio + dt.timedelta(days=k) for k in range(dia_semana)]
+    dias_antes_set = set(dias_antes)
     if t < 2:
         erros.append("O número de semanas deve ser pelo menos 2.")
     if t1 < 1:
@@ -236,12 +250,15 @@ def build_calendario(data_inicio, total_semanas_valor, semanas_primeira_parte, f
     if t1 > t:
         erros.append("A 1ª parte não pode ter mais semanas que o semestre.")
 
-    feriados_cal = feriados_no_calendario(data_inicio, t, feriados_norm)
-    f = len(feriados_cal)
+    # Os dias antes do início contam como "livres" no cálculo (como feriados),
+    # mas não aparecem na lista de feriados do calendário.
+    livres_cal = feriados_no_calendario(data_inicio, t, feriados_norm + dias_antes)
+    feriados_cal = [d for d in livres_cal if d not in dias_antes_set]
+    f = len(livres_cal)
     w = total_semanas(t, f)
     matriz = calendario_matriz(data_inicio, t, t1, f)
 
-    celulas = [c for d in feriados_cal if (c := date_to_cell(data_inicio, d, matriz))]
+    celulas = [c for d in livres_cal if (c := date_to_cell(data_inicio, d, matriz))]
     C = melhor_matriz(matriz, celulas, t, f)
     if C is None:
         erros.append(
@@ -275,6 +292,7 @@ def build_calendario(data_inicio, total_semanas_valor, semanas_primeira_parte, f
                     "label_html": html,
                     "color": _cor_fundo(celula),
                     "free": bool(celula["free"]),
+                    "antes_inicio": bool(celula["free"]) and celula["date"] in dias_antes_set,
                     "part": celula["part"],
                     "parity": celula["parity"],
                     "week": celula["week"],
@@ -302,7 +320,9 @@ def build_calendario(data_inicio, total_semanas_valor, semanas_primeira_parte, f
 
     return {
         "parametros": {
-            "data_inicio": data_inicio.isoformat(),
+            "data_inicio": inicio_informado.isoformat(),
+            "data_ancora": data_inicio.isoformat(),
+            "dias_antes_inicio": [d.isoformat() for d in dias_antes],
             "data_fim": data_fim.isoformat(),
             "total_semanas": t,
             "semanas_primeira_parte": t1,
